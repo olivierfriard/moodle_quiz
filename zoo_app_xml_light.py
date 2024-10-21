@@ -7,8 +7,12 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.popup import Popup
 from kivy.uix.image import Image
+from kivy.uix.textinput import TextInput
 from kivy.core.window import Window
 from pathlib import Path
+
+# question handled by app
+QUESTION_TYPES = ["truefalse", "multichoice", "shortanswer"]
 
 
 def moodle_xml_to_dict_with_images(xml_file):
@@ -91,6 +95,8 @@ def moodle_xml_to_dict_with_images(xml_file):
                 # print()
 
                 # save base64 str into file
+                if not Path("files").is_dir():
+                    Path("files").mkdir(parents=True, exist_ok=True)
                 with open(Path("files") / Path(file_.get("name")), "wb") as file:
                     file.write(base64.b64decode(file_.text))
 
@@ -122,6 +128,7 @@ class QuestionBox(BoxLayout):
         super().__init__(orientation="vertical", **kwargs)
         self.question = question
         print(self.question)
+        print()
 
         # check if images to display
         if self.question["files"]:
@@ -129,37 +136,72 @@ class QuestionBox(BoxLayout):
             img = Image(source=str(Path("files") / Path(self.question["files"][0])))
             self.add_widget(img)
 
-        # Display the question with light theme colors
-        self.question_label = Label(
-            text=self.question["questiontext"],
-            text_size=(int(Window.width * 0.9), None),
-            valign="top",
-            halign="center",
-            size_hint_y=0.2,
-            # height=100,
-            color=(0, 0, 0, 1),  # Black text
-            font_size="30sp",
-        )
-        self.add_widget(self.question_label)
-
         # Display the options with light theme buttons
-        self.option_buttons = []
-        for option in random.sample(self.question["answers"], len(self.question["answers"])):
-            btn = Button(
-                text=option["text"],
+        if question["type"] == "multichoice" or question["type"] == "truefalse":
+            # Display the question
+            self.question_label = Label(
+                text=self.question["questiontext"],
                 text_size=(int(Window.width * 0.9), None),
                 valign="top",
                 halign="center",
+                size_hint_y=0.2,
+                # height=100,
+                color=(0, 0, 0, 1),  # Black text
+                font_size="30sp",
+            )
+            self.add_widget(self.question_label)
+
+            self.option_buttons = []
+            for option in random.sample(self.question["answers"], len(self.question["answers"])):
+                btn = Button(
+                    text=option["text"],
+                    text_size=(int(Window.width * 0.9), None),
+                    valign="top",
+                    halign="center",
+                    size_hint_y=0.1,
+                    # height=50,
+                    background_normal="",
+                    background_color=(0.9, 0.9, 0.9, 1),
+                    color=(0, 0, 0, 1),
+                    font_size="20sp",
+                )  # Black text
+                btn.bind(on_press=self.check_answer)
+                self.option_buttons.append(btn)
+                self.add_widget(btn)
+
+        elif question["type"] == "shortanswer":
+            # Display the question
+            self.question_label = Label(
+                text=self.question["questiontext"],
+                text_size=(int(Window.width * 0.9), None),
+                valign="top",
+                halign="center",
+                size_hint_y=0.5,
+                # height=100,
+                color=(0, 0, 0, 1),  # Black text
+                font_size="30sp",
+            )
+            self.add_widget(self.question_label)
+
+            self.input_box = TextInput(
+                hint_text="Enter something here",
+                multiline=False,
+                size_hint_y=0.4,
+                font_size="30sp",
+            )
+            self.add_widget(self.input_box)
+            submit_button = Button(
+                text="Submit",
                 size_hint_y=0.1,
-                # height=50,
-                background_normal="",
-                background_color=(0.9, 0.9, 0.9, 1),
-                color=(0, 0, 0, 1),
                 font_size="20sp",
-            )  # Black text
-            btn.bind(on_press=self.check_answer)
-            self.option_buttons.append(btn)
-            self.add_widget(btn)
+                background_normal="",
+                background_color=(0, 0, 0.9, 1),
+            )
+            submit_button.bind(on_press=self.check_answer)
+            self.add_widget(submit_button)
+
+        else:
+            print(f"Question type error: {self.question["type"]}")
 
     def strip_html_tags(self, text):
         # This is a simple method to strip HTML tags
@@ -170,17 +212,26 @@ class QuestionBox(BoxLayout):
 
     def check_answer(self, instance):
         # Check if the selected option is correct
-        flag_OK = False
-        correct_answer = ""
+
+        correct_answer: str = ""
         for answer in self.question["answers"]:
             if answer["fraction"] == "100":
                 correct_answer = answer["text"]
-                if instance.text == answer["text"]:
-                    self.show_popup("Correct!", "You selected the correct answer.")
-                    flag_OK = True
-                    break
-        if not flag_OK:
-            self.show_popup("Incorrect!", f"The correct answer is:\n\n{correct_answer}")
+                break
+
+        if self.question["type"] in ("truefalse", "multichoice"):
+            if instance.text == correct_answer:
+                self.show_popup("Correct!", "You selected the correct answer.")
+            else:
+                self.show_popup("Incorrect!", f"The correct answer is:\n\n{correct_answer}")
+
+        elif self.question["type"] == "shortanswer":
+            if self.input_box.text.strip().upper() == correct_answer.strip().upper():
+                self.show_popup("Correct!", "You selected the correct answer.")
+            else:
+                self.show_popup("Incorrect!", f"The correct answer is:\n\n{correct_answer}")
+        else:
+            print(f"Question type error: {self.question["type"]}")
 
     def show_popup(self, title, message):
         """
@@ -245,12 +296,15 @@ class RandomQuestionApp(App):
             self.root.remove_widget(self.question_box)
 
         # Select a random question
-        if CATEGORY:
-            random_question = random.choice(question_data[CATEGORY])
-        else:
-            random_question = random.choice(
-                [item for sublist in [[q for q in question_data[cat]] for cat in question_data] for item in sublist]
-            )
+        while True:
+            if CATEGORY:
+                random_question = random.choice(question_data[CATEGORY])
+            else:
+                random_question = random.choice(
+                    [item for sublist in [[q for q in question_data[cat]] for cat in question_data] for item in sublist]
+                )
+            if random_question["type"] in QUESTION_TYPES:
+                break
 
         # Display the question
         self.question_box = QuestionBox(random_question)
