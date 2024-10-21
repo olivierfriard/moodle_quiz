@@ -102,7 +102,7 @@ def moodle_xml_to_dict_with_images(xml_file):
     return dict(categories_dict)
 
 
-xml_file = sys.argv[1]
+xml_file = "data.xml"
 question_data = moodle_xml_to_dict_with_images(xml_file)
 print(question_data)
 print()
