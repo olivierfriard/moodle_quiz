@@ -387,7 +387,6 @@ class ChooseSubTopic(Screen):
 
         # grid_layout = GridLayout(cols=1, rows=len(question_data), spacing=10, size_hint=(1, 0.8))
         for topic in question_data:
-            if 
             print(topic)
             btn = Button(text=" / ".join(topic), size_hint_y=None, on_release=lambda btn: self.start_subtopic(btn.text))
             main_layout.add_widget(btn)
