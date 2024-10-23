@@ -264,22 +264,22 @@ class Question(Screen):
             if answer["fraction"] == "100":
                 correct_answer = answer["text"]
                 break
-
+        text_output = [App.get_running_app().quiz[App.get_running_app().quiz_position]["questiontext"] + "\n\n"]
         if self.question["type"] in ("truefalse", "multichoice"):
             if instance.text == correct_answer:
-                self.manager.get_screen("feedback").display("You selected the correct answer.")
-
+                text_output.append("You selected the correct answer.")
             else:
-                self.manager.get_screen("feedback").display(f"The correct answer is:\n\n{correct_answer}")
+                text_output.append(f"The correct answer is:\n\n{correct_answer}")
 
-        elif self.question["type"] == "shortanswer":
+        elif self.question["type"] in ("shortanswer", "numerical"):
             if self.input_box.text.strip().upper() == correct_answer.strip().upper():
-                self.manager.get_screen("feedback").display("You selected the correct answer.")
+                text_output.append("You selected the correct answer.")
             else:
-                self.manager.get_screen("feedback").display(f"The correct answer is:\n\n{correct_answer}")
+                text_output.append(f"The correct answer is:\n\n{correct_answer}")
         else:
             print(f"Question type error: {self.question["type"]}")
 
+        self.manager.get_screen("feedback").display(text_output)
         self.manager.current = "feedback"
 
     def show_popup(self, title, message):
@@ -322,17 +322,8 @@ class Feedback(Screen):
         super().__init__(**kwargs)
 
     def display(self, str):
-        """
-        layout = BoxLayout(orientation="vertical")
-        start_button = Button(text="Start", color='#000000', font_size="50sp")
-        # start_button.bind(on_press=self.start_button_pressed)
-        layout.add_widget(start_button)
-        self.add_widget(layout)
-        return
-        """
-
         self.clear_widgets()
-        print(str)
+
         layout = BoxLayout(orientation="vertical")
         # Label
         label = Label(text=str, color="#000000", font_size="30sp", text_size=(int(Window.width * 0.9), None), size_hint_y=0.8)
