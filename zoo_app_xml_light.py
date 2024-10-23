@@ -20,8 +20,6 @@ STEP_NUMBER = 4
 
 N_STEP_QUESTIONS_ = 5
 
-STEP_NAME = "Tappa"
-
 # question handled by app
 QUESTION_TYPES = ["truefalse", "multichoice", "shortanswer", "numerical"]
 
@@ -155,6 +153,8 @@ if Path("results.json").is_file():
     try:
         with open("results.json", "r") as file_in:
             results = json.loads(file_in.read())
+        print("Results loaded:")
+        print(results)
         flag_file_present = True
     except Exception:
         print("Error loading the results.json file")
@@ -212,6 +212,7 @@ class Question(Screen):
             self.question = App.get_running_app().quiz[App.get_running_app().quiz_position]
         else:
             print("quiz finished")
+            return
 
         print(f"{self.question=}")
 
@@ -436,8 +437,18 @@ class Feedback(Screen):
             results["finished"][App.get_running_app().current_topic].append(
                 int(App.get_running_app().current_subtopic.removeprefix("Step "))
             )
+            save_results()
             self.manager.get_screen("choose_subtopic").show_subtopic()
             self.manager.current = "choose_subtopic"
+
+
+def save_results():
+    # save results.json
+    try:
+        with open("results.json", "w") as file_out:
+            file_out.write(json.dumps(results))
+    except Exception:
+        print("Error saving the results.json file")
 
 
 class Home(Screen):
@@ -469,12 +480,7 @@ class Home(Screen):
     def quit_app(self, instance):
         self.popup.dismiss()  # Close the popup
 
-        # save results.json
-        try:
-            with open("results.json", "w") as file_out:
-                file_out.write(json.dumps(results))
-        except Exception:
-            print("Error saving the results.json file")
+        save_results()
 
         sys.exit()  # Quit the app
 
