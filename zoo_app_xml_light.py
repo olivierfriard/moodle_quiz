@@ -164,17 +164,35 @@ class Question(Screen):
         nav_menu = BoxLayout(orientation="horizontal", size_hint_y=0.1)
 
         # Create buttons for the bottom navigation menu
-        home_btn = Button(text="Home", font_size="20sp")
+        home_btn = Button(
+            text="Home",
+            font_size="20sp",
+            color="#ffffff",
+            background_normal="",
+            background_color=(0, 0, 0, 1),
+        )
         home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
         nav_menu.add_widget(home_btn)
 
-        about_btn = Button(text="Steps", font_size="20sp")
-        about_btn.bind(on_release=lambda x: setattr(self.manager, "current", "choose_topic"))
+        about_btn = Button(
+            text="Steps",
+            font_size="20sp",
+            color="#ffffff",
+            background_normal="",
+            background_color=(0, 0, 0, 1),
+        )
+        about_btn.bind(on_release=lambda x: setattr(self.manager, "current", "choose_subtopic"))
         nav_menu.add_widget(about_btn)
 
-        settings_btn = Button(text="Topics", font_size="20sp")
-        settings_btn.bind(on_release=lambda x: setattr(self.manager, "current", "choose_topic"))
-        nav_menu.add_widget(settings_btn)
+        btn = Button(
+            text="Topics",
+            font_size="20sp",
+            color="#ffffff",
+            background_normal="",
+            background_color=(0, 0, 0, 1),
+        )
+        btn.bind(on_release=lambda x: setattr(self.manager, "current", "choose_topic"))
+        nav_menu.add_widget(btn)
 
         return nav_menu
 
@@ -215,7 +233,7 @@ class Question(Screen):
             self.option_buttons = []
             for option in random.sample(self.question["answers"], len(self.question["answers"])):
                 btn = Button(
-                    text=option["text"],
+                    text=option["text"] if self.question["type"] == "multichoice" else option["text"].upper(),
                     text_size=(int(Window.width * 0.9), None),
                     valign="top",
                     halign="center",
@@ -373,15 +391,24 @@ class Feedback(Screen):
 
         nav_menu = BoxLayout(orientation="horizontal", size_hint_y=None)
 
+        home_btn = Button(
+            text="Home",
+            font_size="20sp",
+            color="#ffffff",
+            background_normal="",
+            background_color=(0, 0, 0, 1),
+        )
+        home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
+        nav_menu.add_widget(home_btn)
+
         btn = Button(
             text="Next" if App.get_running_app().quiz_position < len(App.get_running_app().quiz) - 1 else "Quiz finished",
+            font_size="30sp",
+            background_normal="",
+            background_color=(0, 0, 0.9, 1),
         )
         btn.bind(on_release=self.next)
         nav_menu.add_widget(btn)
-
-        home_btn = Button(text="Home")
-        home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
-        nav_menu.add_widget(home_btn)
 
         layout.add_widget(nav_menu)
 
@@ -396,9 +423,11 @@ class Feedback(Screen):
             self.manager.get_screen("question").display_question()
             self.manager.current = "question"
         else:  # quiz finished
-            if App.get_running_app().topic not in results["finished"]:
-                results["finished"][App.get_running_app().topic] = []
-            results["finished"][App.get_running_app().topic].append(int(App.get_running_app().subtopic.removeprefix("Step ")))
+            if App.get_running_app().current_topic not in results["finished"]:
+                results["finished"][App.get_running_app().current_topic] = []
+            results["finished"][App.get_running_app().current_topic].append(
+                int(App.get_running_app().current_subtopic.removeprefix("Step "))
+            )
             self.manager.get_screen("choose_subtopic").show_subtopic()
             self.manager.current = "choose_subtopic"
 
@@ -443,7 +472,13 @@ class ChooseTopic(Screen):
         nav_menu = BoxLayout(orientation="horizontal", size_hint_y=None)
 
         # Create buttons for the bottom navigation menu
-        home_btn = Button(text="Home", font_size="20sp")
+        home_btn = Button(
+            text="Home",
+            font_size="20sp",
+            color="#ffffff",
+            background_normal="",
+            background_color=(0, 0, 0, 1),
+        )
         home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
         nav_menu.add_widget(home_btn)
 
@@ -490,7 +525,13 @@ class ChooseSubTopic(Screen):
         home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
         nav_menu.add_widget(home_btn)
 
-        settings_btn = Button(text="Topics", font_size="20sp")
+        settings_btn = Button(
+            text="Topics",
+            font_size="20sp",
+            color="#ffffff",
+            background_normal="",
+            background_color=(0, 0, 0, 1),
+        )
         settings_btn.bind(on_release=lambda x: setattr(self.manager, "current", "choose_topic"))
         nav_menu.add_widget(settings_btn)
 
@@ -500,6 +541,7 @@ class ChooseSubTopic(Screen):
         super().__init__(**kwargs)
 
     def show_subtopic(self):
+        self.clear_widgets()
         scrollwidget_layout = ScrollView(size_hint=(1, None), size=(Window.width, Window.height))
         main_layout = GridLayout(cols=1, spacing=10, size_hint_y=None)
         main_layout.bind(minimum_height=main_layout.setter("height"))
@@ -521,7 +563,7 @@ class ChooseSubTopic(Screen):
             if i == 1:
                 disabled = False
             else:
-                disabled = i - 1 not in results["finished"].get(App.get_running_app().topic, [])
+                disabled = i - 1 not in results["finished"].get(App.get_running_app().current_topic, [])
 
             btn = Button(
                 text=f"Step {i}",
@@ -537,13 +579,14 @@ class ChooseSubTopic(Screen):
         self.add_widget(scrollwidget_layout)
 
     def start_subtopic(self, subtopic):
-        # Passa alla schermata del percorso
         App.get_running_app().current_subtopic = subtopic
 
         App.get_running_app().quiz = quiz.get_quiz(
             question_data, App.get_running_app().current_topic, App.get_running_app().current_subtopic, N_STEP_QUESTIONS_, results
         )
         App.get_running_app().quiz_position = 0
+
+        # results["finished"][App.get_running_app().current_topic] = []
 
         self.manager.get_screen("question").display_question()
         self.manager.current = "question"
@@ -554,7 +597,13 @@ class About(Screen):
         nav_menu = BoxLayout(orientation="horizontal", size_hint_y=None)
 
         # Create buttons for the bottom navigation menu
-        home_btn = Button(text="Home", font_size="30sp")
+        home_btn = Button(
+            text="Home",
+            font_size="30sp",
+            color="#ffffff",
+            background_normal="",
+            background_color=(0, 0, 0, 1),
+        )
         home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
         nav_menu.add_widget(home_btn)
 
