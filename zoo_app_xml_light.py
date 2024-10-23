@@ -1,12 +1,13 @@
+import sys
 import random
+import json
 import quiz
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
-
-# from kivy.uix.popup import Popup
+from kivy.uix.popup import Popup
 from kivy.uix.image import Image
 from kivy.uix.textinput import TextInput
 from kivy.core.window import Window
@@ -146,11 +147,18 @@ for topic in question_data.keys():
     print()
 print()
 
-CATEGORY = "$course$/top/Default per ZooSist/KAHOOT/tree_thinking"
-CATEGORY = "$course$/top/Default per ZooSist/KAHOOT"
-CATEGORY = ""
+# check if file results.json exists
 
+flag_file_present = False
 results = {"questions": {}, "finished": {}}
+if Path("results.json").is_file():
+    try:
+        with open("results.json", "r") as file_in:
+            results = json.loads(file_in.read())
+        flag_file_present = True
+    except Exception:
+        print("Error loading the results.json file")
+
 
 # Set the window background color to a light color (RGB + Alpha)
 Window.clearcolor = (1, 1, 1, 1)  # White background
@@ -437,6 +445,42 @@ class Home(Screen):
     app home page
     """
 
+    def confirm_quit(self, instance):
+        # Create a confirmation popup
+        layout = BoxLayout(orientation="vertical")
+        message = Label(text="Are you sure you want to quit?")
+        layout.add_widget(message)
+
+        button_layout = BoxLayout(orientation="horizontal", size_hint=(1, 0.3))
+
+        yes_button = Button(text="Yes")
+        yes_button.bind(on_press=self.quit_app)
+        button_layout.add_widget(yes_button)
+
+        no_button = Button(text="No")
+        no_button.bind(on_press=self.close_popup)
+        button_layout.add_widget(no_button)
+
+        layout.add_widget(button_layout)
+
+        self.popup = Popup(title="Confirm Quit", content=layout, size_hint=(0.6, 0.4), auto_dismiss=False)
+        self.popup.open()
+
+    def quit_app(self, instance):
+        self.popup.dismiss()  # Close the popup
+
+        # save results.json
+        try:
+            with open("results.json", "w") as file_out:
+                file_out.write(json.dumps(results))
+        except Exception:
+            print("Error saving the results.json file")
+
+        sys.exit()  # Quit the app
+
+    def close_popup(self, instance):
+        self.popup.dismiss()  # Just close the popup
+
     def menu(self):
         nav_menu = BoxLayout(orientation="horizontal", size_hint_y=None)
 
@@ -448,6 +492,10 @@ class Home(Screen):
         about_btn = Button(text="About", font_size="30sp")
         about_btn.bind(on_release=lambda x: setattr(self.manager, "current", "about"))
         nav_menu.add_widget(about_btn)
+
+        quit_btn = Button(text="Quit", font_size="30sp")
+        quit_btn.bind(on_release=self.confirm_quit)
+        nav_menu.add_widget(quit_btn)
 
         return nav_menu
 
