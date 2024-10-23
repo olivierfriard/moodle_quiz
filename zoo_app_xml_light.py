@@ -160,9 +160,13 @@ class Question(Screen):
         super().__init__(**kwargs)
 
     def display_question(self):
+        self.clear_widgets()
         print("display question")
         # get question from quiz
-        self.question = App.get_running_app().quiz[App.get_running_app().quiz_position]
+        if App.get_running_app().quiz_position < len(App.get_running_app().quiz):
+            self.question = App.get_running_app().quiz[App.get_running_app().quiz_position]
+        else:
+            print("quiz finished")
 
         print(f"{self.question=}")
 
@@ -255,8 +259,6 @@ class Question(Screen):
     def check_answer(self, instance):
         # Check if the selected option is correct
 
-        self.manager.current = "home"
-
         correct_answer: str = ""
         for answer in self.question["answers"]:
             if answer["fraction"] == "100":
@@ -265,17 +267,20 @@ class Question(Screen):
 
         if self.question["type"] in ("truefalse", "multichoice"):
             if instance.text == correct_answer:
-                self.show_popup("Correct!", "You selected the correct answer.")
+                self.manager.get_screen("feedback").display("You selected the correct answer.")
+
             else:
-                self.show_popup("Incorrect!", f"The correct answer is:\n\n{correct_answer}")
+                self.manager.get_screen("feedback").display(f"The correct answer is:\n\n{correct_answer}")
 
         elif self.question["type"] == "shortanswer":
             if self.input_box.text.strip().upper() == correct_answer.strip().upper():
-                self.show_popup("Correct!", "You selected the correct answer.")
+                self.manager.get_screen("feedback").display("You selected the correct answer.")
             else:
-                self.show_popup("Incorrect!", f"The correct answer is:\n\n{correct_answer}")
+                self.manager.get_screen("feedback").display(f"The correct answer is:\n\n{correct_answer}")
         else:
             print(f"Question type error: {self.question["type"]}")
+
+        self.manager.current = "feedback"
 
     def show_popup(self, title, message):
         """
@@ -310,6 +315,49 @@ class Question(Screen):
         )  # White background
         close_btn.bind(on_press=popup.dismiss)
         popup.open()
+
+
+class Feedback(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def display(self, str):
+        """
+        layout = BoxLayout(orientation="vertical")
+        start_button = Button(text="Start", color='#000000', font_size="50sp")
+        # start_button.bind(on_press=self.start_button_pressed)
+        layout.add_widget(start_button)
+        self.add_widget(layout)
+        return
+        """
+
+        self.clear_widgets()
+        print(str)
+        layout = BoxLayout(orientation="vertical")
+        # Label
+        label = Label(text=str, color="#000000", font_size="30sp", text_size=(int(Window.width * 0.9), None), size_hint_y=0.8)
+        layout.add_widget(label)
+
+        btn = Button(
+            text="Next" if App.get_running_app().quiz_position < len(App.get_running_app().quiz) - 1 else "Quiz finished",
+            size_hint_y=0.2,
+        )
+        btn.bind(on_release=self.next)
+        layout.add_widget(btn)
+
+        self.add_widget(layout)
+
+    def next(self, instance):
+        """
+        show next question
+        """
+        App.get_running_app().quiz_position += 1
+        if App.get_running_app().quiz_position < len(App.get_running_app().quiz):
+            self.manager.get_screen("question").display_question()
+            self.manager.current = "question"
+        else:
+            self.manager.get_screen("choose_subtopic").show_subtopic()
+            self.manager.current = "choose_subtopic"
 
 
 class Home(Screen):
@@ -401,6 +449,7 @@ class QuizApp(App):
         sm.add_widget(ChooseTopic(name="choose_topic"))
         sm.add_widget(ChooseSubTopic(name="choose_subtopic"))
         sm.add_widget(Question(name="question"))
+        sm.add_widget(Feedback(name="feedback"))
         return sm
 
 
