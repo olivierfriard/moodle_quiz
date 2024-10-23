@@ -1,13 +1,12 @@
-import kivy
 import random
-import sys
 import quiz
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
-from kivy.uix.popup import Popup
+
+# from kivy.uix.popup import Popup
 from kivy.uix.image import Image
 from kivy.uix.textinput import TextInput
 from kivy.core.window import Window
@@ -17,6 +16,8 @@ from pathlib import Path
 
 
 STEP_NUMBER = 4
+
+N_STEP_QUESTIONS_ = 5
 
 STEP_NAME = "Tappa"
 
@@ -146,10 +147,10 @@ for topic in question_data.keys():
 print()
 
 CATEGORY = "$course$/top/Default per ZooSist/KAHOOT/tree_thinking"
-
 CATEGORY = "$course$/top/Default per ZooSist/KAHOOT"
-
 CATEGORY = ""
+
+results = {"questions": {}, "finished": {}}
 
 # Set the window background color to a light color (RGB + Alpha)
 Window.clearcolor = (1, 1, 1, 1)  # White background
@@ -158,6 +159,24 @@ Window.clearcolor = (1, 1, 1, 1)  # White background
 class Question(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def menu(self):
+        nav_menu = BoxLayout(orientation="horizontal", size_hint_y=0.1)
+
+        # Create buttons for the bottom navigation menu
+        home_btn = Button(text="Home", font_size="20sp")
+        home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
+        nav_menu.add_widget(home_btn)
+
+        about_btn = Button(text="Steps", font_size="20sp")
+        about_btn.bind(on_release=lambda x: setattr(self.manager, "current", "choose_topic"))
+        nav_menu.add_widget(about_btn)
+
+        settings_btn = Button(text="Topics", font_size="20sp")
+        settings_btn.bind(on_release=lambda x: setattr(self.manager, "current", "choose_topic"))
+        nav_menu.add_widget(settings_btn)
+
+        return nav_menu
 
     def display_question(self):
         self.clear_widgets()
@@ -211,8 +230,6 @@ class Question(Screen):
                 self.option_buttons.append(btn)
                 layout.add_widget(btn)
 
-            self.add_widget(layout)
-
         elif self.question["type"] in ("shortanswer", "numerical"):
             # Display the question
             self.question_label = Label(
@@ -244,10 +261,13 @@ class Question(Screen):
             submit_button.bind(on_press=self.check_answer)
             layout.add_widget(submit_button)
 
-            self.add_widget(layout)
-
         else:
             print(f"Question type error: {self.question["type"]}")
+            return
+
+        layout.add_widget(self.menu())
+
+        self.add_widget(layout)
 
     def strip_html_tags(self, text):
         # This is a simple method to strip HTML tags
@@ -259,29 +279,49 @@ class Question(Screen):
     def check_answer(self, instance):
         # Check if the selected option is correct
 
-        correct_answer: str = ""
-        for answer in self.question["answers"]:
-            if answer["fraction"] == "100":
-                correct_answer = answer["text"]
-                break
-        text_output = [App.get_running_app().quiz[App.get_running_app().quiz_position]["questiontext"] + "\n\n"]
-        if self.question["type"] in ("truefalse", "multichoice"):
-            if instance.text == correct_answer:
-                text_output.append("You selected the correct answer.")
-            else:
-                text_output.append(f"The correct answer is:\n\n{correct_answer}")
+        def correct_answer():
+            if self.question["name"] not in results["questions"]:
+                results["questions"][self.question["name"]] = []
+            results["questions"][self.question["name"]].append(1)
+            return "You selected the correct answer."
 
-        elif self.question["type"] in ("shortanswer", "numerical"):
-            if self.input_box.text.strip().upper() == correct_answer.strip().upper():
-                text_output.append("You selected the correct answer.")
+        def wrong_answer(correct_answer, feedback):
+            if self.question["name"] not in results["questions"]:
+                results["questions"][self.question["name"]] = []
+            results["questions"][self.question["name"]].append(0)
+            # feedback
+            if feedback:
+                return f"{feedback}\n\nThe correct answer is:\n\n{correct_answer}"
             else:
-                text_output.append(f"The correct answer is:\n\n{correct_answer}")
+                return f"The correct answer is:\n\n{correct_answer}"
+
+        # get user answer
+        if self.question["type"] in ("truefalse", "multichoice"):
+            user_answer = instance.text
+        elif self.question["type"] in ("shortanswer", "numerical"):
+            user_answer = self.input_box.text.strip()
         else:
             print(f"Question type error: {self.question["type"]}")
 
-        self.manager.get_screen("feedback").display(text_output)
+        # get correct answer
+        correct_answer_str: str = ""
+        feedback: str = ""
+        for answer in self.question["answers"]:
+            if answer["fraction"] == "100":
+                correct_answer_str = answer["text"]
+            if user_answer == answer["text"]:
+                feedback = answer["feedback"] if answer["feedback"] is not None else ""
+
+        text_output = [App.get_running_app().quiz[App.get_running_app().quiz_position]["questiontext"] + "\n\n"]
+        if user_answer.upper() == correct_answer_str.upper():
+            text_output.append(correct_answer())
+        else:
+            text_output.append(wrong_answer(correct_answer_str, feedback))
+
+        self.manager.get_screen("feedback").display("\n".join(text_output))
         self.manager.current = "feedback"
 
+    '''
     def show_popup(self, title, message):
         """
         display the system answer
@@ -315,6 +355,7 @@ class Question(Screen):
         )  # White background
         close_btn.bind(on_press=popup.dismiss)
         popup.open()
+    '''
 
 
 class Feedback(Screen):
@@ -322,6 +363,7 @@ class Feedback(Screen):
         super().__init__(**kwargs)
 
     def display(self, str):
+        print(results)
         self.clear_widgets()
 
         layout = BoxLayout(orientation="vertical")
@@ -329,12 +371,19 @@ class Feedback(Screen):
         label = Label(text=str, color="#000000", font_size="30sp", text_size=(int(Window.width * 0.9), None), size_hint_y=0.8)
         layout.add_widget(label)
 
+        nav_menu = BoxLayout(orientation="horizontal", size_hint_y=None)
+
         btn = Button(
             text="Next" if App.get_running_app().quiz_position < len(App.get_running_app().quiz) - 1 else "Quiz finished",
-            size_hint_y=0.2,
         )
         btn.bind(on_release=self.next)
-        layout.add_widget(btn)
+        nav_menu.add_widget(btn)
+
+        home_btn = Button(text="Home")
+        home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
+        nav_menu.add_widget(home_btn)
+
+        layout.add_widget(nav_menu)
 
         self.add_widget(layout)
 
@@ -346,7 +395,10 @@ class Feedback(Screen):
         if App.get_running_app().quiz_position < len(App.get_running_app().quiz):
             self.manager.get_screen("question").display_question()
             self.manager.current = "question"
-        else:
+        else:  # quiz finished
+            if App.get_running_app().topic not in results["finished"]:
+                results["finished"][App.get_running_app().topic] = []
+            results["finished"][App.get_running_app().topic].append(int(App.get_running_app().subtopic.removeprefix("Step ")))
             self.manager.get_screen("choose_subtopic").show_subtopic()
             self.manager.current = "choose_subtopic"
 
@@ -356,12 +408,29 @@ class Home(Screen):
     app home page
     """
 
+    def menu(self):
+        nav_menu = BoxLayout(orientation="horizontal", size_hint_y=None)
+
+        # Create buttons for the bottom navigation menu
+        settings_btn = Button(text="Start", font_size="30sp")
+        settings_btn.bind(on_release=lambda x: setattr(self.manager, "current", "choose_topic"))
+        nav_menu.add_widget(settings_btn)
+
+        about_btn = Button(text="About", font_size="30sp")
+        about_btn.bind(on_release=lambda x: setattr(self.manager, "current", "about"))
+        nav_menu.add_widget(about_btn)
+
+        return nav_menu
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation="vertical")
-        start_button = Button(text="Start", font_size="50sp")
-        start_button.bind(on_press=self.start_button_pressed)
-        layout.add_widget(start_button)
+        # Label
+        label = Label(text="Hi!", color="#000000", font_size="30sp", text_size=(int(Window.width * 0.9), None), size_hint_y=0.8)
+        layout.add_widget(label)
+
+        layout.add_widget(self.menu())
+
         self.add_widget(layout)
 
     def start_button_pressed(self, instance):
@@ -370,16 +439,30 @@ class Home(Screen):
 
 
 class ChooseTopic(Screen):
+    def menu(self):
+        nav_menu = BoxLayout(orientation="horizontal", size_hint_y=None)
+
+        # Create buttons for the bottom navigation menu
+        home_btn = Button(text="Home", font_size="20sp")
+        home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
+        nav_menu.add_widget(home_btn)
+
+        return nav_menu
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         scrollwidget_layout = ScrollView(size_hint=(1, None), size=(Window.width, Window.height))
+
         main_layout = GridLayout(cols=1, spacing=10, size_hint_y=None)
+
         main_layout.bind(minimum_height=main_layout.setter("height"))
 
+        # Add the menu to the main layout
+        main_layout.add_widget(self.menu())
+
         for topic in question_data:
-            print(topic)
-            btn = Button(text=topic, size_hint_y=None, on_release=lambda btn: self.choose_subtopic(btn.text))
+            btn = Button(text=topic, size_hint_y=None, font_size="30sp", on_release=lambda btn: self.choose_subtopic(btn.text))
             main_layout.add_widget(btn)
 
         scrollwidget_layout.add_widget(main_layout)
@@ -393,6 +476,26 @@ class ChooseTopic(Screen):
 
 
 class ChooseSubTopic(Screen):
+    def menu(self):
+        nav_menu = BoxLayout(orientation="horizontal", size_hint_y=None)
+
+        # Create buttons for the bottom navigation menu
+        home_btn = Button(
+            text="Home",
+            font_size="20sp",
+            color="#ffffff",
+            background_normal="",
+            background_color=(0, 0, 0, 1),
+        )
+        home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
+        nav_menu.add_widget(home_btn)
+
+        settings_btn = Button(text="Topics", font_size="20sp")
+        settings_btn.bind(on_release=lambda x: setattr(self.manager, "current", "choose_topic"))
+        nav_menu.add_widget(settings_btn)
+
+        return nav_menu
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -401,8 +504,32 @@ class ChooseSubTopic(Screen):
         main_layout = GridLayout(cols=1, spacing=10, size_hint_y=None)
         main_layout.bind(minimum_height=main_layout.setter("height"))
 
+        # Add the menu to the main layout
+        main_layout.add_widget(self.menu())
+
+        main_layout.add_widget(
+            Label(
+                text=App.get_running_app().current_topic,
+                color="#000000",
+                size_hint_y=None,
+                font_size="30sp",
+                text_size=(int(Window.width * 0.9), None),
+            )
+        )
+
         for i in range(1, STEP_NUMBER + 1):
-            btn = Button(text=f"{STEP_NAME } {i}", size_hint_y=None, on_release=lambda btn: self.start_subtopic(btn.text))
+            if i == 1:
+                disabled = False
+            else:
+                disabled = i - 1 not in results["finished"].get(App.get_running_app().topic, [])
+
+            btn = Button(
+                text=f"Step {i}",
+                size_hint_y=None,
+                font_size="30sp",
+                disabled=disabled,
+                on_release=lambda btn: self.start_subtopic(btn.text),
+            )
             main_layout.add_widget(btn)
 
         scrollwidget_layout.add_widget(main_layout)
@@ -413,19 +540,37 @@ class ChooseSubTopic(Screen):
         # Passa alla schermata del percorso
         App.get_running_app().current_subtopic = subtopic
 
-        print(App.get_running_app().current_topic)
-        print(App.get_running_app().current_subtopic)
-
         App.get_running_app().quiz = quiz.get_quiz(
-            question_data, App.get_running_app().current_topic, App.get_running_app().current_subtopic
+            question_data, App.get_running_app().current_topic, App.get_running_app().current_subtopic, N_STEP_QUESTIONS_, results
         )
         App.get_running_app().quiz_position = 0
 
         self.manager.get_screen("question").display_question()
         self.manager.current = "question"
 
-        # self.manager.get_screen("subtopic").get_quiz()
-        # self.manager.current = "subtopic"
+
+class About(Screen):
+    def menu(self):
+        nav_menu = BoxLayout(orientation="horizontal", size_hint_y=None)
+
+        # Create buttons for the bottom navigation menu
+        home_btn = Button(text="Home", font_size="30sp")
+        home_btn.bind(on_release=lambda x: setattr(self.manager, "current", "home"))
+        nav_menu.add_widget(home_btn)
+
+        return nav_menu
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        layout = BoxLayout(orientation="vertical")
+        # Label
+        label = Label(text="About...", color="#000000", font_size="30sp", text_size=(int(Window.width * 0.9), None), size_hint_y=0.8)
+        layout.add_widget(label)
+
+        layout.add_widget(self.menu())
+
+        self.add_widget(layout)
 
 
 class QuizApp(App):
@@ -437,6 +582,7 @@ class QuizApp(App):
     def build(self):
         sm = ScreenManager()
         sm.add_widget(Home(name="home"))
+        sm.add_widget(About(name="about"))
         sm.add_widget(ChooseTopic(name="choose_topic"))
         sm.add_widget(ChooseSubTopic(name="choose_subtopic"))
         sm.add_widget(Question(name="question"))
