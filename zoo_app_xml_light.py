@@ -1,6 +1,7 @@
 import kivy
 import random
 import sys
+import quiz
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -15,11 +16,17 @@ from kivy.uix.scrollview import ScrollView
 from pathlib import Path
 
 
+STEP_NUMBER = 4
+
+STEP_NAME = "Tappa"
+
 # question handled by app
 QUESTION_TYPES = ["truefalse", "multichoice", "shortanswer", "numerical"]
 
+BASE_CATEGORY = "Auto-apprendimento"
 
-def moodle_xml_to_dict_with_images(xml_file):
+
+def moodle_xml_to_dict_with_images(xml_file: str, base_category: str) -> dict:
     """
     Convert a Moodle XML question file into a Python dictionary, organizing questions by categories and decoding images from base64.
 
@@ -55,7 +62,11 @@ def moodle_xml_to_dict_with_images(xml_file):
         # Handle category change
         if question_type == "category":
             category_text = question.find("category/text").text.removeprefix("$course$/top/")
-            category_tuple = tuple(category_text.split("/")[1:])  # delele first catogory (with Default ...))
+            category_list = category_text.split("/")[1:]  # delele first category (with Default ...))
+            if base_category in category_list:
+                category_list.remove(base_category)
+
+            category_tuple = tuple(category_list)
 
             # current_category = category_text if category_text else current_category
             current_category = category_tuple if category_tuple else current_category
@@ -113,17 +124,25 @@ def moodle_xml_to_dict_with_images(xml_file):
 
                 question_dict["files"].append(file_.get("name"))
 
-            # Add the question to the respective category
-            categories_dict[current_category].append(question_dict)
+            if len(current_category) == 2:
+                # Add the question to the respective category
+                if current_category[0] not in categories_dict:
+                    categories_dict[current_category[0]] = {}
+                if current_category[1] not in categories_dict[current_category[0]]:
+                    categories_dict[current_category[0]][current_category[1]] = []
+                categories_dict[current_category[0]][current_category[1]].append(question_dict)
 
     return dict(categories_dict)
 
 
 xml_file = "data.xml"
-question_data = moodle_xml_to_dict_with_images(xml_file)
+question_data = moodle_xml_to_dict_with_images(xml_file, BASE_CATEGORY)
 print()
-for category in question_data.keys():
-    print(f"{category}: {len(question_data[category])}")
+for topic in question_data.keys():
+    print(topic)
+    for subtopic in question_data[topic]:
+        print(f"   {subtopic}: {len(question_data[topic][subtopic])} questions")
+    print()
 print()
 
 CATEGORY = "$course$/top/Default per ZooSist/KAHOOT/tree_thinking"
@@ -136,21 +155,27 @@ CATEGORY = ""
 Window.clearcolor = (1, 1, 1, 1)  # White background
 
 
-class QuestionBox(BoxLayout):
-    def __init__(self, question, **kwargs):
-        super().__init__(orientation="vertical", **kwargs)
-        self.question = question
-        print(self.question)
-        print()
+class Question(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def display_question(self):
+        print("display question")
+        # get question from quiz
+        self.question = App.get_running_app().quiz[App.get_running_app().quiz_position]
+
+        print(f"{self.question=}")
+
+        layout = BoxLayout(orientation="vertical", spacing=10)
 
         # check if images to display
         if self.question["files"]:
             # Load and display the PNG image
             img = Image(source=str(Path("files") / Path(self.question["files"][0])))
-            self.add_widget(img)
+            layout.add_widget(img)
 
         # Display the options with light theme buttons
-        if question["type"] == "multichoice" or question["type"] == "truefalse":
+        if self.question["type"] == "multichoice" or self.question["type"] == "truefalse":
             # Display the question
             self.question_label = Label(
                 text=self.question["questiontext"],
@@ -162,7 +187,7 @@ class QuestionBox(BoxLayout):
                 color=(0, 0, 0, 1),  # Black text
                 font_size="30sp",
             )
-            self.add_widget(self.question_label)
+            layout.add_widget(self.question_label)
 
             self.option_buttons = []
             for option in random.sample(self.question["answers"], len(self.question["answers"])):
@@ -180,9 +205,11 @@ class QuestionBox(BoxLayout):
                 )  # Black text
                 btn.bind(on_press=self.check_answer)
                 self.option_buttons.append(btn)
-                self.add_widget(btn)
+                layout.add_widget(btn)
 
-        elif question["type"] in ("shortanswer", "numerical"):
+            self.add_widget(layout)
+
+        elif self.question["type"] in ("shortanswer", "numerical"):
             # Display the question
             self.question_label = Label(
                 text=self.question["questiontext"],
@@ -194,7 +221,7 @@ class QuestionBox(BoxLayout):
                 color=(0, 0, 0, 1),  # Black text
                 font_size="30sp",
             )
-            self.add_widget(self.question_label)
+            layout.add_widget(self.question_label)
 
             self.input_box = TextInput(
                 hint_text="Enter something here",
@@ -202,7 +229,7 @@ class QuestionBox(BoxLayout):
                 size_hint_y=0.4,
                 font_size="30sp",
             )
-            self.add_widget(self.input_box)
+            layout.add_widget(self.input_box)
             submit_button = Button(
                 text="Submit",
                 size_hint_y=0.1,
@@ -211,7 +238,9 @@ class QuestionBox(BoxLayout):
                 background_color=(0, 0, 0.9, 1),
             )
             submit_button.bind(on_press=self.check_answer)
-            self.add_widget(submit_button)
+            layout.add_widget(submit_button)
+
+            self.add_widget(layout)
 
         else:
             print(f"Question type error: {self.question["type"]}")
@@ -281,49 +310,6 @@ class QuestionBox(BoxLayout):
         popup.open()
 
 
-class RandomQuestionApp(App):
-    def build(self):
-        self.root = BoxLayout(orientation="vertical")
-
-        # Button to get a random question with light theme
-        self.random_btn = Button(
-            text="Show Random Question",
-            size_hint_y=None,
-            height=50,
-            background_normal="",
-            background_color=(0.8, 0.8, 0.8, 1),  # Light background
-            color=(0, 0, 0, 1),
-            font_size="30sp",
-        )  # Black text
-        self.random_btn.bind(on_press=self.show_random_question)
-        self.root.add_widget(self.random_btn)
-
-        # Placeholder for the question display
-        self.question_box = None
-
-        return self.root
-
-    def show_random_question(self, instance):
-        # Clear the current question if any
-        if self.question_box:
-            self.root.remove_widget(self.question_box)
-
-        # Select a random question
-        while True:
-            if CATEGORY:
-                random_question = random.choice(question_data[CATEGORY])
-            else:
-                random_question = random.choice(
-                    [item for sublist in [[q for q in question_data[cat]] for cat in question_data] for item in sublist]
-                )
-            if random_question["type"] in QUESTION_TYPES:
-                break
-
-        # Display the question
-        self.question_box = QuestionBox(random_question)
-        self.root.add_widget(self.question_box)
-
-
 class Home(Screen):
     """
     app home page
@@ -350,26 +336,18 @@ class ChooseTopic(Screen):
         main_layout = GridLayout(cols=1, spacing=10, size_hint_y=None)
         main_layout.bind(minimum_height=main_layout.setter("height"))
 
-        # layout = BoxLayout(orientation="vertical", padding=10, spacing=10)
-        # title_label = Label(text="Scegli un argomento", font_size="20sp", size_hint=(1, 0.2))
-        # layout.add_widget(title_label)
-
-        # grid_layout = GridLayout(cols=1, rows=len(question_data), spacing=10, size_hint=(1, 0.8))
         for topic in question_data:
             print(topic)
-            btn = Button(text=" / ".join(topic), size_hint_y=None, on_release=lambda btn: self.choose_subtopic(btn.text))
+            btn = Button(text=topic, size_hint_y=None, on_release=lambda btn: self.choose_subtopic(btn.text))
             main_layout.add_widget(btn)
-
-        # layout.add_widget(grid_layout)
-        # self.add_widget(layout)
 
         scrollwidget_layout.add_widget(main_layout)
 
         self.add_widget(scrollwidget_layout)
 
     def choose_subtopic(self, topic):
-        # Passa alla schermata del percorso
-        self.manager.get_screen("choose_subtopic").set_topic(topic)
+        App.get_running_app().current_topic = topic
+        self.manager.get_screen("choose_subtopic").show_subtopic()
         self.manager.current = "choose_subtopic"
 
 
@@ -377,65 +355,50 @@ class ChooseSubTopic(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def show_subtopic(self):
         scrollwidget_layout = ScrollView(size_hint=(1, None), size=(Window.width, Window.height))
         main_layout = GridLayout(cols=1, spacing=10, size_hint_y=None)
         main_layout.bind(minimum_height=main_layout.setter("height"))
 
-        # layout = BoxLayout(orientation="vertical", padding=10, spacing=10)
-        # title_label = Label(text="Scegli un argomento", font_size="20sp", size_hint=(1, 0.2))
-        # layout.add_widget(title_label)
-
-        # grid_layout = GridLayout(cols=1, rows=len(question_data), spacing=10, size_hint=(1, 0.8))
-        for topic in question_data:
-            print(topic)
-            btn = Button(text=" / ".join(topic), size_hint_y=None, on_release=lambda btn: self.start_subtopic(btn.text))
+        for i in range(1, STEP_NUMBER + 1):
+            btn = Button(text=f"{STEP_NAME } {i}", size_hint_y=None, on_release=lambda btn: self.start_subtopic(btn.text))
             main_layout.add_widget(btn)
-
-        # layout.add_widget(grid_layout)
-        # self.add_widget(layout)
 
         scrollwidget_layout.add_widget(main_layout)
 
         self.add_widget(scrollwidget_layout)
 
-    def set_topic(self, topic):
-        """Imposta l'argomento selezionato"""
-        self.topic = topic
-
-    def start_subtopic(self, topic):
+    def start_subtopic(self, subtopic):
         # Passa alla schermata del percorso
-        self.manager.get_screen("topic").set_topic(topic)
-        self.manager.current = "topic"
+        App.get_running_app().current_subtopic = subtopic
 
+        print(App.get_running_app().current_topic)
+        print(App.get_running_app().current_subtopic)
 
-'''class Topic(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.topic = None
-        self.tappa = 0
-        self.max_tappe = 5  # Numero di tappe
-        self.layout = BoxLayout(orientation="vertical", padding=10, spacing=10)
-        self.tappa_label = Label(text="Tappa 1", font_size="20sp", size_hint=(1, 0.2))
-        self.layout.add_widget(self.tappa_label)
-        self.start_button = Button(text="Inizia tappa", size_hint=(1, 0.2), on_release=self.start_tappa)
-        self.layout.add_widget(self.start_button)
-        self.add_widget(self.layout)
+        App.get_running_app().quiz = quiz.get_quiz(
+            question_data, App.get_running_app().current_topic, App.get_running_app().current_subtopic
+        )
+        App.get_running_app().quiz_position = 0
 
-    def set_topic(self, topic):
-        """Imposta l'argomento selezionato"""
-        self.topic = topic
-        self.tappa = 1
-        self.tappa_label.text = f"Tappa {self.tappa}"
-'''
+        self.manager.get_screen("question").display_question()
+        self.manager.current = "question"
+
+        # self.manager.get_screen("subtopic").get_quiz()
+        # self.manager.current = "subtopic"
 
 
 class QuizApp(App):
+    current_topic: str = ""
+    current_subtopic: str = ""
+    quiz: list = []
+    quiz_position: int = 0
+
     def build(self):
         sm = ScreenManager()
         sm.add_widget(Home(name="home"))
         sm.add_widget(ChooseTopic(name="choose_topic"))
         sm.add_widget(ChooseSubTopic(name="choose_subtopic"))
-        # sm.add_widget(Topic(name="topic"))
+        sm.add_widget(Question(name="question"))
         return sm
 
 
