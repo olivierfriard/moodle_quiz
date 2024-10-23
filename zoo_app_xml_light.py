@@ -255,6 +255,8 @@ class Question(Screen):
     def check_answer(self, instance):
         # Check if the selected option is correct
 
+        self.manager.current = "home"
+
         correct_answer: str = ""
         for answer in self.question["answers"]:
             if answer["fraction"] == "100":
