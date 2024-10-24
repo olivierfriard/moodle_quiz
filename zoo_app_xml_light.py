@@ -2,6 +2,7 @@ import sys
 import random
 import json
 import quiz
+import re
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -43,7 +44,6 @@ def moodle_xml_to_dict_with_images(xml_file: str, base_category: str) -> dict:
 
     def strip_html_tags(text):
         # This is a simple method to strip HTML tags
-        import re
 
         clean = re.compile("<.*?>")
         return re.sub(clean, "", text)
