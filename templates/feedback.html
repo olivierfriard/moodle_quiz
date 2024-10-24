@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz</title>
+
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+</head>
+<body>
+<header>
+<h1>{{ topic }} - {{ step }}</h1>
+<p>{{ idx + 1 }} / {{ total }}</p>
+</header>
+<main>
+<p>
+   
+<h3>{{ feedback.questiontext }}</h3>
+
+<h4>Your answer: <b>{{ user_answer }}</b></h4>
+
+{% if feedback.correct %}
+<button style="background-color: #28a745"><h4>{{ feedback.result }}</h4></button><br>
+{%else%}
+<button style="background-color: red"><h4>{{ feedback.result }}</h4></button><br>
+{%endif%}
+
+
+
+<a href="/question/{{ topic }}/{{ step }}/{{ idx +1 }}" style="width: 30%; text-align:center" class="button"><h4>Next</h4></a><br>
+
+
+
+</span>
+</p>
+</main>
+
+<footer>
+<p>Università di Torino</p>
+ </footer>
+</body>
+</html>
