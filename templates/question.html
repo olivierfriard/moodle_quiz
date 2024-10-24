@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz</title>
+
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+</head>
+<body>
+<header>
+<h1>{{ topic }} - {{ step }}</h1>
+<p>{{ idx + 1 }} / {{ total }}</p>
+</header>
+<main>
+<p>
+   
+<h3>{{ question.questiontext }}</h3>
+
+<span style="text-align:center">
+{% for answer in answers %}
+
+<a href="/check_answer/{{ topic }}/{{ step }}/{{ idx }}/{{ answer.text|safe }}" style="width: 70%;" class="button"><h4>{{ answer.text}}</h4></a><br>
+
+{%endfor%}
+
+</span>
+</p>
+</main>
+
+<footer>
+<p>Università di Torino</p>
+ </footer>
+</body>
+</html>
