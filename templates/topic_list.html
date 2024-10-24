@@ -9,26 +9,20 @@
 </head>
 <body>
   <header>
-    <h1>Quiz</h1>
+    <h1>Topics</h1>
 
   </header>
 
   <main>
 
-    <h2>List of topics</h2>
 
 
 {% for topic in topics %}
 
-{{ topic }}<br>
+<h3><a href="/view_topic/{{ topic }}">{{ topic }}</a></h3>
 
 {%endfor%}
 
-    <p>
-        
-
-
-    </p>
   </main>
 
   <footer>
