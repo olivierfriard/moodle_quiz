@@ -138,7 +138,7 @@ if Path(xml_file).with_suffix(".txt").is_file():
     with open(Path(xml_file).with_suffix(".txt"), "rb") as f:
         config = tomllib.load(f)
 
-print(config)
+print(f"{config=}")
 
 # load questions from xml moodle file
 question_data = moodle_xml_to_dict_with_images(xml_file, config["BASE_CATEGORY"])
@@ -150,7 +150,7 @@ for topic in question_data.keys():
     print()
 print()
 
-print(question_data)
+# print(f"{question_data=}")
 
 # check if file results.json exists
 flag_results_file_present = False
@@ -165,6 +165,7 @@ if Path("results.json").is_file():
     except Exception:
         print("Error loading the results.json file")
 
+print(f"{results=}")
 
 # Set the window background color to a light color (RGB + Alpha)
 Window.clearcolor = (1, 1, 1, 1)  # White background
