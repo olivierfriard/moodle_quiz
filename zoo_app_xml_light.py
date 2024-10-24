@@ -8,6 +8,7 @@ import random
 import json
 import quiz
 import re
+import tomllib
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -20,16 +21,6 @@ from kivy.core.window import Window
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from pathlib import Path
-
-
-STEP_NUMBER = 4
-
-N_STEP_QUESTIONS_ = 5
-
-# question handled by app
-QUESTION_TYPES = ["truefalse", "multichoice", "shortanswer", "numerical"]
-
-BASE_CATEGORY = "Auto-apprendimento"
 
 
 def moodle_xml_to_dict_with_images(xml_file: str, base_category: str) -> dict:
@@ -79,7 +70,7 @@ def moodle_xml_to_dict_with_images(xml_file: str, base_category: str) -> dict:
         # Handle actual questions
         else:
             # check if question type is allowed
-            if question_type not in QUESTION_TYPES:
+            if question_type not in config["QUESTION_TYPES"]:
                 continue
 
             question_dict = {
@@ -141,7 +132,16 @@ def moodle_xml_to_dict_with_images(xml_file: str, base_category: str) -> dict:
 
 
 xml_file = "data.xml"
-question_data = moodle_xml_to_dict_with_images(xml_file, BASE_CATEGORY)
+
+# check config file
+if Path(xml_file).with_suffix(".txt").is_file():
+    with open(Path(xml_file).with_suffix(".txt"), "rb") as f:
+        config = tomllib.load(f)
+
+print(config)
+
+# load questions from xml moodle file
+question_data = moodle_xml_to_dict_with_images(xml_file, config["BASE_CATEGORY"])
 print()
 for topic in question_data.keys():
     print(topic)
@@ -150,9 +150,10 @@ for topic in question_data.keys():
     print()
 print()
 
-# check if file results.json exists
+print(question_data)
 
-flag_file_present = False
+# check if file results.json exists
+flag_results_file_present = False
 results = {"questions": {}, "finished": {}}
 if Path("results.json").is_file():
     try:
@@ -160,7 +161,7 @@ if Path("results.json").is_file():
             results = json.loads(file_in.read())
         print("Results loaded:")
         print(results)
-        flag_file_present = True
+        flag_results_file_present = True
     except Exception:
         print("Error loading the results.json file")
 
@@ -212,6 +213,9 @@ class Question(Screen):
     def display_question(self):
         self.clear_widgets()
         print("display question")
+
+        print(App.get_running_app().quiz)
+
         # get question from quiz
         if App.get_running_app().quiz_position < len(App.get_running_app().quiz):
             self.question = App.get_running_app().quiz[App.get_running_app().quiz_position]
@@ -276,12 +280,22 @@ class Question(Screen):
             )
             layout.add_widget(self.question_label)
 
-            self.input_box = TextInput(
-                hint_text="Enter something here",
-                multiline=False,
-                size_hint_y=0.4,
-                font_size="30sp",
-            )
+            if self.question["type"] == "shortanswer":
+                self.input_box = TextInput(
+                    hint_text="Enter a text",
+                    multiline=False,
+                    size_hint_y=0.4,
+                    font_size="30sp",
+                )
+            elif self.question["type"] == "numerical":
+                self.input_box = TextInput(
+                    hint_text="Enter a number",
+                    multiline=False,
+                    input_filter="float",
+                    size_hint_y=0.4,
+                    font_size="30sp",
+                )
+
             layout.add_widget(self.input_box)
             submit_button = Button(
                 text="Submit",
@@ -618,7 +632,7 @@ class ChooseSubTopic(Screen):
             )
         )
 
-        for i in range(1, STEP_NUMBER + 1):
+        for i in range(1, config["STEP_NUMBER"] + 1):
             if i == 1:
                 disabled = False
             else:
@@ -641,7 +655,7 @@ class ChooseSubTopic(Screen):
         App.get_running_app().current_subtopic = subtopic
 
         App.get_running_app().quiz = quiz.get_quiz(
-            question_data, App.get_running_app().current_topic, App.get_running_app().current_subtopic, N_STEP_QUESTIONS_, results
+            question_data, App.get_running_app().current_topic, App.get_running_app().current_subtopic, config["N_STEP_QUESTIONS"], results
         )
         App.get_running_app().quiz_position = 0
 

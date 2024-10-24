@@ -8135,7 +8135,7 @@ I ciliati possiedono vacuoli {1:contrattili} per la regolazione osmotica, che ra
   </question>
 
 <!-- question: 367130  -->
-  <question type="shortanswer">
+  <question type="numerical">
     <name>
       <text>03-FI-Q10</text>
     </name>
@@ -8151,7 +8151,7 @@ I ciliati possiedono vacuoli {1:contrattili} per la regolazione osmotica, che ra
     <idnumber></idnumber>
     <usecase>0</usecase>
     <answer fraction="100" format="moodle_auto_format">
-      <text>otto</text>
+      <text>8</text>
       <feedback format="moodle_auto_format">
         <text></text>
       </feedback>
@@ -13914,7 +13914,7 @@ I ciliati possiedono vacuoli {1:contrattili} per la regolazione osmotica, che ra
   </question>
 
 <!-- question: 501940  -->
-  <question type="shortanswer">
+  <question type="numerical">
     <name>
       <text>05-FI-Q4</text>
     </name>
@@ -13930,7 +13930,7 @@ I ciliati possiedono vacuoli {1:contrattili} per la regolazione osmotica, che ra
     <idnumber></idnumber>
     <usecase>0</usecase>
     <answer fraction="100" format="moodle_auto_format">
-      <text>otto</text>
+      <text>8</text>
       <feedback format="moodle_auto_format">
         <text></text>
       </feedback>
