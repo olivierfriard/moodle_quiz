@@ -4,6 +4,7 @@ import quiz
 import json
 import tomllib
 import random
+from markupsafe import Markup
 from quart import Quart, jsonify, request, render_template, session, redirect
 
 
@@ -186,9 +187,18 @@ async def view_quiz(topic, step):
     return redirect(f"/question/{topic}/{step}/0")
 
 
-@app.route("/question/<topic>/<step>/<int:idx>", methods=["GET"])
+@app.route("/question/<topic>/<int:step>/<int:idx>", methods=["GET"])
 async def question(topic, step, idx):
-    question = session["quiz"][idx]
+    if idx < len(session["quiz"]):
+        question = session["quiz"][idx]
+    else:
+        if topic not in results["finished"]:
+            results["finished"][topic] = []
+        if step not in results["finished"][topic]:
+            results["finished"][topic].append(step)
+        # save_results()
+
+        return redirect(f"/view_topic/{topic}")
 
     answers = random.sample(question["answers"], len(question["answers"]))
 
@@ -205,15 +215,15 @@ async def check_answer(topic, step, idx, user_answer):
         results["questions"][question["name"]].append(1)
         return "You selected the correct answer."
 
-    def wrong_answer(correct_answer, feedback):
+    def wrong_answer(correct_answer, answer_feedback):
         if question["name"] not in results["questions"]:
             results["questions"][question["name"]] = []
         results["questions"][question["name"]].append(0)
         # feedback
-        if feedback:
-            return f"{feedback}\n\nThe correct answer is:\n\n{correct_answer}"
+        if answer_feedback:
+            return f"{answer_feedback}<br><br>The correct answer is:<br>{correct_answer}"
         else:
-            return f"The correct answer is:\n\n{correct_answer}"
+            return f"The correct answer is:<br>{correct_answer}"
 
     question = session["quiz"][idx]
 
@@ -232,20 +242,20 @@ async def check_answer(topic, step, idx, user_answer):
         if answer["fraction"] == "100":
             correct_answer_str = answer["text"]
         if user_answer == answer["text"]:
-            feedback = answer["feedback"] if answer["feedback"] is not None else ""
+            answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
 
-    text_output = [session["quiz"][idx]["questiontext"] + "\n\n"]
+    feedback = {"questiontext": session["quiz"][idx]["questiontext"]}
     if user_answer.upper() == correct_answer_str.upper():
-        text_output.append(correct_answer())
+        feedback["result"] = correct_answer()
+        feedback["correct"] = True
     else:
-        text_output.append(wrong_answer(correct_answer_str, feedback))
+        feedback["result"] = Markup(wrong_answer(correct_answer_str, answer_feedback))
+        feedback["correct"] = False
 
-    answers = random.sample(question["answers"], len(question["answers"]))
-
-    return "<br>".join(text_output)
+    # answers = random.sample(question["answers"], len(question["answers"]))
 
     return await render_template(
-        "question.html", question=question, answers=answers, topic=topic, step=step, idx=idx, total=len(session["quiz"])
+        "feedback.html", feedback=feedback, user_answer=user_answer, topic=topic, step=step, idx=idx, total=len(session["quiz"])
     )
 
 
