@@ -5,28 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz</title>
 
-    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
 <body>
-  <header>
-    <h1>Topics</h1>
 
-  </header>
-
-  <main>
-
-
-
+  <section class="section">
+    <div class="container">
 {% for topic in topics %}
 
-<h3><a href="/view_topic/{{ topic }}">{{ topic }}</a></h3>
+<a href="/view_topic/{{ topic }}"><button class="button is-large is-fullwidth">{{ topic }}</button></a>
 
 {%endfor%}
 
-  </main>
+</div>
+</section>
 
-  <footer>
-    <p>Università di Torino</p>
-  </footer>
 </body>
 </html>

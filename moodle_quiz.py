@@ -5,7 +5,7 @@ import json
 import tomllib
 import random
 from markupsafe import Markup
-from quart import Quart, jsonify, request, render_template, session, redirect
+from quart import Quart, render_template, session, redirect
 
 import moodle_xml
 
