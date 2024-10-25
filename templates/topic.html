@@ -5,28 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz</title>
 
-    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
 <body>
-  <header>
-    <h1>{{ topic }}</h1>
-  </header>
+  
 
-  <main>
-    <p>
+  <section class="section">
+    <div class="container">
         
 {% for step in step_list %}
 
-<a href="/view_quiz/{{ topic }}/{{ step.idx }}"><BUTTON {% if step.disabled %}disabled="disabled"{%endif%}><h3>{{ step.name }}</h3></BUTTON></a>
+<a href="/view_quiz/{{ topic }}/{{ step.idx }}"><BUTTON class="button is-large is-fullwidth" {% if step.disabled %}disabled{%endif%}><h3>{{ step.name }}</h3></BUTTON></a>
 
 
 
 {% endfor %}
     </p>
-  </main>
-
-  <footer>
-    <p>Università di Torino</p>
-  </footer>
+  </div>
+</section>
 </body>
 </html>
