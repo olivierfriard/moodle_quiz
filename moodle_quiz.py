@@ -46,6 +46,7 @@ if Path("results.json").is_file():
 print(f"{results=}")
 
 app = Quart(__name__)
+app.config["DEBUG"] = True
 
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
@@ -95,7 +96,11 @@ async def question(topic, step, idx):
 
         return redirect(f"/view_topic/{topic}")
 
-    answers = random.sample(question["answers"], len(question["answers"]))
+    if question["type"] == "multichoice" or question["type"] == "truefalse":
+        answers = random.sample(question["answers"], len(question["answers"]))
+    elif question["type"] in ("shortanswer", "numerical"):
+        answers =''
+
 
     return await render_template(
         "question.html", question=question, answers=answers, topic=topic, step=step, idx=idx, total=len(session["quiz"])

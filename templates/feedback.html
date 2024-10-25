@@ -4,24 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 
-    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
 </head>
 <body>
-<header>
-<h1>{{ topic }} - {{ step }}</h1>
-<p>{{ idx + 1 }} / {{ total }}</p>
-</header>
-<main>
-<p>
+    <section class="section">
+        <div class="container">
+          <div class="columns is-centered">
+            <div class="column is-half">
+<p>{{ topic }} - Step #{{ step }} | {{ idx + 1 }} / {{ total }}</p>
    
-<h3>{{ feedback.questiontext }}</h3>
+<h2 class="title">{{ feedback.questiontext }}</h2>
 
 <h4>Your answer: <b>{{ user_answer }}</b></h4>
 
 {% if feedback.correct %}
 <button style="background-color: #28a745"><h4>{{ feedback.result }}</h4></button><br>
 {%else%}
+
+<p class="has-text-centered has-text-primary">
+  <h4>{{ feedback.result }}</h4>
+</p>
+
 <button style="background-color: red"><h4>{{ feedback.result }}</h4></button><br>
 {%endif%}
 
@@ -29,14 +33,9 @@
 
 <a href="/question/{{ topic }}/{{ step }}/{{ idx +1 }}" style="width: 30%; text-align:center" class="button"><h4>Next</h4></a><br>
 
-
-
-</span>
-</p>
-</main>
-
-<footer>
-<p>Università di Torino</p>
- </footer>
+</div>
+</div>
+</div>
+</section>
 </body>
 </html>
