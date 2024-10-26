@@ -21,7 +21,7 @@ def get_quiz(question_data: dict, topic: str, step: str, n_questions: int, resul
     """
 
     # for numerical type debugging:
-    # return [question_data["lezione 3 - multicellularità"]["03-FI"][1]]
+    #return [question_data["lezione 3 - multicellularità"]["03-FI"][1]]
 
     questions_list: list = []
 

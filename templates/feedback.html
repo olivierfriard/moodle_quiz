@@ -12,24 +12,35 @@
         <div class="container">
           <div class="columns is-centered">
             <div class="column is-half">
-<p>{{ topic }} - Step #{{ step }} | {{ idx + 1 }} / {{ total }}</p>
+
+<div class="block">
+  <a href="/" class="button is-link is-small">Home</a>
+  <a href="/topic_list" class="button is-link is-small">Topics</a>
+
+</div>
+                
+
+<div class="block">
+{{ topic }} - Step #{{ step }} | {{ idx + 1 }} / {{ total }}
+</div>
    
 <h2 class="title">{{ feedback.questiontext }}</h2>
 
-<h4>Your answer: <b>{{ user_answer }}</b></h4>
+
+<div class="block">
+Your answer:<br>
+<strong>{{ user_answer }}</strong>
+</div>
 
 {% if feedback.correct %}
-<button style="background-color: #28a745"><h4>{{ feedback.result }}</h4></button><br>
+<button class="button is-success is-medium">{{ feedback.result }}</button><br>
+
 {%else%}
 
-<p class="has-text-centered has-text-primary">
-  <h4>{{ feedback.result }}</h4>
-</p>
-
-<button style="background-color: red"><h4>{{ feedback.result }}</h4></button><br>
+<button  class="button is-danger is-medium">{{ feedback.result }}</button><br>
 {%endif%}
 
-
+<br>
 
 <a href="/question/{{ topic }}/{{ step }}/{{ idx +1 }}" style="width: 30%; text-align:center" class="button"><h4>Next</h4></a><br>
 

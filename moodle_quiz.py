@@ -5,7 +5,7 @@ import json
 import tomllib
 import random
 from markupsafe import Markup
-from quart import Quart, render_template, session, redirect
+from quart import Quart, render_template, session, redirect,request
 
 import moodle_xml
 
@@ -98,17 +98,24 @@ async def question(topic, step, idx):
 
     if question["type"] == "multichoice" or question["type"] == "truefalse":
         answers = random.sample(question["answers"], len(question["answers"]))
+        placeholder = 'Input a text'
+        type_='text'
     elif question["type"] in ("shortanswer", "numerical"):
         answers =''
+        type_='number'
+        placeholder = 'Input a number' if question["type"] =="numerical" else "Input a text"
 
 
     return await render_template(
-        "question.html", question=question, answers=answers, topic=topic, step=step, idx=idx, total=len(session["quiz"])
+        "question.html", question=question, answers=answers,
+        type_=type_,
+        placeholder=placeholder,
+        topic=topic, step=step, idx=idx, total=len(session["quiz"])
     )
 
-
 @app.route("/check_answer/<topic>/<step>/<int:idx>/<user_answer>", methods=["GET"])
-async def check_answer(topic, step, idx, user_answer):
+@app.route("/check_answer/<topic>/<step>/<int:idx>", methods=["POST"])
+async def check_answer(topic, step, idx, user_answer:str=""):
     def correct_answer():
         if question["name"] not in results["questions"]:
             results["questions"][question["name"]] = []
@@ -127,13 +134,22 @@ async def check_answer(topic, step, idx, user_answer):
 
     question = session["quiz"][idx]
 
-    # get user answer
-    if question["type"] in ("truefalse", "multichoice"):
-        user_answer = user_answer
-    elif question["type"] in ("shortanswer", "numerical"):
-        user_answer = "xx"
-    else:
-        print(f"Question type error: {question["type"]}")
+    if request.method == 'GET':
+
+        # get user answer
+        if question["type"] in ("truefalse", "multichoice"):
+            user_answer = user_answer
+        else:
+            print(f"Question type error: {question["type"]}")
+
+
+    if request.method == 'POST':
+        # First, await request.form
+        form_data = await request.form
+        # Then, access form data with .get()
+        user_answer = form_data.get('user_answer')
+
+    print(f"{user_answer=} {type(user_answer)}")
 
     # get correct answer
     correct_answer_str: str = ""
@@ -141,8 +157,12 @@ async def check_answer(topic, step, idx, user_answer):
     for answer in question["answers"]:
         if answer["fraction"] == "100":
             correct_answer_str = answer["text"]
+        print(f"{answer["text"]=}")
         if user_answer == answer["text"]:
+            print('ok')
             answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
+
+    print(answer_feedback)
 
     feedback = {"questiontext": session["quiz"][idx]["questiontext"]}
     if user_answer.upper() == correct_answer_str.upper():
