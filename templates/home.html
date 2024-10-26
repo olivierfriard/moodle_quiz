@@ -19,9 +19,19 @@
             <p class="subtitle">
               Welcome!
             </p>
-      
+
+            {% if session['nickname'] %}
+
             <a class="button is-link" href="/topic_list">View topics</a>
 
+            {%else%}
+
+            <a class="button is-link" href="/login">Login</a>
+
+            <a class="button is-link" href="/new_nickname">New nickname</a>
+
+
+            {%endif%}
           </div>
         </div>
       </div>

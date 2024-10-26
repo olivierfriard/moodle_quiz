@@ -178,6 +178,14 @@ async def check_answer(topic, step, idx, user_answer:str=""):
         "feedback.html", feedback=feedback, user_answer=user_answer, topic=topic, step=step, idx=idx, total=len(session["quiz"])
     )
 
+@app.route("/new_nickname", methods=["GET","POST"])
+async def new_nickname():
+
+    if request.method == 'GET':
+        return await render_template("new_nickname.html")
+
+    if request.method == 'POST':
+        pass
 
 if __name__ == "__main__":
     app.run()
