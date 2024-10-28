@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+"""
 CAPITOLI = ["tree thinking", "protisti"]
 TIPO_DOMANDE = ["MC", "FB", "TF"]
 
@@ -33,27 +34,23 @@ for capitolo in CAPITOLI:
 print(f"{cod_capitolo=}")
 print(f"{cod_tipo=}")
 print(f"{cod_domanda=}")
+"""
 
 
-def get_quiz(question_data: dict, topic: str, step: str, n_questions: int, nickname: str, results: dict) -> list:
+def get_quiz(question_data: dict, topic: str, step: str, n_questions: int, nickname: str, results: pd.DataFrame) -> list:
     ndomande = n_questions
     capX = topic
+    risultati = results  # pd.DataFrame({"cod_capitolo": cod_capitolo, "cod_tipo": cod_tipo, "cod_domanda": cod_domanda})
 
-    risultati = pd.DataFrame({"cod_capitolo": cod_capitolo, "cod_tipo": cod_tipo, "cod_domanda": cod_domanda})
+    # risultati["GIACOMO_OK"] = np.round(np.random.uniform(0, 3, 24), 0)
+    # risultati["GIACOMO_NO"] = np.round(np.random.uniform(0, 3, 24), 0)
 
-    risultati["GIACOMO_OK"] = np.round(np.random.uniform(0, 3, 24), 0)
-    risultati["GIACOMO_NO"] = np.round(np.random.uniform(0, 3, 24), 0)
-
-    # print(f"{risultati["GIACOMO_OK"]=}")
-
-    studente = nickname
     # valuto il livello di preparazione per quel capitolo
+    tipo = risultati[(risultati["topic"] == capX)]["type"]
+    risposte = risultati[(risultati["topic"] == capX)]
 
-    tipo = risultati[(risultati["cod_capitolo"] == capX)]["cod_tipo"]
-    risposte = risultati[(risultati["cod_capitolo"] == capX)]
-
-    risposteOK = np.array(risultati[(risultati["cod_capitolo"] == capX)][studente + "_OK"])
-    risposteNO = np.array(risultati[(risultati["cod_capitolo"] == capX)][studente + "_NO"])
+    risposteOK = np.array(risultati[(risultati["topic"] == capX)]["n_ok"])
+    risposteNO = np.array(risultati[(risultati["topic"] == capX)]["n_no"])
 
     if np.sum(risposteOK) > 0 or np.sum(risposteNO) > 0:
         score = (np.sum(risposteOK) - np.sum(risposteNO)) / (np.sum(risposteOK) + np.sum(risposteNO))
@@ -63,11 +60,11 @@ def get_quiz(question_data: dict, topic: str, step: str, n_questions: int, nickn
     # quantifico difficoltà relativa delle domande
     p = np.zeros(np.size(risposteOK))
     for nd in np.arange(np.size(p)):
-        if tipo[nd] == "TF":
+        if tipo[nd] == "truefalse":
             diffic = 0.1
-        elif tipo[nd] == "MC":
+        elif tipo[nd] == "multichoice":
             diffic = 0.25
-        else:
+        else:  # shortanswer or numerical
             diffic = 0.40
         if np.sum(risposteNO[nd]) > 0:
             diffic += 0.5 * (risposteNO[nd] - risposteOK[nd]) / (risposteOK[nd] + risposteNO[nd])
@@ -76,11 +73,13 @@ def get_quiz(question_data: dict, topic: str, step: str, n_questions: int, nickn
 
     rank_p = np.argsort(p)
 
+    questions_list: list = []
     for i in np.arange(np.size(p)):
         if rank_p[i] < ndomande:
             print(capX)
-            print(risposte["cod_tipo"][i])
-            print(risposte["cod_domanda"][i])
-            # domanda = quiz_structure[capX][risposte["cod_tipo"][i]][risposte["cod_domanda"][i]]
-            # print(domanda)
+            print(risposte["type"][i])
+            print(risposte["question_name"][i])
+            questions_list.append(question_data[capX][risposte["type"][i]][risposte["question_name"][i]])
             print()
+
+    return questions_list
