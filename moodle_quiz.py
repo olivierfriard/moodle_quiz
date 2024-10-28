@@ -3,7 +3,9 @@ import hashlib
 import re
 import quiz
 import aiosqlite
+import sqlite3
 import json
+import pandas as pd
 import tomllib
 import random
 from markupsafe import Markup
@@ -22,16 +24,26 @@ if Path(xml_file).with_suffix(".txt").is_file():
 print(f"{config=}")
 
 # load questions from xml moodle file
-question_data = moodle_xml.moodle_xml_to_dict_with_images(
-    xml_file, config["BASE_CATEGORY"], config["QUESTION_TYPES"]
-)
+question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["BASE_CATEGORY"], config["QUESTION_TYPES"])
+# re-organize the questions structure
+question_data = {}
+for topic in question_data1:
+    question_data[topic] = {}
+    for category in question_data1[topic]:
+        for question in question_data1[topic][category]:
+            if question["type"] not in question_data[topic]:
+                question_data[topic][question["type"]] = {}
+
+            question_data[topic][question["type"]][question["name"]] = question
+
 print()
-for topic in question_data.keys():
+for topic in question_data:
     print(topic)
-    for subtopic in question_data[topic]:
-        print(f"   {subtopic}: {len(question_data[topic][subtopic])} questions")
+    for category in question_data[topic]:
+        print(f"   {category}: {len(question_data[topic][category])} questions")
     print()
 print()
+
 
 # check if file results.json exists
 flag_results_file_present = False
@@ -47,6 +59,7 @@ if Path("results.json").is_file():
         print("Error loading the results.json file")
 
 print(f"{results=}")
+
 
 app = Quart(__name__)
 app.config["DEBUG"] = True
@@ -90,9 +103,35 @@ async def view_topic(topic):
 
 @app.route("/view_quiz/<topic>/<step>", methods=["GET"])
 async def view_quiz(topic, step):
-    session["quiz"] = quiz.get_quiz(
-        question_data, topic, step, config["N_STEP_QUESTIONS"], results
-    )
+    # Write your SQL query
+
+    # Connect to the SQLite database asynchronously
+    async with aiosqlite.connect("quiz.sqlite") as db:
+        # Execute the query
+        query = """SELECT 
+    topic, 
+    category, 
+    question_name, 
+    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
+    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
+FROM 
+    results
+GROUP BY 
+    topic, 
+    category, 
+    question_name;
+"""
+        async with db.execute(query) as cursor:
+            # Fetch all rows
+            rows = await cursor.fetchall()
+            # Get column names from the cursor description
+            columns = [description[0] for description in cursor.description]
+
+    df = pd.DataFrame(rows, columns=columns)
+
+    print(df)
+
+    session["quiz"] = quiz.get_quiz(question_data, topic, step, config["N_STEP_QUESTIONS"], session["nickname"], df)
     session["quiz_position"] = 0
     return redirect(f"/question/{topic}/{step}/0")
 
@@ -117,9 +156,7 @@ async def question(topic, step, idx):
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
         type_ = "number"
-        placeholder = (
-            "Input a number" if question["type"] == "numerical" else "Input a text"
-        )
+        placeholder = "Input a number" if question["type"] == "numerical" else "Input a text"
 
     return await render_template(
         "question.html",
@@ -149,9 +186,7 @@ async def check_answer(topic, step, idx, user_answer: str = ""):
         results["questions"][question["name"]].append(0)
         # feedback
         if answer_feedback:
-            return (
-                f"{answer_feedback}<br><br>The correct answer is:<br>{correct_answer}"
-            )
+            return f"{answer_feedback}<br><br>The correct answer is:<br>{correct_answer}"
         else:
             return f"The correct answer is:<br>{correct_answer}"
 
@@ -181,9 +216,7 @@ async def check_answer(topic, step, idx, user_answer: str = ""):
         print(f"{answer["text"]=}")
         if user_answer == answer["text"]:
             print("ok")
-            answer_feedback = (
-                answer["feedback"] if answer["feedback"] is not None else ""
-            )
+            answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
 
     print(answer_feedback)
 
@@ -194,6 +227,14 @@ async def check_answer(topic, step, idx, user_answer: str = ""):
     else:
         feedback["result"] = Markup(wrong_answer(correct_answer_str, answer_feedback))
         feedback["correct"] = False
+
+    db = await get_db()
+    await db.execute(
+        ("INSERT INTO results (nickname, topic, category, question_name,good_answer) VALUES (?, ?, ?, ?, ?)"),
+        (session["nickname"], topic, session["quiz"][idx]["type"], session["quiz"][idx]["name"], feedback["correct"]),
+    )
+
+    await db.commit()
 
     # answers = random.sample(question["answers"], len(question["answers"]))
 
@@ -257,9 +298,7 @@ async def new_nickname():
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
         db = await get_db()
-        cursor = await db.execute(
-            "SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,)
-        )
+        cursor = await db.execute("SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,))
         n_users = await cursor.fetchone()
         print(n_users[0])
         if n_users[0]:
@@ -272,9 +311,13 @@ async def new_nickname():
                 (nickname, password_hash),
             )
             await db.commit()
-            return "OK"
+
+            await flash("New nickname created", "")
+            return redirect("/")
+
         except aiosqlite.IntegrityError:
-            return "Error"
+            await flash("Error creating the new nickname", "error")
+            return redirect("/")
 
 
 if __name__ == "__main__":
