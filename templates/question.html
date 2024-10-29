@@ -53,7 +53,7 @@
 {% for answer in answers %}
 <div class="columns">
 <div class="column is-full">
-<a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer=answer.text) }}" class="button is-info is-large is-fullwidth  wrap-text-button">{{ answer.text }}</a><br>
+<a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer=answer.text) }}" class="button is-info is-large is-fullwidth wrap-text-button">{{ answer.text }}</a><br>
 </div>
 </div>
 {%endfor%}
