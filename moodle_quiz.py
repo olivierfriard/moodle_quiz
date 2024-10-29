@@ -32,8 +32,6 @@ for topic in question_data1:
             question_data[topic][question["type"]][question["name"]] = question
 
 
-# print()
-
 conn = sqlite3.connect("quiz.sqlite")
 cursor = conn.cursor()
 cursor.execute("DELETE FROM questions")
@@ -87,13 +85,13 @@ def home():
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list", methods=["GET"])
+@check_login
 def topic_list():
-    # print(question_data.keys())
-
     return render_template("topic_list.html", topics=question_data.keys())
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/quiz/<topic>", methods=["GET"])
+@check_login
 def create_quiz(topic):
     """
     create the quiz
@@ -152,11 +150,16 @@ GROUP BY
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:idx>", methods=["GET"])
+@check_login
 def question(topic, idx):
     if idx < len(session["quiz"]):
         question = session["quiz"][idx]
     else:
         return redirect(f"{app.config["APPLICATION_ROOT"]}/topic_list")
+
+    image_list = []
+    for image in question.get("files", []):
+        image_list.append(f"{app.config["APPLICATION_ROOT"]}/images/{image}")
 
     if question["type"] == "multichoice" or question["type"] == "truefalse":
         answers = random.sample(question["answers"], len(question["answers"]))
@@ -170,6 +173,7 @@ def question(topic, idx):
     return render_template(
         "question.html",
         question=question,
+        image_list=image_list,
         answers=answers,
         type_=type_,
         placeholder=placeholder,
@@ -181,6 +185,7 @@ def question(topic, idx):
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:idx>/<path:user_answer>", methods=["GET"])
 @app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:idx>", methods=["POST"])
+@check_login
 def check_answer(topic: str, idx: int, user_answer: str = ""):
     def correct_answer():
         return "You selected the correct answer."
@@ -317,6 +322,7 @@ def new_nickname():
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/logout", methods=["GET", "POST"])
+@check_login
 def logout():
     del session["nickname"]
     del session["quiz"]

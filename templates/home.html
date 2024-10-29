@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quiz</title>
+  <title>Duolinzoo</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 
 </head>
@@ -17,6 +17,14 @@
               Duolinzoo
             </h1>
 
+    
+<div class="block">
+<p class="subtitle">
+Welcome <strong>{{ session['nickname'] }}</strong>!
+</p>
+</div>
+
+<div class="block">
 {% with messages = get_flashed_messages(with_categories=True) %}
 {% if messages %}
 <ul>
@@ -26,14 +34,9 @@
 </ul>
 {% endif %}
 {% endwith %}
-    
-<div class="block">
-<p class="subtitle">
-Welcome <strong>{{ session['nickname'] }}</strong>!
-</p>
 </div>
 
-    {% if session['nickname'] %}
+{% if session['nickname'] %}
 
     <a class="button is-link " href="{{ url_for('topic_list') }}">View topics</a>
 
