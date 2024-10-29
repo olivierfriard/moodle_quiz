@@ -25,7 +25,7 @@ def get_quiz_test(question_data: dict, topic: str, n_questions: int, nickname: s
     # return [question_data["lezione 3 - multicellularità"]["03-FI"][1]]
 
     # for image type debugging:
-    return [question_data["lezione 4 - Poriferi"]["shortanswer"]["Q1"]]
+    # return [question_data["lezione 4 - Poriferi"]["shortanswer"]["Q1"]]
 
     questions_list: list = []
     # random extraction of n_questions (all question types) for topic
