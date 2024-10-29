@@ -21,7 +21,7 @@ if Path(xml_file).with_suffix(".txt").is_file():
 print(f"{config=}")
 
 # load questions from xml moodle file
-question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["BASE_CATEGORY"], config["QUESTION_TYPES"])
+question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"])
 # re-organize the questions structure
 question_data = {}
 for topic in question_data1:
@@ -49,11 +49,7 @@ for topic in question_data:
                 "INSERT INTO questions (topic, type, name) VALUES (?, ?, ?)",
                 (topic, type_, question),
             )
-            conn.commit()
-
-    # print()
-# print()
-
+conn.commit()
 conn.close()
 
 app = Flask(__name__)

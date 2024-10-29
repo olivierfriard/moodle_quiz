@@ -1,4 +1,4 @@
-def moodle_xml_to_dict_with_images(xml_file: str, base_category: str, question_types:list) -> dict:
+def moodle_xml_to_dict_with_images(xml_file: str, question_types: list) -> dict:
     """
     Convert a Moodle XML question file into a Python dictionary, organizing questions by categories and decoding images from base64.
 
@@ -51,8 +51,7 @@ def moodle_xml_to_dict_with_images(xml_file: str, base_category: str, question_t
 
     prefix_to_remove = trova_prefisso_comune(all_categories)
 
-    print(f"{prefix_to_remove=}") 
-
+    print(f"{prefix_to_remove=}")
 
     # Dictionary to hold questions organized by category
     categories_dict = defaultdict(list)
@@ -66,8 +65,8 @@ def moodle_xml_to_dict_with_images(xml_file: str, base_category: str, question_t
         if question_type == "category":
             category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
             category_list = category_text.split("/")
-            if base_category in category_list:
-                category_list.remove(base_category)
+            # if base_category in category_list:
+            #    category_list.remove(base_category)
 
             category_tuple = tuple(category_list)
 

@@ -1,4 +1,3 @@
-BASE_CATEGORY = "Auto-apprendimento"
 
 # number of questions in each topic
 N_QUESTIONS = 5
