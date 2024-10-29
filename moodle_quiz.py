@@ -37,9 +37,7 @@ cursor = conn.cursor()
 cursor.execute("DELETE FROM questions")
 conn.commit()
 for topic in question_data:
-    # print(topic)
     for type_ in question_data[topic]:
-        # print(f"   {type_}: {len(question_data[topic][type_])} questions")
         for question in question_data[topic][type_]:
             cursor.execute(
                 "INSERT INTO questions (topic, type, name) VALUES (?, ?, ?)",
@@ -139,11 +137,11 @@ GROUP BY
     # Get column names from the cursor description
     columns = [description[0] for description in cursor.description]
 
-    df = pd.DataFrame(rows, columns=columns)
+    df_results = pd.DataFrame(rows, columns=columns)
 
-    print(df.head())
+    # print(df_results.head())
 
-    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], session["nickname"], df)
+    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results)
     session["quiz_position"] = 0
     # show 1st question of the new quiz
     return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
