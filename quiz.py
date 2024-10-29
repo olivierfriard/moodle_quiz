@@ -29,8 +29,8 @@ def get_quiz_test(question_data: dict, topic: str, n_questions: int, results: pd
 
     questions_list: list = []
     # random extraction of n_questions (all question types) for topic
-    for category in question_data[topic]:
-        questions_list.extend([question for _, question in question_data[topic][category].items()])
+    for type_ in question_data[topic]:
+        questions_list.extend([question for _, question in question_data[topic][type_].items()])
 
     return random.sample(questions_list, n_questions)
 
