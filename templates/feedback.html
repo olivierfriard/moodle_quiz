@@ -8,6 +8,12 @@
 
 </head>
 <body>
+<style>
+.wrap-text-button {
+    white-space: normal;
+    word-break: break-word; /* Break long words if necessary */
+}  
+</style>
     <section class="section">
         <div class="container">
           <div class="columns is-centered">
@@ -33,11 +39,11 @@ Your answer:<br>
 </div>
 
 {% if feedback.correct %}
-<button class="button is-success  is-fullwidth is-large">{{ feedback.result }}</button><br>
+<button class="button is-success is-fullwidth is-large">{{ feedback.result }}</button><br>
 
 {%else%}
 
-<button  class="button is-danger  is-fullwidth is-large">{{ feedback.result }}</button><br>
+<button  class="button is-danger is-fullwidth is-large wrap-text-button">{{ feedback.result }}</button><br>
 {%endif%}
 
 <br>

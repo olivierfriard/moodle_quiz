@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
 <body>
+<style>
+.wrap-text-button {
+    white-space: normal;
+    word-break: break-word; /* Break long words if necessary */
+}  
+</style>
     <section class="section">
         <div class="container">
             <div class="columns is-centered">
@@ -47,7 +53,7 @@
 {% for answer in answers %}
 <div class="columns">
 <div class="column is-full">
-<a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer=answer.text) }}" class="button is-info is-large is-fullwidth">{{ answer.text }}</a><br>
+<a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer=answer.text) }}" class="button is-info is-large is-fullwidth  wrap-text-button">{{ answer.text }}</a><br>
 </div>
 </div>
 {%endfor%}
