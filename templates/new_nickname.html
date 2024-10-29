@@ -14,7 +14,7 @@
 <div class="column is-half">
 
     <div class="block">
-        <a href="/" class="button is-link is-small">Home</a>
+        <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
       
       </div>
 
@@ -34,7 +34,7 @@ Quiz
         {% endif %}
 {% endwith %}
 
-<form action="/new_nickname" method="post">
+<form action="{{ url_for('new_nickname') }}" method="post">
 <div class="field">
 <label class="label">Nickname</label>
 <div class="control">

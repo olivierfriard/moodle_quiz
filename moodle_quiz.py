@@ -57,7 +57,12 @@ for topic in question_data:
 conn.close()
 
 app = Flask(__name__)
+app.config.from_object("config")
+
 app.config["DEBUG"] = True
+
+
+print(app.config)
 
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
@@ -71,19 +76,19 @@ def get_db():
     return db
 
 
-@app.route("/", methods=["GET"])
+@app.route(app.config["APPLICATION_ROOT"], methods=["GET"])
 def home():
     return render_template("home.html")
 
 
-@app.route("/topic_list", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list", methods=["GET"])
 def topic_list():
     # print(question_data.keys())
 
     return render_template("topic_list.html", topics=question_data.keys())
 
 
-@app.route("/quiz/<topic>", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/quiz/<topic>", methods=["GET"])
 def create_quiz(topic):
     """
     create the quiz
@@ -135,18 +140,18 @@ GROUP BY
 
     print(df.head())
 
-    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_STEP_QUESTIONS"], session["nickname"], df)
+    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], session["nickname"], df)
     session["quiz_position"] = 0
     # show 1st question of the new quiz
-    return redirect(f"/question/{topic}/0")
+    return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
 
 
-@app.route("/question/<topic>/<int:idx>", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:idx>", methods=["GET"])
 def question(topic, idx):
     if idx < len(session["quiz"]):
         question = session["quiz"][idx]
     else:
-        return redirect("/topic_list")
+        return redirect(f"{app.config["APPLICATION_ROOT"]}/topic_list")
 
     if question["type"] == "multichoice" or question["type"] == "truefalse":
         answers = random.sample(question["answers"], len(question["answers"]))
@@ -169,8 +174,8 @@ def question(topic, idx):
     )
 
 
-@app.route("/check_answer/<topic>/<int:idx>/<user_answer>", methods=["GET"])
-@app.route("/check_answer/<topic>/<int:idx>", methods=["POST"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:idx>/<path:user_answer>", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:idx>", methods=["POST"])
 def check_answer(topic: str, idx: int, user_answer: str = ""):
     def correct_answer():
         return "You selected the correct answer."
@@ -237,7 +242,7 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
     )
 
 
-@app.route("/login", methods=["GET", "POST"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
         return render_template("login.html")
@@ -259,10 +264,10 @@ def login():
 
         else:
             session["nickname"] = form_data.get("nickname")
-            return redirect("/")
+            return redirect(app.config["APPLICATION_ROOT"])
 
 
-@app.route("/new_nickname", methods=["GET", "POST"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/new_nickname", methods=["GET", "POST"])
 def new_nickname():
     if request.method == "GET":
         return render_template("new_nickname.html")
@@ -298,11 +303,11 @@ def new_nickname():
             db.commit()
 
             flash("New nickname created", "")
-            return redirect("/")
+            return redirect(app.config["APPLICATION_ROOT"])
 
         except Exception:
             flash("Error creating the new nickname", "error")
-            return redirect("/")
+            return redirect(app.config["APPLICATION_ROOT"])
 
 
 if __name__ == "__main__":

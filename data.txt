@@ -1,10 +1,7 @@
 BASE_CATEGORY = "Auto-apprendimento"
 
-# number of steps for each topic
-STEP_NUMBER = 4
-
-# number of questions in each step
-N_STEP_QUESTIONS = 5
+# number of questions in each topic
+N_QUESTIONS = 5
 
 # question type to be handled by app
 QUESTION_TYPES = ["truefalse", "multichoice", "shortanswer", "numerical"]

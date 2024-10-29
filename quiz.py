@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 
-def get_quiz_of(question_data: dict, topic: str, step: str, n_questions: int, nickname: str, results: dict) -> list:
+def get_quiz(question_data: dict, topic: str, n_questions: int, nickname: str, results: dict) -> list:
     """
     return a quiz (list of questions)
 
@@ -16,7 +16,6 @@ def get_quiz_of(question_data: dict, topic: str, step: str, n_questions: int, ni
 
         question_data (dict): all the question (extracted from moodle xml file)
         topic (str): topic requested
-        step (str): step requested
         n_questions (int): number of questions
         results (dict): results of user
 
@@ -33,7 +32,7 @@ def get_quiz_of(question_data: dict, topic: str, step: str, n_questions: int, ni
     return random.sample(questions_list, n_questions)
 
 
-def get_quiz(question_data: dict, topic: str, n_questions: int, nickname: str, results: pd.DataFrame) -> list:
+def get_quiz_sc(question_data: dict, topic: str, n_questions: int, nickname: str, results: pd.DataFrame) -> list:
     ndomande = n_questions
     capX = topic
     risultati = results  # pd.DataFrame({"cod_capitolo": cod_capitolo, "cod_tipo": cod_tipo, "cod_domanda": cod_domanda})

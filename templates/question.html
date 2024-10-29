@@ -14,8 +14,8 @@
                 <div class="column is-half">
 
                   <div class="block">
-                    <a href="/" class="button is-link is-small">Home</a>
-                    <a href="/topic_list" class="button is-link is-small">Topics</a>
+                    <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
+                    <a href="{{ url_for('topic_list') }}" class="button is-link is-small">Topics</a>
                   
                   </div>
 <div class="block">
@@ -25,15 +25,33 @@
 <h2 class="title">{{ question.questiontext }}</h2>
 
 {%if answers %}
+<div class="block">
+<br>
+{% if question.type == 'truefalse' %}
+<div class="columns">
+
+<div class="column"><a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer='true') }}" class="button is-large">VERO</a></div>
+<div class="column"><a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer='false') }}" class="button is-large">FALSO</a></div>
+
+</div>
+
+{%  else %}
 
 {% for answer in answers %}
-
-<a href="/check_answer/{{ topic }}/{{ step }}/{{ idx }}/{{ answer.text|safe }}" style="width: 70%;" class="button"><h4>{{ answer.text}}</h4></a><br>
-
+<div class="columns">
+<div class="column is-full">
+<a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer=answer.text) }}" class="button is-large is-fullwidth">{{ answer.text }}</a><br><br>
+</div>
+</div>
 {%endfor%}
+
+{% endif %}
+
+</div>
+
 {%else%}
  
-<form action="/check_answer/{{ topic }}/{{ step }}/{{ idx }}" method="post">
+<form action="{{ url_for('check_answer', topic=topic, idx=idx) }}" method="post">
 <div class="field">
     <label class="label">Your answer</label>
     <div class="control">

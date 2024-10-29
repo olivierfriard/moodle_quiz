@@ -14,8 +14,8 @@
             <div class="column is-half">
 
 <div class="block">
-  <a href="/" class="button is-link is-small">Home</a>
-  <a href="/topic_list" class="button is-link is-small">Topics</a>
+  <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
+  <a href="{{ url_for('topic_list') }}" class="button is-link is-small">Topics</a>
 
 </div>
                 
@@ -33,16 +33,16 @@ Your answer:<br>
 </div>
 
 {% if feedback.correct %}
-<button class="button is-success is-medium">{{ feedback.result }}</button><br>
+<button class="button is-success  is-fullwidth is-large">{{ feedback.result }}</button><br>
 
 {%else%}
 
-<button  class="button is-danger is-medium">{{ feedback.result }}</button><br>
+<button  class="button is-danger  is-fullwidth is-large">{{ feedback.result }}</button><br>
 {%endif%}
 
 <br>
 
-<a href="/question/{{ topic }}/{{ step }}/{{ idx +1 }}" style="width: 30%; text-align:center" class="button"><h4>Next</h4></a><br>
+<a href="{{ url_for('question', topic=topic, idx=idx+1) }}"  class="button  is-fullwidth is-large">Next</a><br>
 
 </div>
 </div>
