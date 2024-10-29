@@ -36,7 +36,7 @@
 </div>
 
 {%  else %}
-
+{# multichoice #}
 {% for answer in answers %}
 <div class="columns">
 <div class="column is-full">
@@ -50,7 +50,7 @@
 </div>
 
 {%else%}
- 
+{# shortanswer or numerical #}
 <form action="{{ url_for('check_answer', topic=topic, idx=idx) }}" method="post">
 <div class="field">
     <label class="label">Your answer</label>

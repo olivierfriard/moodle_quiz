@@ -153,7 +153,7 @@ def question(topic, idx):
         type_ = "text"
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
-        type_ = "number"
+        type_ = "number" if question["type"] == "numerical" else "text"
         placeholder = "Input a number" if question["type"] == "numerical" else "Input a text"
 
     return render_template(
@@ -200,6 +200,7 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
     # get correct answer
     correct_answer_str: str = ""
     feedback: str = ""
+    answer_feedback: str = ""
     for answer in question["answers"]:
         if answer["fraction"] == "100":
             correct_answer_str = answer["text"]
