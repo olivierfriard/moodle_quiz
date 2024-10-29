@@ -17,6 +17,8 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list) -> dict:
 
     from typing import List
 
+    FILES_PATH = "duolinzoo/images"
+
     def trova_prefisso_comune(lista: List[str]) -> str:
         if not lista:
             return ""
@@ -118,10 +120,10 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list) -> dict:
                 # print()
 
                 # save base64 str into file
-                if not Path("files").is_dir():
-                    Path("files").mkdir(parents=True, exist_ok=True)
-                with open(Path("files") / Path(file_.get("name")), "wb") as file:
-                    file.write(base64.b64decode(file_.text))
+                if not Path(FILES_PATH).is_dir():
+                    Path(FILES_PATH).mkdir(parents=True, exist_ok=True)
+                with open(Path(FILES_PATH) / Path(file_.get("name")), "wb") as file_out:
+                    file_out.write(base64.b64decode(file_.text))
 
                 question_dict["files"].append(file_.get("name"))
 

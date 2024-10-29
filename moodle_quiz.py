@@ -6,8 +6,8 @@ import pandas as pd
 import tomllib
 import random
 from markupsafe import Markup
-from flask import Flask, render_template, session, redirect, request, g, flash
-
+from flask import Flask, render_template, session, redirect, request, g, flash, url_for
+from functools import wraps
 import moodle_xml
 
 
@@ -50,7 +50,7 @@ for topic in question_data:
 conn.commit()
 conn.close()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="duolinzoo")
 app.config.from_object("config")
 
 app.config["DEBUG"] = True
@@ -61,6 +61,17 @@ print(app.config)
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
 DATABASE = "quiz.sqlite"
+
+
+def check_login(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "nickname" not in session:
+            flash("You must be logged to use Duolinzoo", "error")
+            return redirect(url_for("home"))
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 
 def get_db():
