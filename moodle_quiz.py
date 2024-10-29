@@ -18,8 +18,6 @@ if Path(xml_file).with_suffix(".txt").is_file():
     with open(Path(xml_file).with_suffix(".txt"), "rb") as f:
         config = tomllib.load(f)
 
-print(f"{config=}")
-
 # load questions from xml moodle file
 question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"])
 # re-organize the questions structure
@@ -304,6 +302,14 @@ def new_nickname():
         except Exception:
             flash("Error creating the new nickname", "error")
             return redirect(app.config["APPLICATION_ROOT"])
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/logout", methods=["GET", "POST"])
+def logout():
+    del session["nickname"]
+    del session["quiz"]
+
+    return redirect(app.config["APPLICATION_ROOT"])
 
 
 if __name__ == "__main__":

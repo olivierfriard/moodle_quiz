@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 
-def get_quiz(question_data: dict, topic: str, n_questions: int, nickname: str, results: dict) -> list:
+def get_quiz_test(question_data: dict, topic: str, n_questions: int, nickname: str, results: dict) -> list:
     """
     return a quiz (list of questions)
 
@@ -85,3 +85,6 @@ def get_quiz_sc(question_data: dict, topic: str, n_questions: int, nickname: str
 
     print(questions_list)
     return questions_list
+
+
+get_quiz = get_quiz_test
