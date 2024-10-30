@@ -53,11 +53,8 @@ def get_quiz_sc(question_data: dict, topic: str, n_questions: int, results: pd.D
     risultati = results  # pd.DataFrame({"cod_capitolo": cod_capitolo, "cod_tipo": cod_tipo, "cod_domanda": cod_domanda})
 
     # valuto il livello di preparazione per quel capitolo
-    tipo = risultati[(risultati["topic"] == capX)]["type"]
-
-    print(f"{tipo=}")
-
-    risposte = risultati[(risultati["topic"] == capX)]
+    tipo = risultati[(risultati["topic"] == capX)]["type"].reset_index(drop=True)
+    risposte = risultati[(risultati["topic"] == capX)].reset_index(drop=True)
 
     risposteOK = np.array(risultati[(risultati["topic"] == capX)]["n_ok"])
     risposteNO = np.array(risultati[(risultati["topic"] == capX)]["n_no"])
