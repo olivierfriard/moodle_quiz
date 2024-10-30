@@ -35,6 +35,7 @@ for topic in question_data1:
 conn = sqlite3.connect("quiz.sqlite")
 cursor = conn.cursor()
 cursor.execute("DELETE FROM questions")
+
 conn.commit()
 for topic in question_data:
     for type_ in question_data[topic]:

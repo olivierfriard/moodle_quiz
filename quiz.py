@@ -73,7 +73,8 @@ def get_quiz_sc(question_data: dict, topic: str, n_questions: int, results: pd.D
     p = np.zeros(np.size(risposteOK))
 
     print(f"{p=}")
-
+    print("HELLO")
+    print(tipo)
     for nd in np.arange(np.size(p)):
         # print(f"{nd=}")
         if tipo[nd] == "truefalse":
@@ -102,4 +103,4 @@ def get_quiz_sc(question_data: dict, topic: str, n_questions: int, results: pd.D
     return questions_list
 
 
-get_quiz = get_quiz_test
+get_quiz = get_quiz_sc
