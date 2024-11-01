@@ -142,7 +142,7 @@ GROUP BY
 
     # print(df_results.head())
 
-    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results)
+    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results,1)
     session["quiz_position"] = 0
     # show 1st question of the new quiz
     return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
