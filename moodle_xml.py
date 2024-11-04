@@ -63,7 +63,7 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 
     all_categories = remove_two_shortest(all_categories)
 
-    print(f"{all_categories=}")
+    # print(f"{all_categories=}")
 
     prefix_to_remove = find_common_prefix(all_categories)
 

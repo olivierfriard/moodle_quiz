@@ -169,7 +169,7 @@ def get_difficulty(score_tipo, ok, no):
     with np.errstate(divide="ignore", invalid="ignore"):
         # score = np.where((no + ok) == 0, score_tipo, 0.5 * ((no - ok)/(no + ok) + 1))
 
-        score = np.where((no + ok) == 0, score_tipo, no / (no + ok))
+        score = np.where((no + ok) == 0, 0, ok / (ok + no))
     return score
 
 
@@ -184,6 +184,7 @@ def get_random_select(score_medio_studente, score_domande):
             tempo = np.where(rnd_walk[i, :] < score_domande[i])[0]
         if np.size(tempo) > 0:
             t[i] = np.min(tempo)
+
     rank_t = np.argsort(t)
     return rank_t, t
 
@@ -209,6 +210,8 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
     # valuto il livello di preparazione per quel capitolo
     tipologie_domande = list(risultati[(risultati["topic"] == capX)]["type"].reset_index(drop=True))
 
+    # print(tipologie_domande)
+
     risposte = risultati[(risultati["topic"] == capX)].reset_index(drop=True)
 
     risposteOK = np.array(risultati[(risultati["topic"] == capX)]["n_ok"])
@@ -217,15 +220,36 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
     score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)
 
     scores_domande = get_difficulty(score_tipo, risposteOK, risposteNO)
-    scores_studente = 1 - get_difficulty(0, risposteOK, risposteNO)
+
+    scores_studente = get_difficulty(score_tipo, risposteOK, risposteNO)
+
     # score_medio_studente = np.sum(risposteOK - risposteNO)/np.sum(risposteNO + risposteOK)
     score_medio_studente = np.mean(scores_studente)
+
     # print(score_medio_studente)
 
     questions_score, t = get_random_select(score_medio_studente, scores_domande)
+
+    # print(f"{questions_score=}")
+
     questions_list = []
-    for i in np.arange(n_questions):
-        questions_list.append(question_data[capX][risposte["type"][i]][risposte["question_name"][i]])
+    count = 0
+    for i in questions_score:
+        nome_domanda = risposte.iloc[i]["question_name"]
+        print(nome_domanda)
+        tipologia_domanda = risposte.iloc[i]["type"]
+        print(nome_domanda, tipologia_domanda)
+        questions_list.append(question_data[capX][tipologia_domanda][nome_domanda])
+        # print("=" * 20)
+        count += 1
+        if count >= n_questions:
+            break
+
+    print()
+    print(scores_studente, np.mean(scores_domande), np.mean(scores_domande[0:n_questions]))
+
+    # print(questions_list)
+
     return questions_list
 
 
