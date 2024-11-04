@@ -157,6 +157,7 @@ def get_quiz_sc2(question_data: dict, topic: str, n_questions: int, results: pd.
     return questions_list
 
 def get_difficulty_tipo(tipo):
+    difficulty_map = {"truefalse": 0.1, "multichoice": 0.25, "shortanswer": 0.4}
     return difficulty_map.get(tipo, 0)  # Ritorna 0 se il tipo non è nella mappa
 
 
@@ -204,30 +205,30 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
     risultati = results  # pd.DataFrame({"cod_capitolo": cod_capitolo, "cod_tipo": cod_tipo, "cod_domanda": cod_domanda})
 
     # valuto il livello di preparazione per quel capitolo
-    tipo = risultati[(risultati["topic"] == capX)]["type"].reset_index(drop=True)
+    tipologie_domande = list(risultati[(risultati["topic"] == capX)]["type"].reset_index(drop=True))
+    
     risposte = risultati[(risultati["topic"] == capX)].reset_index(drop=True)
 
     risposteOK = np.array(risultati[(risultati["topic"] == capX)]["n_ok"])
     risposteNO = np.array(risultati[(risultati["topic"] == capX)]["n_no"])
 
-    difficulty_map = {"TF": 0.1, "MC": 0.25, "FB": 0.4}
+    
+    
     score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)
 
     scores_domande = get_difficulty(score_tipo, risposteOK, risposteNO)
     scores_studente = 1 - get_difficulty(0, risposteOK, risposteNO)
     #score_medio_studente = np.sum(risposteOK - risposteNO)/np.sum(risposteNO + risposteOK)  
     score_medio_studente = np.mean(scores_studente)
-    print(score_medio_studente)
+    #print(score_medio_studente)
 
-    domande,t = get_random_select(score_medio_studente,scores_domande)
-    print(scores_domande[domande])
-    print(t[domande])
-    print(np.mean(scores_domande[domande[0:ndomande]]))
-    print(np.mean(scores_domande[domande]))
-    plt.plot(scores_domande[domande],t[domande],'.')
-
+    questions_score,t = get_random_select(score_medio_studente,scores_domande)
+    questions_list = []
+    for i in np.arange(5):
+        questions_list.append(question_data[capX][risposte["type"][i]][risposte["question_name"][i]])
     return questions_list
+    
 
-
-get_quiz = get_quiz_sc2
+print("ci sonoooo")
+get_quiz = get_quiz_sc3
 
