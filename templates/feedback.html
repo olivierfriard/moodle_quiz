@@ -27,9 +27,15 @@
                 
 
 <div class="block">
-{{ topic }} | {{ idx + 1 }} / {{ total }}
+  <strong>{{ topic }}</strong> | {{ idx + 1 }} / {{ total }}
 </div>
-   
+
+<div class="block">
+  <strong>Score</strong>
+  <progress class="progress is-primary" value="{{ score }}" max="1"></progress>
+  </div>
+  
+
 <h2 class="title">{{ feedback.questiontext }}</h2>
 
 

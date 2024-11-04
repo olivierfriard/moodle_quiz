@@ -1,4 +1,4 @@
-def moodle_xml_to_dict_with_images(xml_file: str, question_types: list) -> dict:
+def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_files_path: str) -> dict:
     """
     Convert a Moodle XML question file into a Python dictionary, organizing questions by categories and decoding images from base64.
 
@@ -17,9 +17,19 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list) -> dict:
 
     from typing import List
 
-    FILES_PATH = "duolinzoo/images"
+    FILES_PATH = image_files_path
 
-    def trova_prefisso_comune(lista: List[str]) -> str:
+    def remove_two_shortest(strings):
+        # written by chatGPT
+        # Sort the list by length of strings
+        sorted_strings = sorted(strings, key=len)
+        # Remove the two shortest strings
+        if len(sorted_strings) > 2:
+            return [s for s in strings if s not in sorted_strings[:2]]
+        return strings  # If there are fewer than 3 elements, return the original list
+
+    def find_common_prefix(lista: List[str]) -> str:
+        # written by chatGPT
         if not lista:
             return ""
 
@@ -41,7 +51,7 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list) -> dict:
     root = tree.getroot()
 
     # check categories
-    all_categories = []
+    all_categories: list = []
     for question in root.findall("question"):
         question_type = question.get("type")
 
@@ -51,7 +61,11 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list) -> dict:
             if category_text not in all_categories:
                 all_categories.append(category_text)
 
-    prefix_to_remove = trova_prefisso_comune(all_categories)
+    all_categories = remove_two_shortest(all_categories)
+
+    print(f"{all_categories=}")
+
+    prefix_to_remove = find_common_prefix(all_categories)
 
     print(f"{prefix_to_remove=}")
 
