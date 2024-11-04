@@ -138,21 +138,20 @@ GROUP BY
 
     # print(df_results.head())
 
-    # session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results, 1)
-    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results)
+    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results, 1)
+    # session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results)
     session["quiz_position"] = 0
     # show 1st question of the new quiz
     return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
 
 
-def get_score():
+def get_score(topic):
     db = get_db()
     query = """
 SELECT AVG(percentage_ok) AS mean_percentage_ok 
 FROM  (
 SELECT 
-    
-    CAST(SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF(COUNT(*), 0) AS percentage_ok
+    CAST(SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF((SELECT COUNT(*) FROM questions WHERE topic = ?), 0) AS percentage_ok
 FROM 
     results 
 WHERE 
@@ -162,7 +161,7 @@ GROUP BY
 ) AS subquery;
 
 """
-    cursor = db.execute(query, (session["nickname"],))
+    cursor = db.execute(query, (topic, session["nickname"]))
     # Fetch all rows
     return cursor.fetchone()[0]
 
@@ -176,7 +175,7 @@ def question(topic, idx):
         return redirect(f"{app.config["APPLICATION_ROOT"]}/topic_list")
 
     # get score
-    print(f"{get_score()=}")
+    print(f"{get_score(topic)=}")
 
     image_list = []
     for image in question.get("files", []):
@@ -201,7 +200,7 @@ def question(topic, idx):
         topic=topic,
         idx=idx,
         total=len(session["quiz"]),
-        score=get_score(),
+        score=get_score(topic),
     )
 
 
@@ -269,7 +268,13 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
     db.commit()
 
     return render_template(
-        "feedback.html", feedback=feedback, user_answer=user_answer, topic=topic, idx=idx, total=len(session["quiz"]), score=get_score()
+        "feedback.html",
+        feedback=feedback,
+        user_answer=user_answer,
+        topic=topic,
+        idx=idx,
+        total=len(session["quiz"]),
+        score=get_score(topic),
     )
 
 
