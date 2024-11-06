@@ -69,9 +69,9 @@ def get_quiz_sc(question_data: dict, topic: str, n_questions: int, results: pd.D
     # quantifico difficoltà relativa delle domande
     p = np.zeros(np.size(risposteOK))
 
-    #print(f"{p=}")
-    #print("HELLO !!!!")
-    #print(tipo)
+    # print(f"{p=}")
+    # print("HELLO !!!!")
+    # print(tipo)
     for nd in np.arange(np.size(p)):
         # print(f"{nd=}")
         if tipo[nd] == "truefalse":
@@ -99,6 +99,7 @@ def get_quiz_sc(question_data: dict, topic: str, n_questions: int, results: pd.D
     print(f"selected questions are: {questions_list}")
     return questions_list
 
+
 def get_quiz_sc2(question_data: dict, topic: str, n_questions: int, results: pd.DataFrame, quiz_type: int) -> list:
     """
     return a quiz (list of questions)
@@ -110,7 +111,7 @@ def get_quiz_sc2(question_data: dict, topic: str, n_questions: int, results: pd.
         n_questions (int): number of questions
         results (pd.DataFrame): results of user
         quiz_type:  1 # Normal quiz
-                    2 # Life retieval 
+                    2 # Life retieval
 
     """
 
@@ -125,8 +126,7 @@ def get_quiz_sc2(question_data: dict, topic: str, n_questions: int, results: pd.
     risposteOK = np.array(risultati[(risultati["topic"] == capX)]["n_ok"])
     risposteNO = np.array(risultati[(risultati["topic"] == capX)]["n_no"])
 
-    
-    #print(f"{risposteNO=}")
+    # print(f"{risposteNO=}")
 
     if np.sum(risposteOK) > 0 or np.sum(risposteNO) > 0:
         score = (np.sum(risposteOK) - np.sum(risposteNO)) / (np.sum(risposteOK) + np.sum(risposteNO))
@@ -136,9 +136,9 @@ def get_quiz_sc2(question_data: dict, topic: str, n_questions: int, results: pd.
     # quantifico difficoltà relativa delle domande
     p = np.zeros(np.size(risposteOK))
 
-    #print(f"{p=}")
-    #print("HELLO !!!!")
-    #print(tipo)
+    # print(f"{p=}")
+    # print("HELLO !!!!")
+    # print(tipo)
     for nd in np.arange(np.size(p)):
         if np.sum(risposteNO[nd]) > 0:
             p[nd] = (risposteNO[nd] - risposteOK[nd]) / (risposteOK[nd] + risposteNO[nd])
@@ -150,31 +150,55 @@ def get_quiz_sc2(question_data: dict, topic: str, n_questions: int, results: pd.
     for i in np.arange(np.size(p)):
         if rank_p[i] < ndomande:
             questions_list.append(question_data[capX][risposte["type"][i]][risposte["question_name"][i]])
-            print("score_domande",p[i])
-            print("rango= ",rank_p[i])
-            #print(question_data[capX][risposte["type"][i]][risposte["question_name"][i]],rank_p[i])
+            print("score_domande", p[i])
+            print("rango= ", rank_p[i])
+            # print(question_data[capX][risposte["type"][i]][risposte["question_name"][i]],rank_p[i])
     print(f"selected questions are: {questions_list}")
     return questions_list
 
+
 def get_difficulty_tipo(tipo):
-    difficulty_map = {"truefalse": 0.1, "multichoice": 0.25, "shortanswer": 0.4}
+    difficulty_map = {"truefalse": 0.45, "multichoice": 0.25, "shortanswer": 0.1}
     return difficulty_map.get(tipo, 0)  # Ritorna 0 se il tipo non è nella mappa
 
+
+def get_difficulty_old(score_tipo, ok, no):
+    # assegna valore di difficoltà per ciascuna domanda
+    # se la domanda non è mai stata presentata, il valore dipende dal tipo di domanda
+    # altrimenti dal numero di risposte corrette ed errate già fornite
+    with np.errstate(divide="ignore", invalid="ignore"):
+        # score = np.where((no + ok) == 0, score_tipo, 0.5 * ((no - ok)/(no + ok) + 1))
+
+        score = np.where((no + ok) == 0, score_tipo, no / (ok + no))
+    return score
 
 def get_difficulty(score_tipo, ok, no):
     # assegna valore di difficoltà per ciascuna domanda
     # se la domanda non è mai stata presentata, il valore dipende dal tipo di domanda
-    # altrimenti dal numero di risposte corrette ed errate già fornite
-    with np.errstate(divide='ignore', invalid='ignore'):
-        #score = np.where((no + ok) == 0, score_tipo, 0.5 * ((no - ok)/(no + ok) + 1))
-        
-        score = np.where((no + ok) == 0, score_tipo, no/(no + ok))
+    # altrimenti dalla media tra tipo e numero di risposte corrette ed errate già fornite
+    tot_risposte = no + ok
+    #print(tot_risposte)
+    score = np.zeros(len(tot_risposte))
+    for i in np.arange(np.size(score_tipo)):
+        if tot_risposte[i] >0:
+            diff = no[i] / tot_risposte[i]
+            score[i] = tot_risposte[i] * diff / (tot_risposte[i] + 1) + score_tipo[i]/(tot_risposte[i] + 1) 
+        else:
+            score[i] = score_tipo[i] 
     return score
+
+def get_score_studente(ok,no):
+    # domande già sottoposte
+    ntot_domande = np.size(ok)
+    domande_con_risposta = np.where(ok + no > 0)
+    somma_scores = np.sum(ok[domande_con_risposta]/(ok[domande_con_risposta] + no[domande_con_risposta]))
+    score_studente = somma_scores / ntot_domande
+    return score_studente
 
 def get_random_select(score_medio_studente, score_domande):
     n_tot_domande = np.size(score_domande)
-    rnd_walk = score_medio_studente + np.cumsum(np.random.normal(0,.05,(n_tot_domande,100)), axis = 0) 
-    t = 20*np.ones(n_tot_domande)
+    rnd_walk = score_medio_studente + np.cumsum(np.random.normal(0,.05,(n_tot_domande,1000)), axis = 0) 
+    t = 1000*np.ones(n_tot_domande)
     for i in np.arange(n_tot_domande):
         if score_medio_studente < score_domande[i]:
             tempo = np.where(rnd_walk[i,:] > score_domande[i])[0]
@@ -196,39 +220,57 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
         n_questions (int): number of questions
         results (pd.DataFrame): results of user
         quiz_type:  1 # Normal quiz
-                    2 # Life retieval 
+                    2 # Life retieval
 
     """
 
-    ndomande = n_questions
     capX = topic
     risultati = results  # pd.DataFrame({"cod_capitolo": cod_capitolo, "cod_tipo": cod_tipo, "cod_domanda": cod_domanda})
 
     # valuto il livello di preparazione per quel capitolo
     tipologie_domande = list(risultati[(risultati["topic"] == capX)]["type"].reset_index(drop=True))
-    
+
+    # print(tipologie_domande)
+
     risposte = risultati[(risultati["topic"] == capX)].reset_index(drop=True)
 
     risposteOK = np.array(risultati[(risultati["topic"] == capX)]["n_ok"])
     risposteNO = np.array(risultati[(risultati["topic"] == capX)]["n_no"])
-
-    
+    print(risposteOK)
+    print(risposteNO)
+    print(np.nanmean(risposteNO/(risposteOK + risposteNO)))
     
     score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)
 
     scores_domande = get_difficulty(score_tipo, risposteOK, risposteNO)
-    scores_studente = 1 - get_difficulty(0, risposteOK, risposteNO)
-    #score_medio_studente = np.sum(risposteOK - risposteNO)/np.sum(risposteNO + risposteOK)  
-    score_medio_studente = np.mean(scores_studente)
-    #print(score_medio_studente)
 
-    questions_score,t = get_random_select(score_medio_studente,scores_domande)
+    score_medio_studente = get_score_studente(risposteOK,risposteNO)
+
+    questions_score, t = get_random_select(score_medio_studente * 1.1, scores_domande)
+
+    # print(f"{questions_score=}")
+
     questions_list = []
-    for i in np.arange(5):
-        questions_list.append(question_data[capX][risposte["type"][i]][risposte["question_name"][i]])
-    return questions_list
+    count = 0
+    for i in questions_score:
+        nome_domanda = risposte.iloc[i]["question_name"]
+        #print(nome_domanda)
+        tipologia_domanda = risposte.iloc[i]["type"]
+        #print(nome_domanda, tipologia_domanda, scores_studente[i], risposteNO[i]/(risposteNO[i] + risposteOK[i]))
+        questions_list.append(question_data[capX][tipologia_domanda][nome_domanda])
+        # print("=" * 20)
+        count += 1
+        if count >= n_questions:
+            break
+
+
     
+    print(f"score studente =",score_medio_studente)
+    # print(questions_list)
+    print(risposteOK, risposteNO)
+    print(scores_domande)
 
-print("ci sonoooo")
+    return questions_list
+
+
 get_quiz = get_quiz_sc3
-

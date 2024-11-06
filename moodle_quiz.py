@@ -11,53 +11,66 @@ from functools import wraps
 import moodle_xml
 
 
-xml_file = "data.xml"
-
-# check config file
-if Path(xml_file).with_suffix(".txt").is_file():
-    with open(Path(xml_file).with_suffix(".txt"), "rb") as f:
-        config = tomllib.load(f)
-
-# load questions from xml moodle file
-question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"])
-# re-organize the questions structure
-question_data = {}
-for topic in question_data1:
-    question_data[topic] = {}
-    for category in question_data1[topic]:
-        for question in question_data1[topic][category]:
-            if question["type"] not in question_data[topic]:
-                question_data[topic][question["type"]] = {}
-
-            question_data[topic][question["type"]][question["name"]] = question
+XML_FILE = "data.original.xml"
 
 
-conn = sqlite3.connect("quiz.sqlite")
-cursor = conn.cursor()
-cursor.execute("DELETE FROM questions")
+def get_quiz_config(xml_file: str):
+    # check config file
+    if Path(xml_file).with_suffix(".txt").is_file():
+        with open(Path(xml_file).with_suffix(".txt"), "rb") as f:
+            config = tomllib.load(f)
+    else:
+        config = {
+            "N_QUESTIONS": 5,
+            "QUESTION_TYPES": ["truefalse", "multichoice", "shortanswer", "numerical"],
+            "DATABASE_NAME": "quiz.sqlite",
+        }
+    return config
 
-conn.commit()
-for topic in question_data:
-    for type_ in question_data[topic]:
-        for question in question_data[topic][type_]:
-            cursor.execute(
-                "INSERT INTO questions (topic, type, name) VALUES (?, ?, ?)",
-                (topic, type_, question),
-            )
-conn.commit()
-conn.close()
+
+def load_questions(xml_file: str, config: dict):
+    # load questions from xml moodle file
+    question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], "duolinzoo/images")
+    # re-organize the questions structure
+    question_data: dict = {}
+    for topic in question_data1:
+        question_data[topic] = {}
+        for category in question_data1[topic]:
+            for question in question_data1[topic][category]:
+                if question["type"] not in question_data[topic]:
+                    question_data[topic][question["type"]] = {}
+
+                question_data[topic][question["type"]][question["name"]] = question
+
+    conn = sqlite3.connect(config["DATABASE_NAME"])
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM questions")
+
+    conn.commit()
+    for topic in question_data:
+        for type_ in question_data[topic]:
+            for question in question_data[topic][type_]:
+                cursor.execute(
+                    "INSERT INTO questions (topic, type, name) VALUES (?, ?, ?)",
+                    (topic, type_, question),
+                )
+    conn.commit()
+    conn.close()
+
+    return question_data
+
 
 app = Flask(__name__, static_folder="duolinzoo")
 app.config.from_object("config")
-
 app.config["DEBUG"] = True
-
-
-print(app.config)
-
+# print(app.config)
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
-DATABASE = "quiz.sqlite"
+config = get_quiz_config(XML_FILE)
+
+question_data = load_questions(XML_FILE, config)
+
+DATABASE = config["DATABASE_NAME"]
 
 
 def check_login(f):
@@ -115,23 +128,6 @@ GROUP BY
     q.name
 """
 
-    query_old = """
-SELECT 
-    topic, 
-    category AS type, 
-    question_name, 
-    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
-    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
-FROM 
-    results
-WHERE nickname = ?
-GROUP BY 
-    topic, 
-    category, 
-    question_name;
-
-        """
-
     cursor = db.execute(query, (session["nickname"],))
     # Fetch all rows
     rows = cursor.fetchall()
@@ -142,10 +138,32 @@ GROUP BY
 
     # print(df_results.head())
 
-    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results,1)
+    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results, 1)
+    # session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results)
     session["quiz_position"] = 0
     # show 1st question of the new quiz
     return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
+
+
+def get_score(topic):
+    db = get_db()
+    query = """
+SELECT AVG(percentage_ok) AS mean_percentage_ok 
+FROM  (
+SELECT 
+    CAST(SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF((SELECT COUNT(*) FROM questions WHERE topic = ?), 0) AS percentage_ok
+FROM 
+    results 
+WHERE 
+    nickname = ?
+GROUP BY 
+    question_name
+) AS subquery;
+
+"""
+    cursor = db.execute(query, (topic, session["nickname"]))
+    # Fetch all rows
+    return cursor.fetchone()[0]
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:idx>", methods=["GET"])
@@ -155,6 +173,9 @@ def question(topic, idx):
         question = session["quiz"][idx]
     else:
         return redirect(f"{app.config["APPLICATION_ROOT"]}/topic_list")
+
+    # get score
+    print(f"{get_score(topic)=}")
 
     image_list = []
     for image in question.get("files", []):
@@ -179,6 +200,7 @@ def question(topic, idx):
         topic=topic,
         idx=idx,
         total=len(session["quiz"]),
+        score=get_score(topic),
     )
 
 
@@ -186,6 +208,10 @@ def question(topic, idx):
 @app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:idx>", methods=["POST"])
 @check_login
 def check_answer(topic: str, idx: int, user_answer: str = ""):
+    """
+    check user answer and display feedback and score
+    """
+
     def correct_answer():
         return "You selected the correct answer."
 
@@ -206,9 +232,8 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
             print(f"Question type error: {question["type"]}")
 
     if request.method == "POST":
-        form_data = request.form
-        # Then, access form data with .get()
-        user_answer = form_data.get("user_answer")
+        # form_data = request.form
+        user_answer = request.form.get("user_answer")
 
     print(f"{user_answer=} {type(user_answer)}")
 
@@ -249,6 +274,7 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
         topic=topic,
         idx=idx,
         total=len(session["quiz"]),
+        score=get_score(topic),
     )
 
 
