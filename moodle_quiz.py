@@ -11,7 +11,7 @@ from functools import wraps
 import moodle_xml
 
 
-XML_FILE = "data.original.xml"
+XML_FILE = "data.xml"
 
 
 def get_quiz_config(xml_file: str):
