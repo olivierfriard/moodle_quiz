@@ -175,7 +175,7 @@ def get_difficulty_old(score_tipo, ok, no):
 def get_difficulty(score_tipo, ok, no):
     # assegna valore di difficoltà per ciascuna domanda
     # se la domanda non è mai stata presentata, il valore dipende dal tipo di domanda
-<<<<<<< HEAD
+
     # altrimenti dalla media tra tipo e numero di risposte corrette ed errate già fornite
     tot_risposte = no + ok
     #print(tot_risposte)
@@ -200,20 +200,7 @@ def get_random_select(score_medio_studente, score_domande):
     n_tot_domande = np.size(score_domande)
     rnd_walk = score_medio_studente + np.cumsum(np.random.normal(0,.05,(n_tot_domande,1000)), axis = 0) 
     t = 1000*np.ones(n_tot_domande)
-=======
-    # altrimenti dal numero di risposte corrette ed errate già fornite
-    with np.errstate(divide="ignore", invalid="ignore"):
-        # score = np.where((no + ok) == 0, score_tipo, 0.5 * ((no - ok)/(no + ok) + 1))
 
-        score = np.where((no + ok) == 0, 0, ok / (ok + no))
-    return score
-
-
-def get_random_select(score_medio_studente, score_domande):
-    n_tot_domande = np.size(score_domande)
-    rnd_walk = score_medio_studente + np.cumsum(np.random.normal(0, 0.05, (n_tot_domande, 100)), axis=0)
-    t = 20 * np.ones(n_tot_domande)
->>>>>>> 0539bbfadbc3a2e812ac3aa05bb896ef7a6bcca4
     for i in np.arange(n_tot_domande):
         if score_medio_studente < score_domande[i]:
             tempo = np.where(rnd_walk[i, :] > score_domande[i])[0]
@@ -253,32 +240,22 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
 
     risposteOK = np.array(risultati[(risultati["topic"] == capX)]["n_ok"])
     risposteNO = np.array(risultati[(risultati["topic"] == capX)]["n_no"])
-<<<<<<< HEAD
+
     print(risposteOK)
     print(risposteNO)
     print(np.nanmean(risposteNO/(risposteOK + risposteNO)))
     
-=======
 
->>>>>>> 0539bbfadbc3a2e812ac3aa05bb896ef7a6bcca4
+
     score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)
 
     scores_domande = get_difficulty(score_tipo, risposteOK, risposteNO)
 
-<<<<<<< HEAD
+
     score_medio_studente = get_score_studente(risposteOK,risposteNO)
 
     questions_score, t = get_random_select(score_medio_studente * 1.1, scores_domande)
-=======
-    scores_studente = get_difficulty(score_tipo, risposteOK, risposteNO)
 
-    # score_medio_studente = np.sum(risposteOK - risposteNO)/np.sum(risposteNO + risposteOK)
-    score_medio_studente = np.mean(scores_studente)
-
-    # print(score_medio_studente)
-
-    questions_score, t = get_random_select(score_medio_studente, scores_domande)
->>>>>>> 0539bbfadbc3a2e812ac3aa05bb896ef7a6bcca4
 
     # print(f"{questions_score=}")
 
@@ -286,34 +263,22 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
     count = 0
     for i in questions_score:
         nome_domanda = risposte.iloc[i]["question_name"]
-<<<<<<< HEAD
+
         #print(nome_domanda)
         tipologia_domanda = risposte.iloc[i]["type"]
         #print(nome_domanda, tipologia_domanda, scores_studente[i], risposteNO[i]/(risposteNO[i] + risposteOK[i]))
-=======
-        print(nome_domanda)
-        tipologia_domanda = risposte.iloc[i]["type"]
-        print(nome_domanda, tipologia_domanda)
->>>>>>> 0539bbfadbc3a2e812ac3aa05bb896ef7a6bcca4
+
         questions_list.append(question_data[capX][tipologia_domanda][nome_domanda])
         # print("=" * 20)
         count += 1
         if count >= n_questions:
             break
 
-<<<<<<< HEAD
 
-    
-    print(f"score studente =",score_medio_studente)
-    # print(questions_list)
-    print(risposteOK, risposteNO)
-    print(scores_domande)
-=======
     print()
     print(scores_studente, np.mean(scores_domande), np.mean(scores_domande[0:n_questions]))
 
     # print(questions_list)
->>>>>>> 0539bbfadbc3a2e812ac3aa05bb896ef7a6bcca4
 
     return questions_list
 
