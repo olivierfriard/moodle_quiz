@@ -28,11 +28,12 @@
   <strong>{{ topic }}</strong> | {{ idx + 1 }} / {{ total }}
 </div>
 
-
+{% if score %}
 <div class="block">
 <strong>Score</strong>{{ score }}
 <progress class="progress is-primary" value="{{ score }}" max="1"></progress>
 </div>
+{%endif%}
 
 <h2 class="title">{{ question.questiontext }}</h2>
 

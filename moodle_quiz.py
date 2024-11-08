@@ -349,8 +349,10 @@ def new_nickname():
 @app.route(f"{app.config["APPLICATION_ROOT"]}/logout", methods=["GET", "POST"])
 @check_login
 def logout():
-    del session["nickname"]
-    del session["quiz"]
+    if "nickname" in session:
+        del session["nickname"]
+    if "quiz" in session:
+        del session["quiz"]
 
     return redirect(app.config["APPLICATION_ROOT"])
 
