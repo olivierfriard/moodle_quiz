@@ -99,7 +99,14 @@ def home():
 @app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list", methods=["GET"])
 @check_login
 def topic_list():
-    return render_template("topic_list.html", topics=question_data.keys())
+    """
+    display list of topics
+    """
+    scores: dict = {}
+    for topic in question_data.keys():
+        scores[topic] = get_score(topic)
+
+    return render_template("topic_list.html", topics=question_data.keys(), scores=scores)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/quiz/<topic>", methods=["GET"])
@@ -184,7 +191,7 @@ def question(topic, idx):
         return redirect(f"{app.config["APPLICATION_ROOT"]}/topic_list")
 
     # get score
-    print(f"{get_score(topic)=}")
+    """print(f"{get_score(topic)=}")"""
 
     image_list = []
     for image in question.get("files", []):

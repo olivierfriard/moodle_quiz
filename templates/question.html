@@ -31,7 +31,7 @@
 {% if score %}
 <div class="block">
 <strong>Score</strong> {{ score }}
-<progress class="progress is-primary" value="{{ score }}" max="1"></progress>
+<progress class="progress {% if score < 0.7 %}is-danger{% else %}is-success{% endif %}" value="{{ score }}" max="1"></progress>
 </div>
 {%endif%}
 
