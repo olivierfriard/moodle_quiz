@@ -158,7 +158,7 @@ def get_quiz_sc2(question_data: dict, topic: str, n_questions: int, results: pd.
 
 
 def get_difficulty_tipo(tipo):
-    difficulty_map = {"truefalse": 0.45, "multichoice": 0.25, "shortanswer": 0.1}
+    difficulty_map = {"truefalse": 0.1, "multichoice": 0.25, "shortanswer": 0.4}
     return difficulty_map.get(tipo, 0)  # Ritorna 0 se il tipo non è nella mappa
 
 
@@ -199,19 +199,22 @@ def get_score_studente(ok, no):
     return score_studente
 
 
-def get_random_select(score_medio_studente, score_domande):
+def get_random_select(score_medio_studente, score_domande,f_rnd,f_studente_score):
     n_tot_domande = np.size(score_domande)
-    rnd_walk = score_medio_studente + np.cumsum(np.random.normal(0, 0.05, (n_tot_domande, 1000)), axis=0)
+    rnd_walk = score_medio_studente * f_studente_score + np.cumsum(np.random.normal(0, f_rnd, (n_tot_domande, 1000)), axis=1)
     t = 1000 * np.ones(n_tot_domande)
 
     for i in np.arange(n_tot_domande):
         if score_medio_studente < score_domande[i]:
             tempo = np.where(rnd_walk[i, :] > score_domande[i])[0]
+            
         else:
             tempo = np.where(rnd_walk[i, :] < score_domande[i])[0]
+            
         if np.size(tempo) > 0:
-            t[i] = np.min(tempo)
-
+            t[i] = np.min(tempo) + np.random.normal(1,0.1,1)
+            
+ 
     rank_t = np.argsort(t)
     return rank_t, t
 
@@ -244,9 +247,7 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
     risposteOK = np.array(risultati[(risultati["topic"] == capX)]["n_ok"])
     risposteNO = np.array(risultati[(risultati["topic"] == capX)]["n_no"])
 
-    print(risposteOK)
-    print(risposteNO)
-    print(np.nanmean(risposteNO / (risposteOK + risposteNO)))
+    #print(np.nanmean(risposteNO / (risposteOK + risposteNO)))
 
     score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)
 
@@ -254,9 +255,8 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
 
     score_medio_studente = get_score_studente(risposteOK, risposteNO)
 
-    questions_score, t = get_random_select(score_medio_studente * 1.1, scores_domande)
-
-    # print(f"{questions_score=}")
+    questions_score, t = get_random_select(score_medio_studente, scores_domande,f_rnd,f_student_score)
+    
 
     questions_list = []
     count = 0
@@ -265,20 +265,22 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
 
         # print(nome_domanda)
         tipologia_domanda = risposte.iloc[i]["type"]
-        # print(nome_domanda, tipologia_domanda, scores_studente[i], risposteNO[i]/(risposteNO[i] + risposteOK[i]))
+        sc_domanda = scores_domande[i]
+        
 
         questions_list.append(question_data[capX][tipologia_domanda][nome_domanda])
-        # print("=" * 20)
+        print(tipologia_domanda,sc_domanda,score_medio_studente,t[i])
         count += 1
         if count >= n_questions:
             break
 
-    # print()
-    # print(scores_studente, np.mean(scores_domande), np.mean(scores_domande[0:n_questions]))
-
-    # print(questions_list)
+    
+    #print(questions_list)
 
     return questions_list
 
-
+f_rnd = 0.15 # deviazione standard della normale usata nel random walk
+f_student_score = 1.1 # fattore di moltiplicazione dello score dello studente. se maggiore di 1 le domande selezionate
+                        # hanno un livello di difficoltà superiore allo score medio dello studente 
+                        # (e.g livello medio di difficoltà = f_studente_score * studente_score)
 get_quiz = get_quiz_sc3
