@@ -148,22 +148,25 @@ GROUP BY
 def get_score(topic):
     db = get_db()
     query = """
-SELECT AVG(percentage_ok) AS mean_percentage_ok 
+SELECT (SUM(percentage_ok) / (SELECT COUNT(*) FROM questions WHERE topic = ?)) AS score
 FROM  (
 SELECT 
-    CAST(SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF((SELECT COUNT(*) FROM questions WHERE topic = ?), 0) AS percentage_ok
+    CAST(SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF((SELECT COUNT(*) FROM results WHERE question_name = r.question_name), 0) AS percentage_ok
 FROM 
-    results 
-WHERE 
-    nickname = ?
-GROUP BY 
-    question_name
-) AS subquery;
+    results r
 
+WHERE topic = ? AND nickname = ?
+
+GROUP BY question_name
+) AS subquery;
 """
-    cursor = db.execute(query, (topic, session["nickname"]))
+    cursor = db.execute(query, (topic, topic, session["nickname"]))
     # Fetch all rows
-    return cursor.fetchone()[0]
+    score = cursor.fetchone()[0]
+    if score is not None:
+        return round(score, 3)
+    else:
+        None
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:idx>", methods=["GET"])
