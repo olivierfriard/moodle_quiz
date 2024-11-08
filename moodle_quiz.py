@@ -145,7 +145,10 @@ GROUP BY
     return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
 
 
-def get_score(topic):
+def get_score(topic: str) -> float:
+    """
+    get score of current user for topic
+    """
     db = get_db()
     query = """
 SELECT (SUM(percentage_ok) / (SELECT COUNT(*) FROM questions WHERE topic = ?)) AS score
@@ -172,6 +175,9 @@ GROUP BY question_name
 @app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:idx>", methods=["GET"])
 @check_login
 def question(topic, idx):
+    """
+    show question idx
+    """
     if idx < len(session["quiz"]):
         question = session["quiz"][idx]
     else:
