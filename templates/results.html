@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Results - Duolinzoo</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+</head>
+<body>
+
+  <section class="section">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column is-half">
+
+          <div class="block">
+            <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
+          
+          </div>
+
+<table class="table">
+<thead>
+    
+<tr>
+<td>User</td>
+{% for topic in topics %}
+<th>{{ topic }}</th>
+{% endfor %}
+</tr>
+</thead>
+{% for user in scores %}
+
+<tr>
+<td>{{ user }}</td>
+{% for topic in topics %}
+
+<td>{% if scores[user][topic]  is not none%}{{ scores[user][topic]  }}{% else %}-{%endif%}</td>
+
+{% endfor %}
+
+</tr>
+
+
+</a>
+
+{% endfor %}
+
+</table>
+
+
+</div></div></div>
+</section>
+
+</body>
+</html>

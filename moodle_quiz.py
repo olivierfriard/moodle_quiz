@@ -88,6 +88,7 @@ def get_db():
     db = getattr(g, "_database", None)
     if db is None:
         db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
     return db
 
 
@@ -152,7 +153,7 @@ GROUP BY
     return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
 
 
-def get_score(topic: str) -> float:
+def get_score(topic: str, nickname: str = "") -> float:
     """
     get score of current user for topic
     """
@@ -170,7 +171,7 @@ WHERE topic = ? AND nickname = ?
 GROUP BY question_name
 ) AS subquery;
 """
-    cursor = db.execute(query, (topic, topic, session["nickname"]))
+    cursor = db.execute(query, (topic, topic, session["nickname"] if nickname == "" else nickname))
     # Fetch all rows
     score = cursor.fetchone()[0]
     if score is not None:
@@ -292,6 +293,19 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
         total=len(session["quiz"]),
         score=get_score(topic),
     )
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/results", methods=["GET"])
+def results():
+    with get_db() as db:
+        cursor = db.execute("SELECT * FROM users")
+        scores: dict = {}
+        for user in cursor.fetchall():
+            scores[user["nickname"]] = {}
+            for topic in question_data.keys():
+                scores[user["nickname"]][topic] = get_score(topic, nickname=user["nickname"])
+
+    return render_template("results.html", topics=question_data.keys(), scores=scores)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/login", methods=["GET", "POST"])
