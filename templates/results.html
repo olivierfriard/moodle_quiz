@@ -24,17 +24,25 @@
 <tr>
 <td>User</td>
 {% for topic in topics %}
-<th>{{ topic }}</th>
+<th class="has-text-white">{{ topic }}</th>
 {% endfor %}
 </tr>
 </thead>
 {% for user in scores %}
 
-<tr>
+<tr class="has-text-white">
 <td>{{ user }}</td>
 {% for topic in topics %}
+{% if scores[user][topic] is not none %}
+<td {% if scores[user][topic] < 0.7 %}class="has-background-danger"{% else %}class="has-background-success"{% endif %}>
+  {{  scores[user][topic] }}
+</td>
+{% else %}
+<td>-</td>
+{% endif %}
 
-<td>{% if scores[user][topic]  is not none%}{{ scores[user][topic]  }}{% else %}-{%endif%}</td>
+
+</td>
 
 {% endfor %}
 
