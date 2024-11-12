@@ -372,6 +372,9 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
             )
             db.commit()
 
+        # check
+        # if get_lives_number(session["nickname"] if "nickname" in session else "") == 0:
+
     # save result
     with get_db() as db:
         db.execute(
@@ -492,4 +495,4 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0")

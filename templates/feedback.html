@@ -55,12 +55,18 @@ Your answer:<br>
 </div>
 
 {% if feedback.correct %}
-<button class="button is-success is-fullwidth is-large">{{ feedback.result }}</button><br>
+<button class="button is-success is-fullwidth is-large wrap-text-button"><strong>{{ feedback.result }}</strong></button><br>
 
 {%else%}
 
-<button  class="button is-danger is-fullwidth is-large wrap-text-button">{{ feedback.result }}</button><br>
+<button  class="button is-danger is-fullwidth is-large wrap-text-button"><strong>{{ feedback.result }}</strong></button><br>
 {%endif%}
+<br>
+{% if lives == 0 %}
+<button  class="button is-danger is-fullwidth is-large wrap-text-button">
+<strong>You've lost all your lives; go and recover them.</strong>
+</button>
+{% endif %}
 
 <br>
 
