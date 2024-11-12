@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 
-def get_quiz_test(question_data: dict, topic: str, n_questions: int, results: pd.DataFrame) -> list:
+def get_quiz_test(question_data: dict, topic: str, n_questions: int, results: pd.DataFrame, n_lives: int) -> list:
     """
     return a quiz (list of questions)
 
@@ -17,12 +17,13 @@ def get_quiz_test(question_data: dict, topic: str, n_questions: int, results: pd
         question_data (dict): all the question (extracted from moodle xml file)
         topic (str): topic requested
         n_questions (int): number of questions
-        results (dict): results of user
-
+        results (pd.DataFrame): results of user
+        n_lives (int):  number of lives
     """
 
-    # for numerical type debugging:
-    # return [question_data["lezione 3 - multicellularità"]["03-FI"][1]]
+    print([question_data["Lezione 10 - Anellidi"]["shortanswer"]["1. Struttura caratteristica nei Sipunculidi - FILL IN THE BLANK"]])
+
+    return [question_data["Lezione 10 - Anellidi"]["shortanswer"]["1. Struttura caratteristica nei Sipunculidi - FILL IN THE BLANK"]]
 
     # for image type debugging:
     # return [question_data["lezione 4 - Poriferi"]["shortanswer"]["Q1"]]

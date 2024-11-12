@@ -132,21 +132,25 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 
             # Process feedback
             question_dict["feedback"]["correct"] = (
-                question.find("correctfeedback/text").text if question.find("correctfeedback/text") is not None else None
+                strip_html_tags(question.find("correctfeedback/text").text) if question.find("correctfeedback/text") is not None else None
             )
             question_dict["feedback"]["partiallycorrect"] = (
-                question.find("partiallycorrectfeedback/text").text if question.find("partiallycorrectfeedback/text") is not None else None
+                strip_html_tags(question.find("partiallycorrectfeedback/text").text)
+                if question.find("partiallycorrectfeedback/text") is not None
+                else None
             )
             question_dict["feedback"]["incorrect"] = (
-                question.find("incorrectfeedback/text").text if question.find("incorrectfeedback/text") is not None else None
+                strip_html_tags(question.find("incorrectfeedback/text").text)
+                if question.find("incorrectfeedback/text") is not None
+                else None
             )
 
             # Process answers
             for answer in question.findall("answer"):
                 answer_dict = {
                     "fraction": answer.get("fraction"),
-                    "text": strip_html_tags(answer.find("text").text if answer.find("text") is not None else None),
-                    "feedback": answer.find("feedback/text").text if answer.find("feedback/text") is not None else None,
+                    "text": strip_html_tags(answer.find("text").text) if answer.find("text") is not None else None,
+                    "feedback": strip_html_tags(answer.find("feedback/text").text) if answer.find("feedback/text") is not None else None,
                 }
                 question_dict["answers"].append(answer_dict)
 

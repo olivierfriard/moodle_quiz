@@ -1,30 +1,6 @@
 """
 Duolinzoo
 
-database schema:
-
-CREATE TABLE results (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nickname TEXT NOT NULL,
-    topic TEXT NOT NULL,
-    category TEXT NOT NULL,
-    question_name TEXT NOT NULL,
-    good_answer BOOL NOT NULL
-);
-CREATE TABLE questions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    topic TEXT NOT NULL,
-    type TEXT NOT NULL,
-    name TEXT NOT NULL
-);
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nickname TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL
-);
-CREATE TABLE lives (id INTEGER PRIMARY KEY AUTOINCREMENT,nickname TEXT NOT NULL UNIQUE, number INTEGER DEFAULT 10);
-
-
 """
 
 from pathlib import Path
@@ -34,6 +10,7 @@ import sqlite3
 import pandas as pd
 import tomllib
 import random
+import re
 from markupsafe import Markup
 from flask import Flask, render_template, session, redirect, request, g, flash, url_for
 from functools import wraps
@@ -122,27 +99,26 @@ def create_database() -> None:
     good_answer BOOL NOT NULL)""")
 
     cursor.execute("""
-CREATE TABLE questions (
+    CREATE TABLE questions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     topic TEXT NOT NULL,
     type TEXT NOT NULL,
     name TEXT NOT NULL
-)""")
+    )""")
 
     cursor.execute(
         """
-CREATE TABLE users (
+    CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nickname TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL
-)"""
+    )"""
     )
     cursor.execute(
         """
-CREATE TABLE lives (id INTEGER PRIMARY KEY AUTOINCREMENT,nickname TEXT NOT NULL UNIQUE, number INTEGER DEFAULT 10);
-"""
+        CREATE TABLE lives (id INTEGER PRIMARY KEY AUTOINCREMENT,nickname TEXT NOT NULL UNIQUE, number INTEGER DEFAULT 10);
+        """
     )
-
     conn.commit()
     conn.close()
 
@@ -175,6 +151,13 @@ def get_lives_number(nickname: str) -> int:
             return lives["number"]
         else:
             return None
+
+
+def str_match(stringa: str, template: str) -> bool:
+    # Sostituisce ogni asterisco con '.*' per indicare "qualsiasi sequenza di caratteri"
+    regex_pattern = re.escape(template).replace(r"\*", ".*")
+    # Verifica se la stringa corrisponde al pattern
+    return re.fullmatch(regex_pattern, stringa, re.IGNORECASE) is not None
 
 
 @app.route(app.config["APPLICATION_ROOT"], methods=["GET"])
@@ -352,15 +335,19 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
     for answer in question["answers"]:
         if answer["fraction"] == "100":
             correct_answer_str = answer["text"]
-        if user_answer == answer["text"]:
+        # if user_answer == answer["text"]:
+        if str_match(user_answer, answer["text"]):
             answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
 
     feedback = {"questiontext": session["quiz"][idx]["questiontext"]}
-    if user_answer.upper() == correct_answer_str.upper():
+
+    # if user_answer.upper() == correct_answer_str.upper():
+    if str_match(user_answer, correct_answer_str):
         feedback["result"] = correct_answer()
         feedback["correct"] = True
 
     else:
+        print(f"{answer_feedback=}")
         feedback["result"] = Markup(wrong_answer(correct_answer_str, answer_feedback))
         feedback["correct"] = False
         # remove a life
