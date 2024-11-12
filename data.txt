@@ -1,8 +1,0 @@
-
-# number of questions in each topic
-N_QUESTIONS = 5
-
-# question type to be handled by app
-QUESTION_TYPES = ["truefalse", "multichoice", "shortanswer", "numerical"]
-
-DATABASE_NAME = 'quiz.sqlite'
