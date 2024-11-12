@@ -209,37 +209,36 @@ def create_quiz(topic):
     """
     create the quiz
     """
-    db = get_db()
-    # Execute the query
-    query = """
-SELECT 
-    q.topic AS topic, 
-    q.type AS type, 
-    q.name AS question_name, 
-    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
-    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
-FROM questions q LEFT JOIN results r 
-      ON q.topic=r.topic 
-         AND q.type=r.category 
-         AND q.name=r.question_name
-         AND nickname = ?
-GROUP BY 
-    q.topic, 
-    q.type, 
-    q.name
-"""
 
-    cursor = db.execute(query, (session["nickname"],))
-    # Fetch all rows
-    rows = cursor.fetchall()
-    # Get column names from the cursor description
-    columns = [description[0] for description in cursor.description]
+    with get_db() as db:
+        # Execute the query
+        query = """
+                SELECT 
+                    q.topic AS topic, 
+                    q.type AS type, 
+                    q.name AS question_name, 
+                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
+                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
+                FROM questions q LEFT JOIN results r 
+                    ON q.topic=r.topic 
+                        AND q.type=r.category 
+                        AND q.name=r.question_name
+                        AND nickname = ?
+                GROUP BY 
+                    q.topic, 
+                    q.type, 
+                    q.name
+                """
 
-    df_results = pd.DataFrame(rows, columns=columns)
+        cursor = db.execute(query, (session["nickname"],))
+        # Fetch all rows
+        rows = cursor.fetchall()
+        # Get column names from the cursor description
+        columns = [description[0] for description in cursor.description]
 
-    # print(df_results.head())
+        df_results = pd.DataFrame(rows, columns=columns)
 
-    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results, 1)
+    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results, get_lives_number(session["nickname"]))
     # session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results)
     session["quiz_position"] = 0
     # show 1st question of the new quiz
