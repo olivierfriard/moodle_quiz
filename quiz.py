@@ -218,7 +218,7 @@ def get_random_select(score_medio_studente, score_domande, f_rnd, f_studente_sco
     return rank_t, t
 
 
-def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.DataFrame, quiz_type: int) -> list:
+def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.DataFrame, n_lives: int) -> list:
     """
     return a quiz (list of questions)
 
@@ -228,8 +228,7 @@ def get_quiz_sc3(question_data: dict, topic: str, n_questions: int, results: pd.
         topic (str): topic requested
         n_questions (int): number of questions
         results (pd.DataFrame): results of user
-        quiz_type:  1 # Normal quiz
-                    2 # Life retieval
+        n_lives (int):  number of lives
 
     """
 
