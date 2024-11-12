@@ -23,14 +23,21 @@
 Welcome <strong>{{ session['nickname'] }}</strong>!
 </p>
 </div>
+{% if lives is not none %}
+<div class="block">
+{% for i in range(lives) %}
+&hearts;
+{% endfor %}
+</div>
+{% endif %}
+
+
 {% with messages = get_flashed_messages(with_categories=True) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="notification is-danger">
-            {{ message }}
-        </div>
-        {% endfor %}
-        {% endif %}
+{% if messages %}
+{% for category, message in messages %}
+{{ message }}
+{% endfor %}
+{% endif %}
 {% endwith %}
 
 {% if session['nickname'] %}

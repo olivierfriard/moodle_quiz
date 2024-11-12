@@ -16,8 +16,15 @@
 
           <div class="block">
             <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
-          
           </div>
+
+{% if lives is not none %}
+<div class="block">
+{% for i in range(lives) %}
+&hearts;
+{% endfor %}
+</div>
+{% endif %}
 
 {% for topic in topics %}
 

@@ -28,11 +28,20 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
             return [s for s in strings if s not in sorted_strings[:2]]
         return strings  # If there are fewer than 3 elements, return the original list
 
-    def find_common_prefix(lista: List[str]) -> str:
+    def find_common_prefix(lista: List[list]) -> str:
         # written by chatGPT
         if not lista:
             return ""
+        common_prefix: list = []
+        for idx, element in enumerate(lista[0]):
+            if len(set([x[idx] for x in lista])) == 1:
+                common_prefix.append(element)
+            else:
+                return "/".join(common_prefix) + "/"
 
+        return "/".join(common_prefix) + "/"
+
+        """
         # Trova il prefisso comune più lungo
         prefisso_comune = lista[0]
         for stringa in lista[1:]:
@@ -42,8 +51,14 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
                     return ""
 
         return prefisso_comune
+        """
 
-    def strip_html_tags(text):
+    def strip_html_tags(text: str) -> str:
+        """
+        remove HTML tags if text is string else retursn empty string
+        """
+        if text is None:
+            return ""
         clean = re.compile("<.*?>")
         return re.sub(clean, "", text)
 
@@ -59,19 +74,21 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
         if question_type == "category":
             category_text = question.find("category/text").text
             if category_text not in all_categories:
-                all_categories.append(category_text)
+                all_categories.append(category_text.split("/"))
 
+    # remove 2 first categories ("$course$/top/Default ..." ...)
     all_categories = remove_two_shortest(all_categories)
 
     # print(f"{all_categories=}")
 
     prefix_to_remove = find_common_prefix(all_categories)
 
-    print(f"{prefix_to_remove=}")
+    # print(f"{prefix_to_remove=}")
 
     # Dictionary to hold questions organized by category
     categories_dict = defaultdict(list)
     current_category = "Uncategorized"
+    current_id_number = 0
 
     # Parse the XML tree
     for question in root.findall("question"):
@@ -80,9 +97,17 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
         # Handle category change
         if question_type == "category":
             category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
-            category_list = category_text.split("/")
-            # if base_category in category_list:
-            #    category_list.remove(base_category)
+            # id number is used to order categories
+            if question.find("idnumber").text is None:
+                id_number = current_id_number
+            else:
+                try:
+                    id_number = float(question.find("idnumber").text)
+                except Exception:
+                    id_number = question.find("idnumber").text
+
+            current_id_number = id_number
+            category_list = [id_number] + category_text.split("/")
 
             category_tuple = tuple(category_list)
 
@@ -141,12 +166,21 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 
                 question_dict["files"].append(file_.get("name"))
 
-            if len(current_category) == 2:
-                # Add the question to the respective category
-                if current_category[0] not in categories_dict:
-                    categories_dict[current_category[0]] = {}
-                if current_category[1] not in categories_dict[current_category[0]]:
-                    categories_dict[current_category[0]][current_category[1]] = []
-                categories_dict[current_category[0]][current_category[1]].append(question_dict)
+            """if len(current_category) == 3:"""
+            # Add the question to the respective category
+            if current_category[0:2] not in categories_dict:
+                categories_dict[current_category[0:2]] = {}
+            if question_dict["type"] not in categories_dict[current_category[0:2]]:
+                categories_dict[current_category[0:2]][question_dict["type"]] = []
+            # if current_category[2] not in categories_dict[current_category[0:2]]:
+            #    categories_dict[current_category[0:2]][current_category[2]] = []
+            categories_dict[current_category[0:2]][question_dict["type"]].append(question_dict)
+
+    # print(categories_dict.keys())
+
+    # sort dict categories by id_number
+    categories_dict = dict(sorted(categories_dict.items()))
+    # remove id_number
+    categories_dict = {key[1]: value for key, value in categories_dict.items()}
 
     return dict(categories_dict)

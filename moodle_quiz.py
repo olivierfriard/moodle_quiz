@@ -1,3 +1,32 @@
+"""
+Duolinzoo
+
+database schema:
+
+CREATE TABLE results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT NOT NULL,
+    topic TEXT NOT NULL,
+    category TEXT NOT NULL,
+    question_name TEXT NOT NULL,
+    good_answer BOOL NOT NULL
+);
+CREATE TABLE questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic TEXT NOT NULL,
+    type TEXT NOT NULL,
+    name TEXT NOT NULL
+);
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL
+);
+CREATE TABLE lives (id INTEGER PRIMARY KEY AUTOINCREMENT,nickname TEXT NOT NULL UNIQUE, number INTEGER DEFAULT 10);
+
+
+"""
+
 from pathlib import Path
 import hashlib
 import quiz
@@ -24,6 +53,7 @@ def get_quiz_config(xml_file: str):
             "N_QUESTIONS": 5,
             "QUESTION_TYPES": ["truefalse", "multichoice", "shortanswer", "numerical"],
             "DATABASE_NAME": "quiz.sqlite",
+            "INITIAL_LIFE_NUMBER": 10,
         }
     return config
 
@@ -68,9 +98,62 @@ app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
 config = get_quiz_config(XML_FILE)
 
-question_data = load_questions(XML_FILE, config)
-
 DATABASE = config["DATABASE_NAME"]
+
+
+def get_db():
+    db = getattr(g, "_database", None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+    return db
+
+
+def create_database() -> None:
+    conn = sqlite3.connect(config["DATABASE_NAME"])
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT NOT NULL,
+    topic TEXT NOT NULL,
+    category TEXT NOT NULL,
+    question_name TEXT NOT NULL,
+    good_answer BOOL NOT NULL)""")
+
+    cursor.execute("""
+CREATE TABLE questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic TEXT NOT NULL,
+    type TEXT NOT NULL,
+    name TEXT NOT NULL
+)""")
+
+    cursor.execute(
+        """
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL
+)"""
+    )
+    cursor.execute(
+        """
+CREATE TABLE lives (id INTEGER PRIMARY KEY AUTOINCREMENT,nickname TEXT NOT NULL UNIQUE, number INTEGER DEFAULT 10);
+"""
+    )
+
+    conn.commit()
+    conn.close()
+
+
+# check if database fiel exists
+if not Path(DATABASE).is_file():
+    print(f"Database file {DATABASE} not found")
+    print("Creating a new one")
+    create_database()
+
+question_data = load_questions(XML_FILE, config)
 
 
 def check_login(f):
@@ -84,17 +167,23 @@ def check_login(f):
     return decorated_function
 
 
-def get_db():
-    db = getattr(g, "_database", None)
-    if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row
-    return db
+def get_lives_number(nickname: str) -> int:
+    with get_db() as db:
+        cursor = db.execute("SELECT number FROM lives WHERE nickname = ?", (nickname,))
+        lives = cursor.fetchone()
+        if lives is not None:
+            return lives["number"]
+        else:
+            return None
 
 
 @app.route(app.config["APPLICATION_ROOT"], methods=["GET"])
 def home():
-    return render_template("home.html")
+    lives = None
+    if "nickname" in session:
+        lives = get_lives_number(session["nickname"])
+
+    return render_template("home.html", lives=lives)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list", methods=["GET"])
@@ -103,11 +192,15 @@ def topic_list():
     """
     display list of topics
     """
+    lives = None
+    if "nickname" in session:
+        lives = get_lives_number(session["nickname"])
+
     scores: dict = {}
     for topic in question_data.keys():
         scores[topic] = get_score(topic)
 
-    return render_template("topic_list.html", topics=question_data.keys(), scores=scores)
+    return render_template("topic_list.html", topics=question_data.keys(), scores=scores, lives=lives)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/quiz/<topic>", methods=["GET"])
@@ -155,7 +248,8 @@ GROUP BY
 
 def get_score(topic: str, nickname: str = "") -> float:
     """
-    get score of current user for topic
+    get score of nickname user for topic
+    if nickname is empty get score of current user
     """
     db = get_db()
     query = """
@@ -177,7 +271,7 @@ GROUP BY question_name
     if score is not None:
         return round(score, 3)
     else:
-        None
+        return 0
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:idx>", methods=["GET"])
@@ -190,9 +284,6 @@ def question(topic, idx):
         question = session["quiz"][idx]
     else:
         return redirect(f"{app.config["APPLICATION_ROOT"]}/topic_list")
-
-    # get score
-    """print(f"{get_score(topic)=}")"""
 
     image_list = []
     for image in question.get("files", []):
@@ -218,6 +309,7 @@ def question(topic, idx):
         idx=idx,
         total=len(session["quiz"]),
         score=get_score(topic),
+        lives=get_lives_number(session["nickname"] if "nickname" in session else ""),
     )
 
 
@@ -261,28 +353,32 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
     for answer in question["answers"]:
         if answer["fraction"] == "100":
             correct_answer_str = answer["text"]
-        print(f"{answer["text"]=}")
         if user_answer == answer["text"]:
-            print("ok")
             answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
-
-    print(answer_feedback)
 
     feedback = {"questiontext": session["quiz"][idx]["questiontext"]}
     if user_answer.upper() == correct_answer_str.upper():
         feedback["result"] = correct_answer()
         feedback["correct"] = True
+
     else:
         feedback["result"] = Markup(wrong_answer(correct_answer_str, answer_feedback))
         feedback["correct"] = False
+        # remove a life
+        with get_db() as db:
+            db.execute(
+                ("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "),
+                (session["nickname"],),
+            )
+            db.commit()
 
-    db = get_db()
-    db.execute(
-        ("INSERT INTO results (nickname, topic, category, question_name,good_answer) VALUES (?, ?, ?, ?, ?)"),
-        (session["nickname"], topic, session["quiz"][idx]["type"], session["quiz"][idx]["name"], feedback["correct"]),
-    )
-
-    db.commit()
+    # save result
+    with get_db() as db:
+        db.execute(
+            ("INSERT INTO results (nickname, topic, category, question_name,good_answer) VALUES (?, ?, ?, ?, ?)"),
+            (session["nickname"], topic, session["quiz"][idx]["type"], session["quiz"][idx]["name"], feedback["correct"]),
+        )
+        db.commit()
 
     return render_template(
         "feedback.html",
@@ -292,6 +388,7 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
         idx=idx,
         total=len(session["quiz"]),
         score=get_score(topic),
+        lives=get_lives_number(session["nickname"] if "nickname" in session else ""),
     )
 
 
@@ -315,26 +412,29 @@ def login():
     if request.method == "POST":
         form_data = request.form
         password_hash = hashlib.sha256(form_data.get("password").encode()).hexdigest()
-        db = get_db()
-        cursor = db.execute(
-            "SELECT count(*) AS n_users FROM users WHERE nickname = ? AND password_hash = ?",
-            (
-                form_data.get("nickname"),
-                password_hash,
-            ),
-        )
-        n_users = cursor.fetchone()
-        if not n_users[0]:
-            flash("Incorrect login. Retry", "error")
-            return render_template("login.html")
+        with get_db() as db:
+            cursor = db.execute(
+                "SELECT count(*) AS n_users FROM users WHERE nickname = ? AND password_hash = ?",
+                (
+                    form_data.get("nickname"),
+                    password_hash,
+                ),
+            )
+            n_users = cursor.fetchone()
+            if not n_users[0]:
+                flash("Incorrect login. Retry", "error")
+                return render_template("login.html")
 
-        else:
-            session["nickname"] = form_data.get("nickname")
-            return redirect(app.config["APPLICATION_ROOT"])
+            else:
+                session["nickname"] = form_data.get("nickname")
+                return redirect(app.config["APPLICATION_ROOT"])
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/new_nickname", methods=["GET", "POST"])
 def new_nickname():
+    """
+    create a nickname
+    """
     if request.method == "GET":
         return render_template("new_nickname.html")
 
@@ -355,25 +455,29 @@ def new_nickname():
 
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
-        db = get_db()
-        cursor = db.execute("SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,))
-        n_users = cursor.fetchone()
-        print(n_users[0])
-        if n_users[0]:
-            flash("Nickname already taken", "error")
-            return render_template("new_nickname.html")
+        with get_db() as db:
+            cursor = db.execute("SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,))
+            n_users = cursor.fetchone()
 
-        try:
-            db.execute("INSERT INTO users (nickname, password_hash) VALUES (?, ?)", (nickname, password_hash))
+            if n_users[0]:
+                flash("Nickname already taken", "error")
+                return render_template("new_nickname.html")
 
-            db.commit()
+            try:
+                db.execute("INSERT INTO users (nickname, password_hash) VALUES (?, ?)", (nickname, password_hash))
+                db.execute("INSERT INTO lives (nickname, number) VALUES (?, ?)", (nickname, config["INITIAL_LIFE_NUMBER"]))
+                db.commit()
 
-            flash("New nickname created", "")
-            return redirect(app.config["APPLICATION_ROOT"])
+                flash(
+                    Markup(f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'),
+                    "",
+                )
+                return redirect(app.config["APPLICATION_ROOT"])
 
-        except Exception:
-            flash("Error creating the new nickname", "error")
-            return redirect(app.config["APPLICATION_ROOT"])
+            except Exception:
+                flash(Markup('<div class="notification is-danger">Error creating the new nickname</div>'), "error")
+
+                return redirect(app.config["APPLICATION_ROOT"])
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/logout", methods=["GET", "POST"])

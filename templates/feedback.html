@@ -30,7 +30,16 @@
   <strong>{{ topic }}</strong> | {{ idx + 1 }} / {{ total }}
 </div>
 
-{% if score %}
+{% if lives is not none %}
+<div class="block">
+{% for i in range(lives) %}
+&hearts;
+{% endfor %}
+</div>
+{% endif %}
+
+
+{% if score is not none %}
 <div class="block">
 <strong>Score</strong> {{ score }}
 <progress class="progress {% if score < 0.7 %}is-danger{% else %}is-success{% endif %}" value="{{ score }}" max="1"></progress>
