@@ -42,10 +42,11 @@ def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
     # utilizzati come seeds in differenti funzioni, se si vuole replicare la sequenza estratta
 
     # Filtra il DataFrame per ottenere solo le domande relative a "Capitolo 1"
-    df_capitolo = df_domande[df_domande["Capitolo"] == topic]
+    df_capitolo = df_domande[df_domande["topic"] == topic].reset_index(drop=True)
 
     # Conta il numero totale di domande nel capitolo filtrato
     ndomande = len(df_capitolo)
+    print(f"{ndomande=}")
 
     # Permuta casualmente gli indici del DataFrame
     shuffled_indices = np.random.permutation(df_capitolo.index)

@@ -182,7 +182,37 @@ def home():
     return render_template("home.html", lives=lives)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROO
+
+    with get_db(config["DATABASE_NAME"]) as db:
+        # Execute the query
+        query = """
+                SELECT 
+                    q.id AS question_id,
+                    q.topic AS topic, 
+                    q.type AS type, 
+                    q.name AS question_name, 
+                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
+                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
+                FROM questions q LEFT JOIN results r 
+                    ON q.topic=r.topic 
+                        AND q.type=r.question_type 
+                        AND q.name=r.question_name
+                        AND nickname = ?
+                GROUP BY 
+                    q.topic, 
+                    q.type, 
+                    q.name
+                """
+
+        cursor = db.execute(query, (session["nickname"],))
+        # Fetch all rows
+        rows = cursor.fetchall()
+        # Get column names from the cursor description
+        columns = [description[0] for description in cursor.description]
+
+        df_results = pd.DataFrame(rows, columns=columns)
+T"]}/topic_list", methods=["GET"])
 @check_login
 def topic_list():
     """
