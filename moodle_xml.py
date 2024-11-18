@@ -41,18 +41,6 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 
         return "/".join(common_prefix) + "/"
 
-        """
-        # Trova il prefisso comune più lungo
-        prefisso_comune = lista[0]
-        for stringa in lista[1:]:
-            while not stringa.startswith(prefisso_comune):
-                prefisso_comune = prefisso_comune[:-1]
-                if not prefisso_comune:
-                    return ""
-
-        return prefisso_comune
-        """
-
     def strip_html_tags(text: str) -> str:
         """
         remove HTML tags if text is string else retursn empty string
@@ -79,7 +67,7 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
     # remove 2 first categories ("$course$/top/Default ..." ...)
     all_categories = remove_two_shortest(all_categories)
 
-    # print(f"{all_categories=}")
+    print(f"{all_categories=}")
 
     prefix_to_remove = find_common_prefix(all_categories)
 
@@ -95,17 +83,20 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
     for question in root.findall("question"):
         question_type = question.get("type")
         if question_type == "category":
+            if len(question.find("category/text").text) < len(prefix_to_remove):
+                continue
             category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
             print(f"{category_text=}")
+            print(question.find("idnumber").text)
             if question.find("idnumber").text is not None:
                 try:
                     id_number = float(question.find("idnumber").text)
                 except Exception:
                     id_number = question.find("idnumber").text
+            if len(category_text.split("/")) == 1:
+                main_categories.add((id_number, category_text.split("/")[0]))
 
-            main_categories.add(category_text)
-
-    print(f"{main_categories=}")
+    print(f"{sorted(main_categories)=}")
 
     # Parse the XML tree
     for question in root.findall("question"):
@@ -113,28 +104,28 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 
         # Handle category change
         if question_type == "category":
-            category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
+            if len(question.find("category/text").text) < len(prefix_to_remove):
+                continue
 
+            category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
             print(f"{category_text=}")
 
-            # id number is used to order categories
-            if question.find("idnumber").text is None:
-                id_number = current_id_number
+            main_cat = category_text.split("/")[0]
+
+            for idx, cat in main_categories:
+                if main_cat == cat:
+                    current_category = (idx, cat)
+                    break
             else:
-                try:
-                    id_number = float(question.find("idnumber").text)
-                except Exception:
-                    id_number = question.find("idnumber").text
+                print("ERROR {main_cat} not found")
+                xxx
+                continue
 
-            current_id_number = id_number
+            # category_list = [id_number] + category_text.split("/")
 
-            print(f"{current_id_number=}")
+            # category_tuple = tuple(category_list)
 
-            category_list = [id_number] + category_text.split("/")
-
-            category_tuple = tuple(category_list)
-
-            current_category = category_tuple if category_tuple else current_category
+            # current_category = category_tuple if category_tuple else current_category
 
             print(f"{current_category=}")
 
@@ -195,7 +186,6 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 
                 question_dict["files"].append(file_.get("name"))
 
-            """if len(current_category) == 3:"""
             # Add the question to the respective category
             if current_category[0:2] not in categories_dict:
                 categories_dict[current_category[0:2]] = {}
@@ -205,10 +195,14 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
             #    categories_dict[current_category[0:2]][current_category[2]] = []
             categories_dict[current_category[0:2]][question_dict["type"]].append(question_dict)
 
-    # print(categories_dict.keys())
-
     # sort dict categories by id_number
     categories_dict = dict(sorted(categories_dict.items()))
+
+    print()
+    print(categories_dict.keys())
+
+    # print([categories_dict[x] for x in categories_dict])
+
     # remove id_number
     categories_dict = {key[1]: value for key, value in categories_dict.items()}
 

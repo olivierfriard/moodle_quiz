@@ -72,6 +72,7 @@ def load_questions_xml(xml_file: str, config: dict) -> int:
         conn.commit()
         conn.close()
     except Exception:
+        raise
         return 1
     return 0
 
