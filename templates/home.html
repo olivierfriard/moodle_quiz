@@ -46,14 +46,14 @@ Welcome <strong>{{ session['nickname'] }}</strong>!
 
     
 
-    {%else%}
+    {% else %}
 
     <a class="button is-link" href="{{ url_for('login') }}">Login</a>
 
     <a class="button is-link" href="{{ url_for('new_nickname') }}">New nickname</a>
 
 
-    {%endif%}
+    {% endif %}
 
 
           </div>

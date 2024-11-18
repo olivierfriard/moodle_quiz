@@ -49,6 +49,6 @@ print(df_results.columns)
 
 seed = hash_obj = int(hashlib.md5((NICKNAME + TOPIC).encode()).hexdigest(), 16)
 
-df_tappe = quiz.crea_tappe(df_results, TOPIC, N_TAPPE, 1, N_DOMANDE, seed)
+df_tappe = quiz.crea_tappe(df_results, TOPIC, N_TAPPE, N_DOMANDE, seed)
 
 print(df_tappe[0])
