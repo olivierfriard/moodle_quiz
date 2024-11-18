@@ -36,7 +36,7 @@ def get_quiz_test(question_data: dict, topic: str, n_questions: int, results: pd
     return random.sample(questions_list, n_questions)
 
 
-def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
+def crea_tappe(df_domande, topic, n_tappe, idx, n_domande_x_quiz, seed):
     # Imposta un seed per garantire che la permutazione sia riproducibile
     # IDEA: Quando lo studente si logga per la prima volta, gli si potrebbe assegnare un array di N numeri, che saranno
     # utilizzati come seeds in differenti funzioni, se si vuole replicare la sequenza estratta
@@ -68,7 +68,7 @@ def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
         df_tappe.append(df_tappa)
         start = end
 
-    return df_tappe
+    return df_tappe[idx]
 
 
 def get_difficulty_tipo(tipo):
