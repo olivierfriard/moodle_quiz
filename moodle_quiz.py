@@ -1,6 +1,5 @@
 """
 Duolinzoo
-
 """
 
 from pathlib import Path
