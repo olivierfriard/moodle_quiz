@@ -83,12 +83,29 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 
     prefix_to_remove = find_common_prefix(all_categories)
 
-    # print(f"{prefix_to_remove=}")
+    print(f"{prefix_to_remove=}")
 
     # Dictionary to hold questions organized by category
     categories_dict = defaultdict(list)
     current_category = "Uncategorized"
     current_id_number = 0
+
+    main_categories = set()
+    # parse all main categories
+    for question in root.findall("question"):
+        question_type = question.get("type")
+        if question_type == "category":
+            category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
+            print(f"{category_text=}")
+            if question.find("idnumber").text is not None:
+                try:
+                    id_number = float(question.find("idnumber").text)
+                except Exception:
+                    id_number = question.find("idnumber").text
+
+            main_categories.add(category_text)
+
+    print(f"{main_categories=}")
 
     # Parse the XML tree
     for question in root.findall("question"):
@@ -97,6 +114,9 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
         # Handle category change
         if question_type == "category":
             category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
+
+            print(f"{category_text=}")
+
             # id number is used to order categories
             if question.find("idnumber").text is None:
                 id_number = current_id_number
@@ -107,11 +127,16 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
                     id_number = question.find("idnumber").text
 
             current_id_number = id_number
+
+            print(f"{current_id_number=}")
+
             category_list = [id_number] + category_text.split("/")
 
             category_tuple = tuple(category_list)
 
             current_category = category_tuple if category_tuple else current_category
+
+            print(f"{current_category=}")
 
         # Handle actual questions
         else:

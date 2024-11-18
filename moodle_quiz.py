@@ -11,6 +11,8 @@ import pandas as pd
 import tomllib
 import random
 import re
+import json
+import sys
 from markupsafe import Markup
 from flask import Flask, render_template, session, redirect, request, g, flash, url_for
 from functools import wraps
@@ -35,36 +37,43 @@ def get_quiz_config(xml_file: str):
     return config
 
 
-def load_questions(xml_file: str, config: dict):
-    # load questions from xml moodle file
-    question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], "duolinzoo/images")
-    # re-organize the questions structure
-    question_data: dict = {}
-    for topic in question_data1:
-        question_data[topic] = {}
-        for category in question_data1[topic]:
-            for question in question_data1[topic][category]:
-                if question["type"] not in question_data[topic]:
-                    question_data[topic][question["type"]] = {}
+def load_questions_xml(xml_file: str, config: dict) -> int:
+    try:
+        # load questions from xml moodle file
+        question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], "duolinzoo/images")
 
-                question_data[topic][question["type"]][question["name"]] = question
+        # print(f"{question_data1['11 - Molluschi'].keys()=}")
 
-    conn = sqlite3.connect(config["DATABASE_NAME"])
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM questions")
+        # re-organize the questions structure
+        question_data: dict = {}
+        for topic in question_data1:
+            question_data[topic] = {}
+            for question_type in question_data1[topic]:
+                for question in question_data1[topic][question_type]:
+                    if question["type"] not in question_data[topic]:
+                        question_data[topic][question["type"]] = {}
 
-    conn.commit()
-    for topic in question_data:
-        for type_ in question_data[topic]:
-            for question in question_data[topic][type_]:
-                cursor.execute(
-                    "INSERT INTO questions (topic, type, name) VALUES (?, ?, ?)",
-                    (topic, type_, question),
-                )
-    conn.commit()
-    conn.close()
+                    question_data[topic][question["type"]][question["name"]] = question
 
-    return question_data
+        # load questions in database
+        conn = sqlite3.connect(config["DATABASE_NAME"])
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM questions")
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'questions'")
+
+        conn.commit()
+        for topic in question_data:
+            for type_ in question_data[topic]:
+                for question_name in question_data[topic][type_]:
+                    cursor.execute(
+                        "INSERT INTO questions (topic, type, name, content) VALUES (?, ?, ?, ?)",
+                        (topic, type_, question_name, json.dumps(question_data[topic][type_][question_name])),
+                    )
+        conn.commit()
+        conn.close()
+    except Exception:
+        return 1
+    return 0
 
 
 app = Flask(__name__, static_folder="duolinzoo")
@@ -75,13 +84,13 @@ app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
 config = get_quiz_config(XML_FILE)
 
-DATABASE = config["DATABASE_NAME"]
+# DATABASE = config["DATABASE_NAME"]
 
 
-def get_db():
+def get_db(database_name):
     db = getattr(g, "_database", None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
+        db = g._database = sqlite3.connect(database_name)
         db.row_factory = sqlite3.Row
     return db
 
@@ -94,7 +103,7 @@ def create_database() -> None:
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nickname TEXT NOT NULL,
     topic TEXT NOT NULL,
-    category TEXT NOT NULL,
+    question_type TEXT NOT NULL,
     question_name TEXT NOT NULL,
     good_answer BOOL NOT NULL)""")
 
@@ -103,7 +112,8 @@ def create_database() -> None:
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     topic TEXT NOT NULL,
     type TEXT NOT NULL,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    content TEXT not NULL
     )""")
 
     cursor.execute(
@@ -124,12 +134,15 @@ def create_database() -> None:
 
 
 # check if database fiel exists
-if not Path(DATABASE).is_file():
-    print(f"Database file {DATABASE} not found")
+if not Path(config["DATABASE_NAME"]).is_file():
+    print(f"Database file {config["DATABASE_NAME"]} not found")
     print("Creating a new one")
     create_database()
 
-question_data = load_questions(XML_FILE, config)
+# load dictionary with questions
+if load_questions_xml(XML_FILE, config):
+    print(f"Error loading the question XML file {XML_FILE}")
+    sys.exit()
 
 
 def check_login(f):
@@ -144,7 +157,7 @@ def check_login(f):
 
 
 def get_lives_number(nickname: str) -> int:
-    with get_db() as db:
+    with get_db(config["DATABASE_NAME"]) as db:
         cursor = db.execute("SELECT number FROM lives WHERE nickname = ?", (nickname,))
         lives = cursor.fetchone()
         if lives is not None:
@@ -179,11 +192,11 @@ def topic_list():
     if "nickname" in session:
         lives = get_lives_number(session["nickname"])
 
-    scores: dict = {}
-    for topic in question_data.keys():
-        scores[topic] = get_score(topic)
+    with get_db(config["DATABASE_NAME"]) as db:
+        topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
+        scores = {topic: get_score(topic) for topic in topics}
 
-    return render_template("topic_list.html", topics=question_data.keys(), scores=scores, lives=lives)
+    return render_template("topic_list.html", topics=topics, scores=scores, lives=lives)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/quiz/<topic>", methods=["GET"])
@@ -193,10 +206,11 @@ def create_quiz(topic):
     create the quiz
     """
 
-    with get_db() as db:
+    with get_db(config["DATABASE_NAME"]) as db:
         # Execute the query
         query = """
                 SELECT 
+                    q.id AS question_id,
                     q.topic AS topic, 
                     q.type AS type, 
                     q.name AS question_name, 
@@ -204,7 +218,7 @@ def create_quiz(topic):
                     SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
                 FROM questions q LEFT JOIN results r 
                     ON q.topic=r.topic 
-                        AND q.type=r.category 
+                        AND q.type=r.question_type 
                         AND q.name=r.question_name
                         AND nickname = ?
                 GROUP BY 
@@ -221,8 +235,8 @@ def create_quiz(topic):
 
         df_results = pd.DataFrame(rows, columns=columns)
 
-    session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results, get_lives_number(session["nickname"]))
-    # session["quiz"] = quiz.get_quiz(question_data, topic, config["N_QUESTIONS"], df_results)
+    session["quiz"] = quiz.get_quiz(topic, config["N_QUESTIONS"], df_results, get_lives_number(session["nickname"]))
+
     session["quiz_position"] = 0
     # show 1st question of the new quiz
     return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
@@ -233,8 +247,8 @@ def get_score(topic: str, nickname: str = "") -> float:
     get score of nickname user for topic
     if nickname is empty get score of current user
     """
-    db = get_db()
-    query = """
+    with get_db(config["DATABASE_NAME"]) as db:
+        query = """
 SELECT (SUM(percentage_ok) / (SELECT COUNT(*) FROM questions WHERE topic = ?)) AS score
 FROM  (
 SELECT 
@@ -247,13 +261,13 @@ WHERE topic = ? AND nickname = ?
 GROUP BY question_name
 ) AS subquery;
 """
-    cursor = db.execute(query, (topic, topic, session["nickname"] if nickname == "" else nickname))
-    # Fetch all rows
-    score = cursor.fetchone()[0]
-    if score is not None:
-        return round(score, 3)
-    else:
-        return 0
+        cursor = db.execute(query, (topic, topic, session["nickname"] if nickname == "" else nickname))
+        # Fetch all rows
+        score = cursor.fetchone()[0]
+        if score is not None:
+            return round(score, 3)
+        else:
+            return 0
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:idx>", methods=["GET"])
@@ -263,7 +277,10 @@ def question(topic, idx):
     show question idx
     """
     if idx < len(session["quiz"]):
-        question = session["quiz"][idx]
+        # get question content
+        with get_db(config["DATABASE_NAME"]) as db:
+            question = json.loads(db.execute("SELECT content FROM questions WHERE id = ?", (session["quiz"][idx],)).fetchone()["content"])
+
     else:
         return redirect(f"{app.config["APPLICATION_ROOT"]}/topic_list")
 
@@ -313,7 +330,9 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
         else:
             return f"The correct answer is:<br>{correct_answer}"
 
-    question = session["quiz"][idx]
+    # get question content
+    with get_db(config["DATABASE_NAME"]) as db:
+        question = json.loads(db.execute("SELECT content FROM questions WHERE id = ?", (session["quiz"][idx],)).fetchone()["content"])
 
     if request.method == "GET":
         # get user answer
@@ -326,7 +345,7 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
         # form_data = request.form
         user_answer = request.form.get("user_answer")
 
-    print(f"{user_answer=} {type(user_answer)}")
+    # print(f"{user_answer=} {type(user_answer)}")
 
     # get correct answer
     correct_answer_str: str = ""
@@ -339,7 +358,7 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
         if str_match(user_answer, answer["text"]):
             answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
 
-    feedback = {"questiontext": session["quiz"][idx]["questiontext"]}
+    feedback = {"questiontext": question["questiontext"]}
 
     # if user_answer.upper() == correct_answer_str.upper():
     if str_match(user_answer, correct_answer_str):
@@ -347,11 +366,11 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
         feedback["correct"] = True
 
     else:
-        print(f"{answer_feedback=}")
+        # print(f"{answer_feedback=}")
         feedback["result"] = Markup(wrong_answer(correct_answer_str, answer_feedback))
         feedback["correct"] = False
         # remove a life
-        with get_db() as db:
+        with get_db(config["DATABASE_NAME"]) as db:
             db.execute(
                 ("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "),
                 (session["nickname"],),
@@ -362,10 +381,10 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
         # if get_lives_number(session["nickname"] if "nickname" in session else "") == 0:
 
     # save result
-    with get_db() as db:
+    with get_db(config["DATABASE_NAME"]) as db:
         db.execute(
-            ("INSERT INTO results (nickname, topic, category, question_name,good_answer) VALUES (?, ?, ?, ?, ?)"),
-            (session["nickname"], topic, session["quiz"][idx]["type"], session["quiz"][idx]["name"], feedback["correct"]),
+            ("INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"),
+            (session["nickname"], topic, question["type"], question["name"], feedback["correct"]),
         )
         db.commit()
 
@@ -383,15 +402,36 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/results", methods=["GET"])
 def results():
-    with get_db() as db:
+    with get_db(config["DATABASE_NAME"]) as db:
         cursor = db.execute("SELECT * FROM users")
         scores: dict = {}
         for user in cursor.fetchall():
             scores[user["nickname"]] = {}
-            for topic in question_data.keys():
+            topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
+            for topic in topics:
                 scores[user["nickname"]][topic] = get_score(topic, nickname=user["nickname"])
 
-    return render_template("results.html", topics=question_data.keys(), scores=scores)
+    return render_template("results.html", topics=topics, scores=scores)
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/admin42", methods=["GET"])
+def admin():
+    with get_db(config["DATABASE_NAME"]) as db:
+        questions_number = db.execute("SELECT COUNT(*) AS questions_number FROM questions").fetchone()["questions_number"]
+
+        users_number = db.execute("SELECT COUNT(*) AS users_number FROM users").fetchone()["users_number"]
+
+        topics = db.execute("SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id").fetchall()
+
+        """scores: dict = {}
+        for user in cursor.fetchall():
+            scores[user["nickname"]] = {}
+            topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
+            for topic in topics:
+                scores[user["nickname"]][topic] = get_score(topic, nickname=user["nickname"])
+        """
+
+    return render_template("admin.html", questions_number=questions_number, topics=topics, users_number=users_number)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/login", methods=["GET", "POST"])
@@ -401,7 +441,7 @@ def login():
     if request.method == "POST":
         form_data = request.form
         password_hash = hashlib.sha256(form_data.get("password").encode()).hexdigest()
-        with get_db() as db:
+        with get_db(config["DATABASE_NAME"]) as db:
             cursor = db.execute(
                 "SELECT count(*) AS n_users FROM users WHERE nickname = ? AND password_hash = ?",
                 (
@@ -444,7 +484,7 @@ def new_nickname():
 
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
-        with get_db() as db:
+        with get_db(config["DATABASE_NAME"]) as db:
             cursor = db.execute("SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,))
             n_users = cursor.fetchone()
 
