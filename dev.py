@@ -2,6 +2,7 @@ import quiz
 import sqlite3
 import pandas as pd
 import numpy as np
+import hashlib
 
 
 def get_db(database_name):
@@ -45,7 +46,8 @@ with get_db("quiz.sqlite") as db:
 
 print(df_results.columns)
 
+seed = hash_obj = int(hashlib.md5((NICKNAME + TOPIC).encode()).hexdigest(), 16)
 
-df_tappe = quiz.crea_tappe(df_results, TOPIC, N_TAPPE, 10, 123)
+df_tappe = quiz.crea_tappe(df_results, TOPIC, N_TAPPE, 10, seed)
 
 print(df_tappe[0])

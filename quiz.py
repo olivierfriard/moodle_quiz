@@ -49,7 +49,10 @@ def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
     print(f"{ndomande=}")
 
     # Permuta casualmente gli indici del DataFrame
-    shuffled_indices = np.random.permutation(df_capitolo.index)
+    rng = np.random.default_rng(seed)
+
+    shuffled_indices = rng.permutation(df_capitolo.index)
+    # shuffled_indices = np.random.permutation(df_capitolo.index)
 
     # Calcola la dimensione approssimativa di ciascun sotto-DataFrame
     chunk_size = len(df_capitolo) // n_tappe
