@@ -118,7 +118,6 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
                     break
             else:
                 print("ERROR {main_cat} not found")
-                xxx
                 continue
 
             # category_list = [id_number] + category_text.split("/")
