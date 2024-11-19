@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topics - Duolinzoo</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+</head>
+<body>
+
+  <section class="section">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column is-half">
+
+          <div class="block">
+            <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
+          </div>
+
+{% if lives %}
+<div class="block">
+{% for i in range(lives) %}
+&hearts;
+{% endfor %}
+</div>
+{% endif %}
+
+<h3 class="title">Recover lives</h3>
+
+
+to be implemented ...
+
+
+</div></div></div>
+</section>
+
+</body>
+</html>
