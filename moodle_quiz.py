@@ -585,7 +585,13 @@ def admin():
                 scores[user["nickname"]][topic] = get_score(topic, nickname=user["nickname"])
         """
 
-    return render_template("admin.html", questions_number=questions_number, topics=topics, users_number=users_number)
+    if Path("data.txt").exists():
+        with open("data.txt", "r") as f_in:
+            data_content = f_in.read()
+
+    return render_template(
+        "admin.html", questions_number=questions_number, topics=topics, users_number=users_number, data_content=data_content
+    )
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/login", methods=["GET", "POST"])
