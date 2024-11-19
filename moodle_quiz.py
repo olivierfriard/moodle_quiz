@@ -130,6 +130,18 @@ def create_database() -> None:
         CREATE TABLE lives (id INTEGER PRIMARY KEY AUTOINCREMENT,nickname TEXT NOT NULL UNIQUE, number INTEGER DEFAULT 10);
         """
     )
+
+    cursor.execute(
+        """
+    CREATE TABLE steps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT NOT NULL,
+    topic TEXT NOT NULL,
+    step_index INTEGER NOT NULL,
+    number INTEGER NOT NULL
+    )"""
+    )
+
     conn.commit()
     conn.close()
 
@@ -200,9 +212,120 @@ def topic_list():
     return render_template("topic_list.html", topics=topics, scores=scores, lives=lives)
 
 
+@app.route(f"{app.config["APPLICATION_ROOT"]}/recover_lives", methods=["GET"])
+@check_login
+def recover_lives():
+    """
+    display recover_lives
+    """
+    lives = None
+    if "nickname" in session:
+        lives = get_lives_number(session["nickname"])
+
+    return render_template("recover_lives.html", lives=lives)
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up", methods=["GET"])
+@check_login
+def brush_up():
+    """
+    display ripasso
+    """
+    lives = None
+    if "nickname" in session:
+        lives = get_lives_number(session["nickname"])
+
+    return render_template("brush_up.html", lives=lives)
+
+
+def get_seed(nickname, topic):
+    return int(hashlib.md5((nickname + topic).encode()).hexdigest(), 16)
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/steps/<topic>", methods=["GET"])
+@check_login
+def steps(topic: str):
+    """
+    display steps
+    """
+
+    lives = None
+    if "nickname" in session:
+        lives = get_lives_number(session["nickname"])
+
+    steps_active = {x: 0 for x in range(1, config["N_STEPS"] + 1)}
+    with get_db(config["DATABASE_NAME"]) as db:
+        rows = db.execute(
+            ("SELECT step_index, number FROM steps WHERE nickname = ? AND topic = ? "),
+            (session["nickname"], topic),
+        ).fetchall()
+        if rows is not None:
+            for row in rows:
+                steps_active[row["step_index"]] = row["number"]
+
+    return render_template(
+        "steps.html",
+        topic=topic,
+        lives=lives,
+        n_steps=config["N_STEPS"],
+        n_quiz_by_step=config["N_QUIZ_BY_STEP"],
+        steps_active=steps_active,
+    )
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/step/<topic>/<int:step>", methods=["GET"])
+@check_login
+def step(topic: str, step: int):
+    """
+    create the step
+    """
+
+    with get_db(config["DATABASE_NAME"]) as db:
+        # Execute the query
+        query = """
+                SELECT 
+                    q.id AS question_id,
+                    q.topic AS topic, 
+                    q.type AS type, 
+                    q.name AS question_name, 
+                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
+                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
+                FROM questions q LEFT JOIN results r 
+                    ON q.topic=r.topic 
+                        AND q.type=r.question_type 
+                        AND q.name=r.question_name
+                        AND nickname = ?
+                GROUP BY 
+                    q.topic, 
+                    q.type, 
+                    q.name
+                """
+
+        cursor = db.execute(query, (session["nickname"],))
+        # Fetch all rows
+        rows = cursor.fetchall()
+        # Get column names from the cursor description
+        columns = [description[0] for description in cursor.description]
+        # create dataframe
+        questions_df = pd.DataFrame(rows, columns=columns)
+
+        steps_df = quiz.crea_tappe(
+            questions_df,
+            topic,
+            config["N_STEPS"],
+            config["N_QUESTIONS"],
+            seed=get_seed(session["nickname"], topic),
+        )
+
+    session["quiz"] = quiz.get_quiz(topic, config["N_QUESTIONS"], steps_df[step - 1], get_lives_number(session["nickname"]))
+    session["quiz_position"] = 0
+
+    return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/{step}/0")
+
+
 @app.route(f"{app.config["APPLICATION_ROOT"]}/quiz/<topic>", methods=["GET"])
 @check_login
-def create_quiz(topic):
+def create_quiz(topic: str):
     """
     create the quiz
     """
@@ -250,18 +373,18 @@ def get_score(topic: str, nickname: str = "") -> float:
     """
     with get_db(config["DATABASE_NAME"]) as db:
         query = """
-SELECT (SUM(percentage_ok) / (SELECT COUNT(*) FROM questions WHERE topic = ?)) AS score
-FROM  (
-SELECT 
-    CAST(SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF((SELECT COUNT(*) FROM results WHERE question_name = r.question_name), 0) AS percentage_ok
-FROM 
-    results r
+    SELECT (SUM(percentage_ok) / (SELECT COUNT(*) FROM questions WHERE topic = ?)) AS score
+    FROM      (
+    SELECT 
+        CAST(SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF((SELECT COUNT(*) FROM results WHERE question_name = r.question_name), 0) AS percentage_ok
+    FROM 
+        results r
 
-WHERE topic = ? AND nickname = ?
+    WHERE topic = ? AND nickname = ?
 
-GROUP BY question_name
-) AS subquery;
-"""
+    GROUP BY question_name
+    ) AS subquery;
+    """
         cursor = db.execute(query, (topic, topic, session["nickname"] if nickname == "" else nickname))
         # Fetch all rows
         score = cursor.fetchone()[0]
@@ -271,19 +394,47 @@ GROUP BY question_name
             return 0
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:idx>", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:step>/<int:idx>", methods=["GET"])
 @check_login
-def question(topic, idx):
+def question(topic: str, step: int, idx: int):
     """
     show question idx
     """
+    # check if quiz is finished
     if idx < len(session["quiz"]):
         # get question content
         with get_db(config["DATABASE_NAME"]) as db:
             question = json.loads(db.execute("SELECT content FROM questions WHERE id = ?", (session["quiz"][idx],)).fetchone()["content"])
-
     else:
-        return redirect(f"{app.config["APPLICATION_ROOT"]}/topic_list")
+        # step/quiz finished
+
+        with get_db(config["DATABASE_NAME"]) as db:
+            row = db.execute(
+                ("SELECT number FROM steps WHERE nickname = ? AND topic = ? AND step_index = ?"),
+                (session["nickname"], topic, step),
+            ).fetchone()
+            if row is None:
+                db.execute(
+                    ("INSERT INTO steps (nickname, topic, step_index, number) VALUES (?, ?, ?, ?)"),
+                    (session["nickname"], topic, step, 1),
+                )
+                db.commit()
+
+            else:
+                db.execute(
+                    ("UPDATE steps SET number = number + 1 WHERE nickname = ? AND topic = ? AND step_index = ?"),
+                    (session["nickname"], topic, step),
+                )
+                db.commit()
+                if row["number"] == 4:
+                    flash(
+                        Markup(
+                            f'<div class="notification is-success"><p class="is-size-3 has-text-weight-bold">Good! You just finished the step #{step}</p></div>'
+                        ),
+                        "",
+                    )
+
+        return redirect(f"{app.config["APPLICATION_ROOT"]}/steps/{topic}")
 
     image_list = []
     for image in question.get("files", []):
@@ -306,6 +457,7 @@ def question(topic, idx):
         type_=type_,
         placeholder=placeholder,
         topic=topic,
+        step=step,
         idx=idx,
         total=len(session["quiz"]),
         score=get_score(topic),
@@ -313,10 +465,10 @@ def question(topic, idx):
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:idx>/<path:user_answer>", methods=["GET"])
-@app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:idx>", methods=["POST"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:step>/<int:idx>/<path:user_answer>", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:step>/<int:idx>", methods=["POST"])
 @check_login
-def check_answer(topic: str, idx: int, user_answer: str = ""):
+def check_answer(topic: str, step: int, idx: int, user_answer: str = ""):
     """
     check user answer and display feedback and score
     """
@@ -394,6 +546,7 @@ def check_answer(topic: str, idx: int, user_answer: str = ""):
         feedback=feedback,
         user_answer=user_answer,
         topic=topic,
+        step=step,
         idx=idx,
         total=len(session["quiz"]),
         score=get_score(topic),
@@ -508,6 +661,19 @@ def new_nickname():
                 flash(Markup('<div class="notification is-danger">Error creating the new nickname</div>'), "error")
 
                 return redirect(app.config["APPLICATION_ROOT"])
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/delete", methods=["GET", "POST"])
+@check_login
+def delete():
+    with get_db(config["DATABASE_NAME"]) as db:
+        db.execute("DELETE FROM users WHERE nickname = ?", (session["nickname"],))
+        db.execute("DELETE FROM lives WHERE nickname = ?", (session["nickname"],))
+        db.execute("DELETE FROM steps WHERE nickname = ?", (session["nickname"],))
+        db.commit()
+
+    del session["nickname"]
+    return redirect(app.config["APPLICATION_ROOT"])
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/logout", methods=["GET", "POST"])

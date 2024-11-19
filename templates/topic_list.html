@@ -28,14 +28,16 @@
 
 {% for topic in topics %}
 
-<a class="button is-large is-fullwidth" href="{{ url_for('create_quiz', topic=topic) }}" style="position: relative; display: inline-block; overflow: hidden; padding-bottom: 1.3em; margin-bottom: 1.2em;">
-  <span style="position: relative; z-index: 1; display: block; text-align: center;">{{ topic }}</span>
-  {% if scores[topic] %}
-  <progress class="progress is-small {% if scores[topic] < 0.7 %}is-danger{% else %}is-success{% endif %}" value="{{ scores[topic] }}" max="1" style="position: absolute; bottom: 0.5em; left: 0; width: 100%; height: 0.5em;">
-  </progress>
+<a class="button is-large is-fullwidth" href="{{ url_for('steps', topic=topic) }}" style="position: relative; display: inline-block; overflow: hidden; padding-bottom: 1.3em; margin-bottom: 1.2em;">
 
+<span style="position: relative; z-index: 1; display: block; text-align: center;">{{ topic }}</span>
 
-  {% endif %}
+{#
+{% if scores[topic] %}
+<progress class="progress is-small {% if scores[topic] < 0.7 %}is-danger{% else %}is-success{% endif %}" value="{{ scores[topic] }}" max="1" style="position: absolute; bottom: 0.5em; left: 0; width: 100%; height: 0.5em;">
+</progress>
+{% endif %}
+#}
 </a>
 
 {% endfor %}

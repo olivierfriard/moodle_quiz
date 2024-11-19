@@ -8,14 +8,14 @@
 
 </head>
 <body>
-  <section class="section">
-    <div class="container">
-      <div class="columns is-centered">
-        <div class="column is-half">
-          <div class="box">
-            <h1 class="title">
-              Duolinzoo
-            </h1>
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
+<div class="box">
+<h1 class="title">
+Duolinzoo
+</h1>
 
     
 <div class="block">
@@ -42,41 +42,38 @@ Welcome <strong>{{ session['nickname'] }}</strong>!
 
 {% if session['nickname'] %}
 
-    <a class="button is-link " href="{{ url_for('topic_list') }}">View topics</a>
 
-    
+<a class="button is-large is-fullwidth" href="{{ url_for('topic_list') }}" style=" margin-bottom: 1.2em;">View topics</a>
 
-    {% else %}
+<a class="button is-large is-fullwidth " href="{{ url_for('recover_lives') }}" style="margin-bottom: 1.2em;">Recover lives</a>
 
-    <a class="button is-link" href="{{ url_for('login') }}">Login</a>
+<a class="button is-large is-fullwidth " href="{{ url_for('brush_up') }}" style="margin-bottom: 1.2em;">Brush-up</a>
 
-    <a class="button is-link" href="{{ url_for('new_nickname') }}">New nickname</a>
+{% else %}
 
+<a class="button is-link" href="{{ url_for('login') }}">Login</a>
 
-    {% endif %}
+<a class="button is-link" href="{{ url_for('new_nickname') }}">New nickname</a>
 
+{% endif %}
 
-          </div>
+</div>
 
-          {% if session['nickname'] %}
-<a href="{{ url_for('logout') }}" class="button is-small is-danger" onclick="return confirmLogout()">Logout</a>
+{% if session['nickname'] %}
+<a href="{{ url_for('logout') }}" class="button is-danger is-pulled-right" onclick="return confirm_()">Logout</a><br><br>
+<a href="{{ url_for('delete') }}" class="button is-small is-danger is-pulled-right" onclick="return confirm_()">Delete nickname</a>
 {%endif%}
-        </div>
 
-
+</div>
        
-        
+</div>
 
-      </div>
-
-
-
-    </div>
-  </section>
+</div>
+</section>
 </body>
 <script>
-  function confirmLogout() {
-    return confirm("Are you sure you want to logout?");
-  }
+function confirm_() {
+    return confirm("Are you sure?");
+}
 </script>
 </html>

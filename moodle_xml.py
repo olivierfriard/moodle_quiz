@@ -88,6 +88,7 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
             category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
             print(f"{category_text=}")
             print(question.find("idnumber").text)
+            id_number = 0
             if question.find("idnumber").text is not None:
                 try:
                     id_number = float(question.find("idnumber").text)

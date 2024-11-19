@@ -24,26 +24,42 @@
                     <a href="{{ url_for('topic_list') }}" class="button is-link is-small">Topics</a>
                   
                   </div>
-<div class="block">
+
+{#
+ <div class="block">
   <strong>{{ topic }}</strong> | {{ idx + 1 }} / {{ total }}
 </div>
-
+#}
 
 {% if lives is not none %}
 <div class="block">
 {% for i in range(lives) %}
-&hearts;
+<strong>&hearts;</strong>
 {% endfor %}
 </div>
 {% endif %}
 
 
+<h3 class="title">{{ topic }}   step #{{step}}</h3>
+
+{% if lives == 0 %}
+
+<a  class="button is-danger is-fullwidth is-large wrap-text-button" href="{{ url_for('recover_lives') }}">
+  <strong>You've lost all your lives...<br>Click to recover them.</strong>
+  </a>
+
+
+{% else %}
+
+
+{#
 {% if score is not none %}
 <div class="block">
 <strong>Score</strong> {{ score }}
 <progress class="progress {% if score < 0.7 %}is-danger{% else %}is-success{% endif %}" value="{{ score }}" max="1"></progress>
 </div>
 {%endif%}
+#}
 
 <h2 class="title">{{ question.questiontext }}</h2>
 
@@ -60,8 +76,8 @@
 {% if question.type == 'truefalse' %}
 <div class="columns">
 
-<div class="column"><a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer='true') }}" class="button  is-info is-large"><strong>VERO</strong></a></div>
-<div class="column"><a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer='false') }}" class="button  is-info is-large"><strong>FALSO</strong></a></div>
+<div class="column"><a href="{{ url_for('check_answer', topic=topic, step=step, idx=idx, user_answer='true') }}" class="button  is-info is-large"><strong>VERO</strong></a></div>
+<div class="column"><a href="{{ url_for('check_answer', topic=topic, step=step, idx=idx, user_answer='false') }}" class="button  is-info is-large"><strong>FALSO</strong></a></div>
 
 </div>
 
@@ -70,7 +86,7 @@
 {% for answer in answers %}
 <div class="columns">
 <div class="column is-full">
-<a href="{{ url_for('check_answer', topic=topic, idx=idx, user_answer=answer.text) }}" class="button is-info is-large is-fullwidth wrap-text-button"><strong>{{ answer.text }}</strong></a><br>
+<a href="{{ url_for('check_answer', topic=topic, step=step, idx=idx, user_answer=answer.text) }}" class="button is-info is-large is-fullwidth wrap-text-button"><strong>{{ answer.text }}</strong></a><br>
 </div>
 </div>
 {%endfor%}
@@ -81,7 +97,7 @@
 
 {%else%}
 {# shortanswer or numerical #}
-<form action="{{ url_for('check_answer', topic=topic, idx=idx) }}" method="post">
+<form action="{{ url_for('check_answer', topic=topic, step=step, idx=idx) }}" method="post">
 <div class="field">
     <label class="label">Your answer</label>
     <div class="control">
@@ -97,6 +113,7 @@
 </form>
 {%endif%}
 
+{% endif %}{# lives == 0 #}
 
 
 </div></div>
