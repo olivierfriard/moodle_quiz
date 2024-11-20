@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Topics - Duolinzoo</title>
+    <title>Topics - {{ course }}</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
@@ -15,8 +15,10 @@
         <div class="column is-half">
 
           <div class="block">
-            <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
+            <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
           </div>
+
+<h3 class="title">{{ course }}</h3>
 
 {% if lives is not none %}
 <div class="block">
@@ -41,7 +43,7 @@
 
 {% for step in range(1, n_steps + 1) %}
 
-<a class="button is-large is-fullwidth" href="{{ url_for('step', topic=topic, step=step) }}" style=" margin-bottom: 1.2em;" 
+<a class="button is-large is-fullwidth" href="{{ url_for('step', course=course, topic=topic, step=step) }}" style=" margin-bottom: 1.2em;" 
 
 {% if step > 1 %}
 {% if steps_active[step - 1] < n_quiz_by_step %}

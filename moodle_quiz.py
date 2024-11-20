@@ -19,13 +19,11 @@ from functools import wraps
 import moodle_xml
 
 
-XML_FILE = "data.xml"
-
-
-def get_quiz_config(xml_file: str):
+def get_course_config(course: str):
     # check config file
-    if Path(xml_file).with_suffix(".txt").is_file():
-        with open(Path(xml_file).with_suffix(".txt"), "rb") as f:
+    xml_file = Path(course).with_suffix(".xml")
+    if xml_file.with_suffix(".txt").is_file():
+        with open(xml_file.with_suffix(".txt"), "rb") as f:
             config = tomllib.load(f)
     else:
         config = {
@@ -40,7 +38,9 @@ def get_quiz_config(xml_file: str):
 def load_questions_xml(xml_file: str, config: dict) -> int:
     try:
         # load questions from xml moodle file
-        question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], "duolinzoo/images")
+        question_data1 = moodle_xml.moodle_xml_to_dict_with_images(
+            xml_file, config["QUESTION_TYPES"], "duolinzoo/images"
+        )
 
         # print(f"{question_data1['11 - Molluschi'].keys()=}")
 
@@ -67,7 +67,12 @@ def load_questions_xml(xml_file: str, config: dict) -> int:
                 for question_name in question_data[topic][type_]:
                     cursor.execute(
                         "INSERT INTO questions (topic, type, name, content) VALUES (?, ?, ?, ?)",
-                        (topic, type_, question_name, json.dumps(question_data[topic][type_][question_name])),
+                        (
+                            topic,
+                            type_,
+                            question_name,
+                            json.dumps(question_data[topic][type_][question_name]),
+                        ),
                     )
         conn.commit()
         conn.close()
@@ -83,12 +88,9 @@ app.config["DEBUG"] = True
 # print(app.config)
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
-config = get_quiz_config(XML_FILE)
 
-# DATABASE = config["DATABASE_NAME"]
-
-
-def get_db(database_name):
+def get_db(course):
+    database_name = Path(course).with_suffix(".sqlite")
     db = getattr(g, "_database", None)
     if db is None:
         db = g._database = sqlite3.connect(database_name)
@@ -96,8 +98,13 @@ def get_db(database_name):
     return db
 
 
-def create_database() -> None:
-    conn = sqlite3.connect(config["DATABASE_NAME"])
+def create_database(course) -> None:
+    """
+    create a new database
+    """
+    database_name = Path(course).with_suffix(".sqlite")
+
+    conn = sqlite3.connect(database_name)
     cursor = conn.cursor()
     cursor.execute("""
     CREATE TABLE results (
@@ -146,31 +153,47 @@ def create_database() -> None:
     conn.close()
 
 
-# check if database fiel exists
-if not Path(config["DATABASE_NAME"]).is_file():
-    print(f"Database file {config["DATABASE_NAME"]} not found")
-    print("Creating a new one")
-    create_database()
+for xml_file in Path(".").glob("*.xml"):
+    # check if database sqlite file exists
+    if not xml_file.with_suffix(".sqlite"):
+        print(f"Database file {xml_file.stem} not found")
+        print("Creating a new one")
+        create_database(xml_file.stem)
 
-# load dictionary with questions
-if load_questions_xml(XML_FILE, config):
-    print(f"Error loading the question XML file {XML_FILE}")
-    sys.exit()
+    # populate database with questions
+    if load_questions_xml(xml_file, get_course_config(xml_file)):
+        print(f"Error loading the question XML file {xml_file}")
+        sys.exit()
 
 
 def check_login(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "nickname" not in session:
-            flash("You must be logged to use Duolinzoo", "error")
-            return redirect(url_for("home"))
+            flash("You must be logged", "error")
+            return redirect(url_for("home"), course=kwargs["course"])
         return f(*args, **kwargs)
 
     return decorated_function
 
 
-def get_lives_number(nickname: str) -> int:
-    with get_db(config["DATABASE_NAME"]) as db:
+def course_exists(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not Path(kwargs["course"]).with_suffix(".sqlite").is_file():
+            return "The course does not exists"
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def get_lives_number(course: str, nickname: str) -> int | None:
+    """
+    get number of lives for nickname
+    """
+    if not Path(course).with_suffix(".sqlite").is_file():
+        return None
+    with get_db(course) as db:
         cursor = db.execute("SELECT number FROM lives WHERE nickname = ?", (nickname,))
         lives = cursor.fetchone()
         if lives is not None:
@@ -180,81 +203,96 @@ def get_lives_number(nickname: str) -> int:
 
 
 def str_match(stringa: str, template: str) -> bool:
+    """
+    check match between str and pattern with *
+    """
     # Sostituisce ogni asterisco con '.*' per indicare "qualsiasi sequenza di caratteri"
     regex_pattern = re.escape(template).replace(r"\*", ".*")
     # Verifica se la stringa corrisponde al pattern
     return re.fullmatch(regex_pattern, stringa, re.IGNORECASE) is not None
 
 
-@app.route(app.config["APPLICATION_ROOT"], methods=["GET"])
-def home():
+@app.route(f"{app.config["APPLICATION_ROOT"]}/<course>", methods=["GET"])
+@course_exists
+def home(course: str):
     lives = None
     if "nickname" in session:
-        lives = get_lives_number(session["nickname"])
+        lives = get_lives_number(course, session["nickname"])
 
-    return render_template("home.html", lives=lives)
+    return render_template("home.html", course=course, lives=lives)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list/<course>", methods=["GET"])
 @check_login
-def topic_list():
+@course_exists
+def topic_list(course: str):
     """
-    display list of topics
+    display list of topics for selected course
     """
     lives = None
     if "nickname" in session:
-        lives = get_lives_number(session["nickname"])
+        lives = get_lives_number(course, session["nickname"])
 
-    with get_db(config["DATABASE_NAME"]) as db:
-        topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
-        scores = {topic: get_score(topic) for topic in topics}
+    with get_db(course) as db:
+        topics: list = [
+            row["topic"]
+            for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()
+        ]
+        scores = {topic: get_score(course, topic) for topic in topics}
 
-    return render_template("topic_list.html", topics=topics, scores=scores, lives=lives)
+    return render_template(
+        "topic_list.html", course=course, topics=topics, scores=scores, lives=lives
+    )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/recover_lives", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/recover_lives/<course>", methods=["GET"])
 @check_login
-def recover_lives():
+@course_exists
+def recover_lives(course: str):
     """
     display recover_lives
     """
     lives = None
     if "nickname" in session:
-        lives = get_lives_number(session["nickname"])
+        lives = get_lives_number(course, session["nickname"])
 
-    return render_template("recover_lives.html", lives=lives)
+    return render_template("recover_lives.html", course=course, lives=lives)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>", methods=["GET"])
 @check_login
-def brush_up():
+@course_exists
+def brush_up(course):
     """
     display ripasso
     """
     lives = None
     if "nickname" in session:
-        lives = get_lives_number(session["nickname"])
+        lives = get_lives_number(course, session["nickname"])
 
-    return render_template("brush_up.html", lives=lives)
+    return render_template("brush_up.html", course=course, lives=lives)
 
 
 def get_seed(nickname, topic):
     return int(hashlib.md5((nickname + topic).encode()).hexdigest(), 16)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/steps/<topic>", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/steps/<course>/<topic>", methods=["GET"])
 @check_login
-def steps(topic: str):
+@course_exists
+def steps(course: str, topic: str):
     """
     display steps
     """
 
+    config = get_course_config(course)
+
     lives = None
     if "nickname" in session:
-        lives = get_lives_number(session["nickname"])
+        lives = get_lives_number(course, session["nickname"])
 
     steps_active = {x: 0 for x in range(1, config["N_STEPS"] + 1)}
-    with get_db(config["DATABASE_NAME"]) as db:
+    with get_db(course) as db:
         rows = db.execute(
             ("SELECT step_index, number FROM steps WHERE nickname = ? AND topic = ? "),
             (session["nickname"], topic),
@@ -265,6 +303,7 @@ def steps(topic: str):
 
     return render_template(
         "steps.html",
+        course=course,
         topic=topic,
         lives=lives,
         n_steps=config["N_STEPS"],
@@ -273,14 +312,20 @@ def steps(topic: str):
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/step/<topic>/<int:step>", methods=["GET"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/step/<course>/<topic>/<int:step>",
+    methods=["GET"],
+)
 @check_login
-def step(topic: str, step: int):
+@course_exists
+def step(course: str, topic: str, step: int):
     """
     create the step
     """
 
-    with get_db(config["DATABASE_NAME"]) as db:
+    config = get_course_config(course)
+
+    with get_db(course) as db:
         # Execute the query
         query = """
                 SELECT 
@@ -317,12 +362,19 @@ def step(topic: str, step: int):
             seed=get_seed(session["nickname"], topic),
         )
 
-    session["quiz"] = quiz.get_quiz(topic, config["N_QUESTIONS"], steps_df[step - 1], get_lives_number(session["nickname"]))
+    session["quiz"] = quiz.get_quiz(
+        topic,
+        config["N_QUESTIONS"],
+        steps_df[step - 1],
+        get_lives_number(course, session["nickname"]),
+    )
     session["quiz_position"] = 0
 
-    return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/{step}/0")
+    # return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{}/{topic}/{step}/0")
+    return redirect(url_for("question", course=course, topic=topic, step=step, idx=0))
 
 
+'''
 @app.route(f"{app.config["APPLICATION_ROOT"]}/quiz/<topic>", methods=["GET"])
 @check_login
 def create_quiz(topic: str):
@@ -359,19 +411,22 @@ def create_quiz(topic: str):
 
         df_results = pd.DataFrame(rows, columns=columns)
 
-    session["quiz"] = quiz.get_quiz(topic, config["N_QUESTIONS"], df_results, get_lives_number(session["nickname"]))
+    session["quiz"] = quiz.get_quiz(
+        topic, config["N_QUESTIONS"], df_results, get_lives_number(session["nickname"])
+    )
 
     session["quiz_position"] = 0
     # show 1st question of the new quiz
     return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
+'''
 
 
-def get_score(topic: str, nickname: str = "") -> float:
+def get_score(course: str, topic: str, nickname: str = "") -> float:
     """
     get score of nickname user for topic
     if nickname is empty get score of current user
     """
-    with get_db(config["DATABASE_NAME"]) as db:
+    with get_db(course) as db:
         query = """
     SELECT (SUM(percentage_ok) / (SELECT COUNT(*) FROM questions WHERE topic = ?)) AS score
     FROM      (
@@ -385,7 +440,9 @@ def get_score(topic: str, nickname: str = "") -> float:
     GROUP BY question_name
     ) AS subquery;
     """
-        cursor = db.execute(query, (topic, topic, session["nickname"] if nickname == "" else nickname))
+        cursor = db.execute(
+            query, (topic, topic, session["nickname"] if nickname == "" else nickname)
+        )
         # Fetch all rows
         score = cursor.fetchone()[0]
         if score is not None:
@@ -394,35 +451,50 @@ def get_score(topic: str, nickname: str = "") -> float:
             return 0
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/question/<topic>/<int:step>/<int:idx>", methods=["GET"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/question/<course>/<topic>/<int:step>/<int:idx>",
+    methods=["GET"],
+)
 @check_login
-def question(topic: str, step: int, idx: int):
+@course_exists
+def question(course: str, topic: str, step: int, idx: int):
     """
     show question idx
     """
     # check if quiz is finished
     if idx < len(session["quiz"]):
         # get question content
-        with get_db(config["DATABASE_NAME"]) as db:
-            question = json.loads(db.execute("SELECT content FROM questions WHERE id = ?", (session["quiz"][idx],)).fetchone()["content"])
+        with get_db(course) as db:
+            question = json.loads(
+                db.execute(
+                    "SELECT content FROM questions WHERE id = ?",
+                    (session["quiz"][idx],),
+                ).fetchone()["content"]
+            )
     else:
         # step/quiz finished
 
-        with get_db(config["DATABASE_NAME"]) as db:
+        with get_db(course) as db:
             row = db.execute(
-                ("SELECT number FROM steps WHERE nickname = ? AND topic = ? AND step_index = ?"),
+                (
+                    "SELECT number FROM steps WHERE nickname = ? AND topic = ? AND step_index = ?"
+                ),
                 (session["nickname"], topic, step),
             ).fetchone()
             if row is None:
                 db.execute(
-                    ("INSERT INTO steps (nickname, topic, step_index, number) VALUES (?, ?, ?, ?)"),
+                    (
+                        "INSERT INTO steps (nickname, topic, step_index, number) VALUES (?, ?, ?, ?)"
+                    ),
                     (session["nickname"], topic, step, 1),
                 )
                 db.commit()
 
             else:
                 db.execute(
-                    ("UPDATE steps SET number = number + 1 WHERE nickname = ? AND topic = ? AND step_index = ?"),
+                    (
+                        "UPDATE steps SET number = number + 1 WHERE nickname = ? AND topic = ? AND step_index = ?"
+                    ),
                     (session["nickname"], topic, step),
                 )
                 db.commit()
@@ -447,7 +519,9 @@ def question(topic: str, step: int, idx: int):
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
         type_ = "number" if question["type"] == "numerical" else "text"
-        placeholder = "Input a number" if question["type"] == "numerical" else "Input a text"
+        placeholder = (
+            "Input a number" if question["type"] == "numerical" else "Input a text"
+        )
 
     return render_template(
         "question.html",
@@ -456,19 +530,29 @@ def question(topic: str, step: int, idx: int):
         answers=answers,
         type_=type_,
         placeholder=placeholder,
+        course=course,
         topic=topic,
         step=step,
         idx=idx,
         total=len(session["quiz"]),
-        score=get_score(topic),
-        lives=get_lives_number(session["nickname"] if "nickname" in session else ""),
+        score=get_score(course, topic),
+        lives=get_lives_number(
+            course, session["nickname"] if "nickname" in session else ""
+        ),
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:step>/<int:idx>/<path:user_answer>", methods=["GET"])
-@app.route(f"{app.config["APPLICATION_ROOT"]}/check_answer/<topic>/<int:step>/<int:idx>", methods=["POST"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/check_answer/<course>/<topic>/<int:step>/<int:idx>/<path:user_answer>",
+    methods=["GET"],
+)
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/check_answer/<course>/<topic>/<int:step>/<int:idx>",
+    methods=["POST"],
+)
 @check_login
-def check_answer(topic: str, step: int, idx: int, user_answer: str = ""):
+@course_exists
+def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str = ""):
     """
     check user answer and display feedback and score
     """
@@ -479,13 +563,19 @@ def check_answer(topic: str, step: int, idx: int, user_answer: str = ""):
     def wrong_answer(correct_answer, answer_feedback):
         # feedback
         if answer_feedback:
-            return f"{answer_feedback}<br><br>The correct answer is:<br>{correct_answer}"
+            return (
+                f"{answer_feedback}<br><br>The correct answer is:<br>{correct_answer}"
+            )
         else:
             return f"The correct answer is:<br>{correct_answer}"
 
     # get question content
-    with get_db(config["DATABASE_NAME"]) as db:
-        question = json.loads(db.execute("SELECT content FROM questions WHERE id = ?", (session["quiz"][idx],)).fetchone()["content"])
+    with get_db(course) as db:
+        question = json.loads(
+            db.execute(
+                "SELECT content FROM questions WHERE id = ?", (session["quiz"][idx],)
+            ).fetchone()["content"]
+        )
 
     if request.method == "GET":
         # get user answer
@@ -509,7 +599,9 @@ def check_answer(topic: str, step: int, idx: int, user_answer: str = ""):
             correct_answer_str = answer["text"]
         # if user_answer == answer["text"]:
         if str_match(user_answer, answer["text"]):
-            answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
+            answer_feedback = (
+                answer["feedback"] if answer["feedback"] is not None else ""
+            )
 
     feedback = {"questiontext": question["questiontext"]}
 
@@ -523,9 +615,11 @@ def check_answer(topic: str, step: int, idx: int, user_answer: str = ""):
         feedback["result"] = Markup(wrong_answer(correct_answer_str, answer_feedback))
         feedback["correct"] = False
         # remove a life
-        with get_db(config["DATABASE_NAME"]) as db:
+        with get_db(course) as db:
             db.execute(
-                ("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "),
+                (
+                    "UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "
+                ),
                 (session["nickname"],),
             )
             db.commit()
@@ -534,48 +628,74 @@ def check_answer(topic: str, step: int, idx: int, user_answer: str = ""):
         # if get_lives_number(session["nickname"] if "nickname" in session else "") == 0:
 
     # save result
-    with get_db(config["DATABASE_NAME"]) as db:
+    with get_db(course) as db:
         db.execute(
-            ("INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"),
-            (session["nickname"], topic, question["type"], question["name"], feedback["correct"]),
+            (
+                "INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"
+            ),
+            (
+                session["nickname"],
+                topic,
+                question["type"],
+                question["name"],
+                feedback["correct"],
+            ),
         )
         db.commit()
 
     return render_template(
         "feedback.html",
+        course=course,
         feedback=feedback,
         user_answer=user_answer,
         topic=topic,
         step=step,
         idx=idx,
         total=len(session["quiz"]),
-        score=get_score(topic),
-        lives=get_lives_number(session["nickname"] if "nickname" in session else ""),
+        score=get_score(course, topic),
+        lives=get_lives_number(
+            course, session["nickname"] if "nickname" in session else ""
+        ),
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/results", methods=["GET"])
-def results():
-    with get_db(config["DATABASE_NAME"]) as db:
+@app.route(f"{app.config["APPLICATION_ROOT"]}/<course>/results", methods=["GET"])
+@check_login
+@course_exists
+def results(course: str):
+    with get_db(course) as db:
         cursor = db.execute("SELECT * FROM users")
         scores: dict = {}
         for user in cursor.fetchall():
             scores[user["nickname"]] = {}
-            topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
+            topics: list = [
+                row["topic"]
+                for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()
+            ]
             for topic in topics:
-                scores[user["nickname"]][topic] = get_score(topic, nickname=user["nickname"])
+                scores[user["nickname"]][topic] = get_score(
+                    topic, nickname=user["nickname"]
+                )
 
     return render_template("results.html", topics=topics, scores=scores)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/admin42", methods=["GET"])
-def admin():
-    with get_db(config["DATABASE_NAME"]) as db:
-        questions_number = db.execute("SELECT COUNT(*) AS questions_number FROM questions").fetchone()["questions_number"]
+@app.route(f"{app.config["APPLICATION_ROOT"]}/<course>/admin42", methods=["GET"])
+@check_login
+@course_exists
+def admin(course: str):
+    with get_db(course) as db:
+        questions_number = db.execute(
+            "SELECT COUNT(*) AS questions_number FROM questions"
+        ).fetchone()["questions_number"]
 
-        users_number = db.execute("SELECT COUNT(*) AS users_number FROM users").fetchone()["users_number"]
+        users_number = db.execute(
+            "SELECT COUNT(*) AS users_number FROM users"
+        ).fetchone()["users_number"]
 
-        topics = db.execute("SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id").fetchall()
+        topics = db.execute(
+            "SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id"
+        ).fetchall()
 
         """scores: dict = {}
         for user in cursor.fetchall():
@@ -590,18 +710,23 @@ def admin():
             data_content = f_in.read()
 
     return render_template(
-        "admin.html", questions_number=questions_number, topics=topics, users_number=users_number, data_content=data_content
+        "admin.html",
+        questions_number=questions_number,
+        topics=topics,
+        users_number=users_number,
+        data_content=data_content,
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/login", methods=["GET", "POST"])
-def login():
+@app.route(f"{app.config["APPLICATION_ROOT"]}/login/<course>", methods=["GET", "POST"])
+@course_exists
+def login(course: str):
     if request.method == "GET":
-        return render_template("login.html")
+        return render_template("login.html", course=course)
     if request.method == "POST":
         form_data = request.form
         password_hash = hashlib.sha256(form_data.get("password").encode()).hexdigest()
-        with get_db(config["DATABASE_NAME"]) as db:
+        with get_db(course) as db:
             cursor = db.execute(
                 "SELECT count(*) AS n_users FROM users WHERE nickname = ? AND password_hash = ?",
                 (
@@ -612,18 +737,24 @@ def login():
             n_users = cursor.fetchone()
             if not n_users[0]:
                 flash("Incorrect login. Retry", "error")
-                return render_template("login.html")
+                return redirect(url_for("login", course=course))
 
             else:
                 session["nickname"] = form_data.get("nickname")
-                return redirect(app.config["APPLICATION_ROOT"])
+                session["course"] = course
+                return redirect(url_for("home", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/new_nickname", methods=["GET", "POST"])
-def new_nickname():
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/<course>/new_nickname", methods=["GET", "POST"]
+)
+@course_exists
+def new_nickname(course: str):
     """
     create a nickname
     """
+    config = get_course_config(course)
+
     if request.method == "GET":
         return render_template("new_nickname.html")
 
@@ -644,8 +775,10 @@ def new_nickname():
 
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
-        with get_db(config["DATABASE_NAME"]) as db:
-            cursor = db.execute("SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,))
+        with get_db(course) as db:
+            cursor = db.execute(
+                "SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,)
+            )
             n_users = cursor.fetchone()
 
             if n_users[0]:
@@ -653,26 +786,39 @@ def new_nickname():
                 return render_template("new_nickname.html")
 
             try:
-                db.execute("INSERT INTO users (nickname, password_hash) VALUES (?, ?)", (nickname, password_hash))
-                db.execute("INSERT INTO lives (nickname, number) VALUES (?, ?)", (nickname, config["INITIAL_LIFE_NUMBER"]))
+                db.execute(
+                    "INSERT INTO users (nickname, password_hash) VALUES (?, ?)",
+                    (nickname, password_hash),
+                )
+                db.execute(
+                    "INSERT INTO lives (nickname, number) VALUES (?, ?)",
+                    (nickname, config["INITIAL_LIFE_NUMBER"]),
+                )
                 db.commit()
 
                 flash(
-                    Markup(f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'),
+                    Markup(
+                        f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'
+                    ),
                     "",
                 )
                 return redirect(app.config["APPLICATION_ROOT"])
 
             except Exception:
-                flash(Markup('<div class="notification is-danger">Error creating the new nickname</div>'), "error")
+                flash(
+                    Markup(
+                        '<div class="notification is-danger">Error creating the new nickname</div>'
+                    ),
+                    "error",
+                )
 
                 return redirect(app.config["APPLICATION_ROOT"])
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/delete", methods=["GET", "POST"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/<course>/delete", methods=["GET", "POST"])
 @check_login
-def delete():
-    with get_db(config["DATABASE_NAME"]) as db:
+def delete(course: str):
+    with get_db(course) as db:
         db.execute("DELETE FROM users WHERE nickname = ?", (session["nickname"],))
         db.execute("DELETE FROM lives WHERE nickname = ?", (session["nickname"],))
         db.execute("DELETE FROM steps WHERE nickname = ?", (session["nickname"],))
@@ -687,8 +833,10 @@ def delete():
 def logout():
     if "nickname" in session:
         del session["nickname"]
-    if "quiz" in session:
-        del session["quiz"]
+        del session["course"]
+        if "quiz" in session:
+            del session["quiz"]
+            del session["position"]
 
     return redirect(app.config["APPLICATION_ROOT"])
 

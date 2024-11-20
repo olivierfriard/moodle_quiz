@@ -15,7 +15,7 @@
         <div class="column is-half">
 
           <div class="block">
-            <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
+            <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
           </div>
 
 {% if lives is not none %}
@@ -28,7 +28,7 @@
 
 {% for topic in topics %}
 
-<a class="button is-large is-fullwidth" href="{{ url_for('steps', topic=topic) }}" style="position: relative; display: inline-block; overflow: hidden; padding-bottom: 1.3em; margin-bottom: 1.2em;">
+<a class="button is-large is-fullwidth" href="{{ url_for('steps', course=course, topic=topic) }}" style="margin-bottom: 1.2em;">
 
 <span style="position: relative; z-index: 1; display: block; text-align: center;">{{ topic }}</span>
 

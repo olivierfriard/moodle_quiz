@@ -20,8 +20,8 @@
                 <div class="column is-half">
 
                   <div class="block">
-                    <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
-                    <a href="{{ url_for('topic_list') }}" class="button is-link is-small">Topics</a>
+                    <a href="{{ url_for('home',course=course) }}" class="button is-link is-small">Home</a>
+                    <a href="{{ url_for('topic_list', course=course) }}" class="button is-link is-small">Topics</a>
                   
                   </div>
 
@@ -44,7 +44,7 @@
 
 {% if lives == 0 %}
 
-<a  class="button is-danger is-fullwidth is-large wrap-text-button" href="{{ url_for('recover_lives') }}">
+<a  class="button is-danger is-fullwidth is-large wrap-text-button" href="{{ url_for('recover_lives', course=course) }}">
   <strong>You've lost all your lives...<br>Click to recover them.</strong>
   </a>
 
@@ -76,8 +76,8 @@
 {% if question.type == 'truefalse' %}
 <div class="columns">
 
-<div class="column"><a href="{{ url_for('check_answer', topic=topic, step=step, idx=idx, user_answer='true') }}" class="button  is-info is-large"><strong>VERO</strong></a></div>
-<div class="column"><a href="{{ url_for('check_answer', topic=topic, step=step, idx=idx, user_answer='false') }}" class="button  is-info is-large"><strong>FALSO</strong></a></div>
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='true') }}" class="button  is-info is-large"><strong>VERO</strong></a></div>
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='false') }}" class="button  is-info is-large"><strong>FALSO</strong></a></div>
 
 </div>
 
@@ -86,7 +86,7 @@
 {% for answer in answers %}
 <div class="columns">
 <div class="column is-full">
-<a href="{{ url_for('check_answer', topic=topic, step=step, idx=idx, user_answer=answer.text) }}" class="button is-info is-large is-fullwidth wrap-text-button"><strong>{{ answer.text }}</strong></a><br>
+<a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer=answer.text) }}" class="button is-info is-large is-fullwidth wrap-text-button"><strong>{{ answer.text }}</strong></a><br>
 </div>
 </div>
 {%endfor%}
