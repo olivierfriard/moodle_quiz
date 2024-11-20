@@ -44,7 +44,7 @@
 
 <h3 class="title">{{ topic }}   step #{{step}}</h3>
 
-{% if lives == 0 %}
+{% if lives == 0 and not recover %}
 
 <a  class="button is-danger is-fullwidth is-large wrap-text-button" href="{{ url_for('recover_lives', course=course) }}">
   <strong>You've lost all your lives...<br>Click to recover them.</strong>

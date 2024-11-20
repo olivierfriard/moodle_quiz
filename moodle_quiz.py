@@ -590,6 +590,7 @@ def question(course: str, topic: str, step: int, idx: int):
         total=len(session["quiz"]),
         score=get_score(course, topic),
         lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
+        recover="recover" in session,
     )
 
 
@@ -706,6 +707,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
         flag_max_recover_errors=flag_max_recover_errors,
         flag_recovered=flag_recovered,
+        recover="recover" in session,
     )
 
 
