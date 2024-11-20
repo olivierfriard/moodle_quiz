@@ -35,12 +35,10 @@ def get_course_config(course: str):
     return config
 
 
-def load_questions_xml(xml_file: str, config: dict) -> int:
+def load_questions_xml(xml_file: Path, config: dict) -> int:
     try:
         # load questions from xml moodle file
-        question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], "duolinzoo/images")
-
-        # print(f"{question_data1['11 - Molluschi'].keys()=}")
+        question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{xml_file.stem}")
 
         # re-organize the questions structure
         question_data: dict = {}
@@ -54,7 +52,6 @@ def load_questions_xml(xml_file: str, config: dict) -> int:
                     question_data[topic][question["type"]][question["name"]] = question
 
         # load questions in database
-        print(xml_file.with_suffix(".sqlite"))
         conn = sqlite3.connect(xml_file.with_suffix(".sqlite"))
         cursor = conn.cursor()
         cursor.execute("DELETE FROM questions")
@@ -81,7 +78,7 @@ def load_questions_xml(xml_file: str, config: dict) -> int:
     return 0
 
 
-app = Flask(__name__, static_folder="duolinzoo")
+app = Flask(__name__, static_folder="images")
 app.config.from_object("config")
 app.config["DEBUG"] = True
 # print(app.config)
@@ -566,7 +563,7 @@ def question(course: str, topic: str, step: int, idx: int):
 
     image_list = []
     for image in question.get("files", []):
-        image_list.append(f"{app.config["APPLICATION_ROOT"]}/images/{image}")
+        image_list.append(url_for("static", filename=f"{course}/{image}"))
 
     if question["type"] == "multichoice" or question["type"] == "truefalse":
         answers = random.sample(question["answers"], len(question["answers"]))

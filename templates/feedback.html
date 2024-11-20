@@ -67,8 +67,33 @@ Your answer:<br>
 
 {% if flag_max_recover_errors %}
 
+
+<!-- Modal -->
+<div class="modal is-active" id="myModal">
+  <div class="modal-background"></div>
+  <div class="modal-content">
+    <div class="box">
+
+<button  class="button is-warning is-fullwidth is-large wrap-text-button" >
+<strong>What a pity! You've failed to recover a life...</strong>
+</button>
+    </div>
+  </div>
+  <button class="modal-close is-large" aria-label="close"></button>
+</div>
+
+<script>
+  // Close modal functionality
+  document.querySelectorAll('.modal-close, .modal-background').forEach((closeButton) => {
+    closeButton.addEventListener('click', () => {
+      document.getElementById('myModal').classList.remove('is-active');
+    });
+  });
+</script>
+
+
 <a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
-  <strong>What a pity! You've failed to recover a life...</strong>
+  <strong>What a pity! You've failed to recover a life...<br>Click to retry</strong>
 </a>
 
 {% endif %}
@@ -82,9 +107,9 @@ Your answer:<br>
     <div class="modal-content">
       <div class="box">
 
-<a  class="button is-success is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
+<button  class="button is-success is-fullwidth is-large wrap-text-button">
   <strong>Congratulations! You've recovered one life!</strong>
-</a>
+</button>
       </div>
     </div>
     <button class="modal-close is-large" aria-label="close"></button>
@@ -100,7 +125,7 @@ Your answer:<br>
   </script>
 
 <a  class="button is-success is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
-  <strong>Congratulations! You've recovered one life!</strong>
+  <strong>Congratulations! You've recovered one life!<br>Click to continue</strong>
 </a>
 
 
