@@ -64,15 +64,61 @@ Your answer:<br>
 <button  class="button is-danger is-fullwidth is-large wrap-text-button"><strong>{{ feedback.result }}</strong></button><br>
 {%endif%}
 <br>
+
+{% if flag_max_recover_errors %}
+
+<a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
+  <strong>What a pity! You've failed to recover a life...</strong>
+</a>
+
+{% endif %}
+
+{% if flag_recovered %}
+
+
+<!-- Modal -->
+<div class="modal is-active" id="myModal">
+    <div class="modal-background"></div>
+    <div class="modal-content">
+      <div class="box">
+
+<a  class="button is-success is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
+  <strong>Congratulations! You've recovered one life!</strong>
+</a>
+      </div>
+    </div>
+    <button class="modal-close is-large" aria-label="close"></button>
+  </div>
+
+  <script>
+    // Close modal functionality
+    document.querySelectorAll('.modal-close, .modal-background').forEach((closeButton) => {
+      closeButton.addEventListener('click', () => {
+        document.getElementById('myModal').classList.remove('is-active');
+      });
+    });
+  </script>
+
+<a  class="button is-success is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
+  <strong>Congratulations! You've recovered one life!</strong>
+</a>
+
+
+{% endif %}
+
+
 {% if lives == 0 %}
-<a  class="button is-danger is-fullwidth is-large wrap-text-button" href="{{ url_for('recover_lives', course=course) }}">
+<a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('recover_lives', course=course) }}">
   <strong>You've lost all your lives...<br>Click to recover them.</strong>
 </a>
 {% endif %}
 
 <br>
 
+{% if not flag_max_recover_errors and not flag_recovered %}
 <a href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}"  class="button is-fullwidth is-large">Next</a><br>
+{% endif %}
+
 
 </div>
 </div>

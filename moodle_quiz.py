@@ -38,9 +38,7 @@ def get_course_config(course: str):
 def load_questions_xml(xml_file: str, config: dict) -> int:
     try:
         # load questions from xml moodle file
-        question_data1 = moodle_xml.moodle_xml_to_dict_with_images(
-            xml_file, config["QUESTION_TYPES"], "duolinzoo/images"
-        )
+        question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], "duolinzoo/images")
 
         # print(f"{question_data1['11 - Molluschi'].keys()=}")
 
@@ -217,6 +215,14 @@ def str_match(stringa: str, template: str) -> bool:
 @app.route(f"{app.config["APPLICATION_ROOT"]}/<course>", methods=["GET"])
 @course_exists
 def home(course: str):
+    """
+    course home page
+    """
+    if "recover" in session:
+        del session["recover"]
+    if "quiz" in session:
+        del session["quiz"]
+
     lives = None
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
@@ -231,6 +237,13 @@ def topic_list(course: str):
     """
     display list of topics for selected course
     """
+    if "recover" in session:
+        del session["recover"]
+    if "quiz" in session:
+        del session["quiz"]
+
+    config = get_course_config(course)
+
     lives = None
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
@@ -239,12 +252,11 @@ def topic_list(course: str):
         topics: list = [
             row["topic"]
             for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()
+            if row["topic"] not in config["TOPICS_TO_HIDE"]
         ]
         scores = {topic: get_score(course, topic) for topic in topics}
 
-    return render_template(
-        "topic_list.html", course=course, topics=topics, scores=scores, lives=lives
-    )
+    return render_template("topic_list.html", course=course, topics=topics, scores=scores, lives=lives)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/recover_lives/<course>", methods=["GET"])
@@ -254,10 +266,15 @@ def recover_lives(course: str):
     """
     display recover_lives
     """
+    """
     lives = None
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
+    """
 
+    config = get_course_config(course)
+
+    # create questions dataframe
     with get_db(course) as db:
         # Execute the query
         query = """
@@ -287,9 +304,8 @@ def recover_lives(course: str):
         # create dataframe
         questions_df = pd.DataFrame(rows, columns=columns)
 
-    session["quiz"] = quiz.get_quiz_recover(questions_df, 10)
-    session["quiz_position"] = 0
-    session["recover"] = True
+    session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_RECOVER"])
+    session["recover"] = 0  # count number of errors
 
     return redirect(url_for("question", course=course, topic="recover", step=1, idx=0))
 
@@ -346,6 +362,7 @@ def steps(course: str, topic: str):
         n_steps=config["N_STEPS"],
         n_quiz_by_step=config["N_QUIZ_BY_STEP"],
         steps_active=steps_active,
+        step_name=config["STEP_NAMES"],
     )
 
 
@@ -405,8 +422,6 @@ def step(course: str, topic: str, step: int):
         steps_df[step - 1],
         get_lives_number(course, session["nickname"]),
     )
-    session["quiz_position"] = 0
-
     return redirect(url_for("question", course=course, topic=topic, step=step, idx=0))
 
 
@@ -451,7 +466,6 @@ def create_quiz(topic: str):
         topic, config["N_QUESTIONS"], df_results, get_lives_number(session["nickname"])
     )
 
-    session["quiz_position"] = 0
     # show 1st question of the new quiz
     return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
 '''
@@ -476,9 +490,7 @@ def get_score(course: str, topic: str, nickname: str = "") -> float:
     GROUP BY question_name
     ) AS subquery;
     """
-        cursor = db.execute(
-            query, (topic, topic, session["nickname"] if nickname == "" else nickname)
-        )
+        cursor = db.execute(query, (topic, topic, session["nickname"] if nickname == "" else nickname))
         # Fetch all rows
         score = cursor.fetchone()[0]
         if score is not None:
@@ -510,13 +522,10 @@ def question(course: str, topic: str, step: int, idx: int):
     else:
         # step/quiz finished
         del session["quiz"]
-        if "position" in session:
-            del session["position"]
 
-        print("quiz finished")
         if "recover" in session:
             del session["recover"]
-            # add a life
+            # add a new life
             with get_db(course) as db:
                 db.execute(
                     ("UPDATE lives SET number = number + 1 WHERE nickname = ? "),
@@ -526,27 +535,22 @@ def question(course: str, topic: str, step: int, idx: int):
 
             return redirect(url_for("home", course=course))
         else:
+            # normal quiz
             with get_db(course) as db:
                 row = db.execute(
-                    (
-                        "SELECT number FROM steps WHERE nickname = ? AND topic = ? AND step_index = ?"
-                    ),
+                    ("SELECT number FROM steps WHERE nickname = ? AND topic = ? AND step_index = ?"),
                     (session["nickname"], topic, step),
                 ).fetchone()
                 if row is None:
                     db.execute(
-                        (
-                            "INSERT INTO steps (nickname, topic, step_index, number) VALUES (?, ?, ?, ?)"
-                        ),
+                        ("INSERT INTO steps (nickname, topic, step_index, number) VALUES (?, ?, ?, ?)"),
                         (session["nickname"], topic, step, 1),
                     )
                     db.commit()
 
                 else:
                     db.execute(
-                        (
-                            "UPDATE steps SET number = number + 1 WHERE nickname = ? AND topic = ? AND step_index = ?"
-                        ),
+                        ("UPDATE steps SET number = number + 1 WHERE nickname = ? AND topic = ? AND step_index = ?"),
                         (session["nickname"], topic, step),
                     )
                     db.commit()
@@ -558,7 +562,7 @@ def question(course: str, topic: str, step: int, idx: int):
                             "",
                         )
 
-            return redirect(f"{app.config["APPLICATION_ROOT"]}/steps/{topic}")
+            return redirect(url_for("steps", course=course, topic=topic))
 
     image_list = []
     for image in question.get("files", []):
@@ -571,9 +575,7 @@ def question(course: str, topic: str, step: int, idx: int):
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
         type_ = "number" if question["type"] == "numerical" else "text"
-        placeholder = (
-            "Input a number" if question["type"] == "numerical" else "Input a text"
-        )
+        placeholder = "Input a number" if question["type"] == "numerical" else "Input a text"
 
     return render_template(
         "question.html",
@@ -588,9 +590,7 @@ def question(course: str, topic: str, step: int, idx: int):
         idx=idx,
         total=len(session["quiz"]),
         score=get_score(course, topic),
-        lives=get_lives_number(
-            course, session["nickname"] if "nickname" in session else ""
-        ),
+        lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
     )
 
 
@@ -609,25 +609,21 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     check user answer and display feedback and score
     """
 
+    config = get_course_config(course)
+
     def correct_answer():
         return "You selected the correct answer."
 
     def wrong_answer(correct_answer, answer_feedback):
         # feedback
         if answer_feedback:
-            return (
-                f"{answer_feedback}<br><br>The correct answer is:<br>{correct_answer}"
-            )
+            return f"{answer_feedback}<br><br>The correct answer is:<br>{correct_answer}"
         else:
             return f"The correct answer is:<br>{correct_answer}"
 
     # get question content
     with get_db(course) as db:
-        question = json.loads(
-            db.execute(
-                "SELECT content FROM questions WHERE id = ?", (session["quiz"][idx],)
-            ).fetchone()["content"]
-        )
+        question = json.loads(db.execute("SELECT content FROM questions WHERE id = ?", (session["quiz"][idx],)).fetchone()["content"])
 
     if request.method == "GET":
         # get user answer
@@ -651,40 +647,43 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             correct_answer_str = answer["text"]
         # if user_answer == answer["text"]:
         if str_match(user_answer, answer["text"]):
-            answer_feedback = (
-                answer["feedback"] if answer["feedback"] is not None else ""
-            )
+            answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
 
     feedback = {"questiontext": question["questiontext"]}
 
-    # if user_answer.upper() == correct_answer_str.upper():
+    flag_max_recover_errors = False
+
     if str_match(user_answer, correct_answer_str):
         feedback["result"] = correct_answer()
         feedback["correct"] = True
 
     else:
-        # print(f"{answer_feedback=}")
         feedback["result"] = Markup(wrong_answer(correct_answer_str, answer_feedback))
         feedback["correct"] = False
-        # remove a life
-        with get_db(course) as db:
-            db.execute(
-                (
-                    "UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "
-                ),
-                (session["nickname"],),
-            )
-            db.commit()
 
-        # check
-        # if get_lives_number(session["nickname"] if "nickname" in session else "") == 0:
+        # remove a life if not recover
+        if "recover" not in session:
+            with get_db(course) as db:
+                db.execute(
+                    ("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "),
+                    (session["nickname"],),
+                )
+                db.commit()
+        else:
+            # count recover errors
+            session["recover"] += 1
+            if session["recover"] >= config["MAX_RECOVER_ERRORS"]:
+                flag_max_recover_errors = True
+
+    # check if recover is ended
+    flag_recovered = False
+    if "recover" in session and idx >= config["N_QUESTIONS_BY_RECOVER"] and not flag_max_recover_errors:
+        flag_recovered = True
 
     # save result
     with get_db(course) as db:
         db.execute(
-            (
-                "INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"
-            ),
+            ("INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"),
             (
                 session["nickname"],
                 topic,
@@ -705,9 +704,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         idx=idx,
         total=len(session["quiz"]),
         score=get_score(course, topic),
-        lives=get_lives_number(
-            course, session["nickname"] if "nickname" in session else ""
-        ),
+        lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
+        flag_max_recover_errors=flag_max_recover_errors,
+        flag_recovered=flag_recovered,
     )
 
 
@@ -720,34 +719,23 @@ def results(course: str):
         scores: dict = {}
         for user in cursor.fetchall():
             scores[user["nickname"]] = {}
-            topics: list = [
-                row["topic"]
-                for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()
-            ]
+            topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
             for topic in topics:
-                scores[user["nickname"]][topic] = get_score(
-                    topic, nickname=user["nickname"]
-                )
+                scores[user["nickname"]][topic] = get_score(topic, nickname=user["nickname"])
 
     return render_template("results.html", topics=topics, scores=scores)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/<course>/admin42", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/admin42/<course>", methods=["GET"])
 @course_exists
 @check_login
 def admin(course: str):
     with get_db(course) as db:
-        questions_number = db.execute(
-            "SELECT COUNT(*) AS questions_number FROM questions"
-        ).fetchone()["questions_number"]
+        questions_number = db.execute("SELECT COUNT(*) AS questions_number FROM questions").fetchone()["questions_number"]
 
-        users_number = db.execute(
-            "SELECT COUNT(*) AS users_number FROM users"
-        ).fetchone()["users_number"]
+        users_number = db.execute("SELECT COUNT(*) AS users_number FROM users").fetchone()["users_number"]
 
-        topics = db.execute(
-            "SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id"
-        ).fetchall()
+        topics = db.execute("SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id").fetchall()
 
         """scores: dict = {}
         for user in cursor.fetchall():
@@ -797,9 +785,7 @@ def login(course: str):
                 return redirect(url_for("home", course=course))
 
 
-@app.route(
-    f"{app.config["APPLICATION_ROOT"]}/new_nickname/<course>", methods=["GET", "POST"]
-)
+@app.route(f"{app.config["APPLICATION_ROOT"]}/new_nickname/<course>", methods=["GET", "POST"])
 @course_exists
 def new_nickname(course: str):
     """
@@ -827,9 +813,7 @@ def new_nickname(course: str):
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
         with get_db(course) as db:
-            cursor = db.execute(
-                "SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,)
-            )
+            cursor = db.execute("SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,))
             n_users = cursor.fetchone()
 
             if n_users[0]:
@@ -848,18 +832,14 @@ def new_nickname(course: str):
                 db.commit()
 
                 flash(
-                    Markup(
-                        f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'
-                    ),
+                    Markup(f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'),
                     "",
                 )
                 return redirect(url_for("home", course=course))
 
             except Exception:
                 flash(
-                    Markup(
-                        '<div class="notification is-danger">Error creating the new nickname</div>'
-                    ),
+                    Markup('<div class="notification is-danger">Error creating the new nickname</div>'),
                     "error",
                 )
 

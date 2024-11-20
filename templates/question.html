@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Question - Duolinzoo</title>
+    <title>{{ course }} - Question</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
@@ -31,6 +31,8 @@
 </div>
 #}
 
+{# <h3 class="title">{{ course }}</h3> #}
+
 {% if lives is not none %}
 <div class="block">
 {% for i in range(lives) %}
@@ -48,9 +50,7 @@
   <strong>You've lost all your lives...<br>Click to recover them.</strong>
   </a>
 
-
 {% else %}
-
 
 {#
 {% if score is not none %}
@@ -97,7 +97,7 @@
 
 {%else%}
 {# shortanswer or numerical #}
-<form action="{{ url_for('check_answer', topic=topic, step=step, idx=idx) }}" method="post">
+<form action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx) }}" method="post">
 <div class="field">
     <label class="label">Your answer</label>
     <div class="control">
