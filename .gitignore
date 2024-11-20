@@ -2,5 +2,7 @@ duolinzoo
 quiz.sqlite
 __pycache__
 uv.lock
-data.xml
-data.txt
+*.xml
+*.txt
+*.sqlite
+
