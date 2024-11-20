@@ -23,12 +23,15 @@
 Welcome <strong>{{ session['nickname'] }}</strong>!
 </p>
 </div>
+
 {% if lives is not none %}
 <div class="block">
 {% for i in range(lives) %}
 &hearts;
 {% endfor %}
 </div>
+{% else %}
+No lives left...
 {% endif %}
 
 
@@ -76,4 +79,5 @@ function confirm_() {
     return confirm("Are you sure?");
 }
 </script>
+
 </html>

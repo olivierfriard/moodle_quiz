@@ -8,7 +8,13 @@ import pandas as pd
 import numpy as np
 
 
-def get_quiz_test(question_data: dict, topic: str, n_questions: int, results: pd.DataFrame, n_lives: int) -> list:
+def get_quiz_test(
+    question_data: dict,
+    topic: str,
+    n_questions: int,
+    results: pd.DataFrame,
+    n_lives: int,
+) -> list:
     """
     return a quiz (list of questions)
 
@@ -21,9 +27,19 @@ def get_quiz_test(question_data: dict, topic: str, n_questions: int, results: pd
         n_lives (int):  number of lives
     """
 
-    print([question_data["Lezione 10 - Anellidi"]["shortanswer"]["1. Struttura caratteristica nei Sipunculidi - FILL IN THE BLANK"]])
+    print(
+        [
+            question_data["Lezione 10 - Anellidi"]["shortanswer"][
+                "1. Struttura caratteristica nei Sipunculidi - FILL IN THE BLANK"
+            ]
+        ]
+    )
 
-    return [question_data["Lezione 10 - Anellidi"]["shortanswer"]["1. Struttura caratteristica nei Sipunculidi - FILL IN THE BLANK"]]
+    return [
+        question_data["Lezione 10 - Anellidi"]["shortanswer"][
+            "1. Struttura caratteristica nei Sipunculidi - FILL IN THE BLANK"
+        ]
+    ]
 
     # for image type debugging:
     # return [question_data["lezione 4 - Poriferi"]["shortanswer"]["Q1"]]
@@ -31,9 +47,40 @@ def get_quiz_test(question_data: dict, topic: str, n_questions: int, results: pd
     questions_list: list = []
     # random extraction of n_questions (all question types) for topic
     for type_ in question_data[topic]:
-        questions_list.extend([question for _, question in question_data[topic][type_].items()])
+        questions_list.extend(
+            [question for _, question in question_data[topic][type_].items()]
+        )
 
     return random.sample(questions_list, n_questions)
+
+
+def get_quiz_recover(df_results, n_questions_recover):
+    # 50% domande estratte dal topic 'recover' (approssimato per difetto)
+    n_questions_1 = n_questions_recover // 2
+
+    lista_topic = df_results["topic"].unique().tolist()
+    # limita la lista ai topics già in parte svolti
+    ripasso_sel = []
+    for i in np.arange(len(lista_topic)):
+        df_filtered = df_results[df_results["topic"] == lista_topic[i]]
+        id_domande = df_filtered[df_filtered["n_ok"] > 0]["question_id"].to_list()
+        ripasso_sel.extend(id_domande)
+    if len(id_domande) > n_questions_1:
+        ripasso_sel = random.sample(ripasso_sel, n_questions_1)
+
+    # 50% domande estratte dal topic 'recover' (approssimato per eccesso)
+    n_questions_2 = n_questions_recover - n_questions_1
+    # estrazione domande topic = recover
+    id_recover = df_results[df_results["topic"] == "Ripasso e recupero vite"][
+        "question_id"
+    ].to_list()
+    recover_sel = random.sample(id_recover, n_questions_2)
+    questions_recover = recover_sel + ripasso_sel
+    random.shuffle(questions_recover)
+
+    print(questions_recover)
+
+    return questions_recover
 
 
 def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
@@ -98,7 +145,9 @@ def get_difficulty(score_tipo, ok, no):
     for i in np.arange(np.size(score_tipo)):
         if tot_risposte[i] > 0:
             diff = no[i] / tot_risposte[i]
-            score[i] = tot_risposte[i] * diff / (tot_risposte[i] + 1) + score_tipo[i] / (tot_risposte[i] + 1)
+            score[i] = tot_risposte[i] * diff / (tot_risposte[i] + 1) + score_tipo[
+                i
+            ] / (tot_risposte[i] + 1)
         else:
             score[i] = score_tipo[i]
     return score
@@ -120,9 +169,13 @@ def get_score_studente(ok, no):
 
     print(f"{ok[domande_con_risposta] + no[domande_con_risposta]=}")
 
-    print(f"{ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta])=}")
+    print(
+        f"{ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta])=}"
+    )
 
-    somma_scores = np.sum(ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta]))
+    somma_scores = np.sum(
+        ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta])
+    )
     # somma_scores = np.sum(ok[domande_con_risposta]) / sum(ok[domande_con_risposta] + no[domande_con_risposta])
 
     print(f"{somma_scores=}")
@@ -133,7 +186,9 @@ def get_score_studente(ok, no):
 
 def get_random_select(score_medio_studente, score_domande, f_rnd, f_studente_score):
     n_tot_domande = np.size(score_domande)
-    rnd_walk = score_medio_studente * f_studente_score + np.cumsum(np.random.normal(0, f_rnd, (n_tot_domande, 1000)), axis=1)
+    rnd_walk = score_medio_studente * f_studente_score + np.cumsum(
+        np.random.normal(0, f_rnd, (n_tot_domande, 1000)), axis=1
+    )
     t = 1000 * np.ones(n_tot_domande)
 
     for i in np.arange(n_tot_domande):
@@ -150,7 +205,9 @@ def get_random_select(score_medio_studente, score_domande, f_rnd, f_studente_sco
     return rank_t, t
 
 
-def get_quiz_sc3(topic: str, n_questions: int, results: pd.DataFrame, n_lives: int) -> list:
+def get_quiz_sc3(
+    topic: str, n_questions: int, results: pd.DataFrame, n_lives: int
+) -> list:
     """
     return a quiz (list of questions)
 
@@ -167,7 +224,9 @@ def get_quiz_sc3(topic: str, n_questions: int, results: pd.DataFrame, n_lives: i
     risultati = results  # pd.DataFrame({"cod_capitolo": cod_capitolo, "cod_tipo": cod_tipo, "cod_domanda": cod_domanda})
 
     # valuto il livello di preparazione per quel capitolo
-    tipologie_domande = list(risultati[(risultati["topic"] == capX)]["type"].reset_index(drop=True))
+    tipologie_domande = list(
+        risultati[(risultati["topic"] == capX)]["type"].reset_index(drop=True)
+    )
 
     # print(tipologie_domande)
 
@@ -189,7 +248,9 @@ def get_quiz_sc3(topic: str, n_questions: int, results: pd.DataFrame, n_lives: i
 
     print(f"{score_medio_studente=}")
 
-    questions_score, t = get_random_select(score_medio_studente, scores_domande, f_rnd, f_student_score)
+    questions_score, t = get_random_select(
+        score_medio_studente, scores_domande, f_rnd, f_student_score
+    )
 
     print(f"{questions_score=}")
 
@@ -213,8 +274,6 @@ def get_quiz_sc3(topic: str, n_questions: int, results: pd.DataFrame, n_lives: i
         count += 1
         if count >= n_questions:
             break
-
-    print(question_id_list)
 
     return question_id_list
 

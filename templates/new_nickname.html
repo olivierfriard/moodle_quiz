@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>New nickname - Duolinzoo</title>
+<title>New nickname - {{ course }}</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 
 </head>
@@ -14,14 +14,14 @@
 <div class="column is-half">
 
     <div class="block">
-        <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
+        <a href="{{ url_for('home',course=course) }}" class="button is-link is-small">Home</a>
       
       </div>
 
 
 <div class="box">
 <h1 class="title">
-Quiz
+    {{ course }}
 </h1>
 
 {% with messages = get_flashed_messages(with_categories=True) %}
@@ -34,7 +34,7 @@ Quiz
         {% endif %}
 {% endwith %}
 
-<form action="{{ url_for('new_nickname') }}" method="post">
+<form action="{{ url_for('new_nickname',course=course) }}" method="post">
 <div class="field">
 <label class="label">Nickname</label>
 <div class="control">

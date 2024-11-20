@@ -56,7 +56,8 @@ def load_questions_xml(xml_file: str, config: dict) -> int:
                     question_data[topic][question["type"]][question["name"]] = question
 
         # load questions in database
-        conn = sqlite3.connect(config["DATABASE_NAME"])
+        print(xml_file.with_suffix(".sqlite"))
+        conn = sqlite3.connect(xml_file.with_suffix(".sqlite"))
         cursor = conn.cursor()
         cursor.execute("DELETE FROM questions")
         cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'questions'")
@@ -155,8 +156,9 @@ def create_database(course) -> None:
 
 for xml_file in Path(".").glob("*.xml"):
     # check if database sqlite file exists
-    if not xml_file.with_suffix(".sqlite"):
-        print(f"Database file {xml_file.stem} not found")
+    print(xml_file)
+    if not xml_file.with_suffix(".sqlite").exists():
+        print(f"Database file {xml_file.with_suffix('.sqlite')} not found")
         print("Creating a new one")
         create_database(xml_file.stem)
 
@@ -223,8 +225,8 @@ def home(course: str):
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list/<course>", methods=["GET"])
-@check_login
 @course_exists
+@check_login
 def topic_list(course: str):
     """
     display list of topics for selected course
@@ -246,8 +248,8 @@ def topic_list(course: str):
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/recover_lives/<course>", methods=["GET"])
-@check_login
 @course_exists
+@check_login
 def recover_lives(course: str):
     """
     display recover_lives
@@ -256,12 +258,47 @@ def recover_lives(course: str):
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
 
-    return render_template("recover_lives.html", course=course, lives=lives)
+    with get_db(course) as db:
+        # Execute the query
+        query = """
+                SELECT 
+                    q.id AS question_id,
+                    q.topic AS topic, 
+                    q.type AS type, 
+                    q.name AS question_name, 
+                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
+                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
+                FROM questions q LEFT JOIN results r 
+                    ON q.topic=r.topic 
+                        AND q.type=r.question_type 
+                        AND q.name=r.question_name
+                        AND nickname = ?
+                GROUP BY 
+                    q.topic, 
+                    q.type, 
+                    q.name
+                """
+
+        cursor = db.execute(query, (session["nickname"],))
+        # Fetch all rows
+        rows = cursor.fetchall()
+        # Get column names from the cursor description
+        columns = [description[0] for description in cursor.description]
+        # create dataframe
+        questions_df = pd.DataFrame(rows, columns=columns)
+
+    session["quiz"] = quiz.get_quiz_recover(questions_df, 10)
+    session["quiz_position"] = 0
+    session["recover"] = True
+
+    return redirect(url_for("question", course=course, topic="recover", step=1, idx=0))
+
+    # return render_template("recover_lives.html", course=course, lives=lives)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>", methods=["GET"])
-@check_login
 @course_exists
+@check_login
 def brush_up(course):
     """
     display ripasso
@@ -278,8 +315,8 @@ def get_seed(nickname, topic):
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/steps/<course>/<topic>", methods=["GET"])
-@check_login
 @course_exists
+@check_login
 def steps(course: str, topic: str):
     """
     display steps
@@ -316,8 +353,8 @@ def steps(course: str, topic: str):
     f"{app.config["APPLICATION_ROOT"]}/step/<course>/<topic>/<int:step>",
     methods=["GET"],
 )
-@check_login
 @course_exists
+@check_login
 def step(course: str, topic: str, step: int):
     """
     create the step
@@ -370,7 +407,6 @@ def step(course: str, topic: str, step: int):
     )
     session["quiz_position"] = 0
 
-    # return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{}/{topic}/{step}/0")
     return redirect(url_for("question", course=course, topic=topic, step=step, idx=0))
 
 
@@ -455,8 +491,8 @@ def get_score(course: str, topic: str, nickname: str = "") -> float:
     f"{app.config["APPLICATION_ROOT"]}/question/<course>/<topic>/<int:step>/<int:idx>",
     methods=["GET"],
 )
-@check_login
 @course_exists
+@check_login
 def question(course: str, topic: str, step: int, idx: int):
     """
     show question idx
@@ -473,40 +509,56 @@ def question(course: str, topic: str, step: int, idx: int):
             )
     else:
         # step/quiz finished
+        del session["quiz"]
+        if "position" in session:
+            del session["position"]
 
-        with get_db(course) as db:
-            row = db.execute(
-                (
-                    "SELECT number FROM steps WHERE nickname = ? AND topic = ? AND step_index = ?"
-                ),
-                (session["nickname"], topic, step),
-            ).fetchone()
-            if row is None:
+        print("quiz finished")
+        if "recover" in session:
+            del session["recover"]
+            # add a life
+            with get_db(course) as db:
                 db.execute(
-                    (
-                        "INSERT INTO steps (nickname, topic, step_index, number) VALUES (?, ?, ?, ?)"
-                    ),
-                    (session["nickname"], topic, step, 1),
+                    ("UPDATE lives SET number = number + 1 WHERE nickname = ? "),
+                    (session["nickname"],),
                 )
                 db.commit()
 
-            else:
-                db.execute(
+            return redirect(url_for("home", course=course))
+        else:
+            with get_db(course) as db:
+                row = db.execute(
                     (
-                        "UPDATE steps SET number = number + 1 WHERE nickname = ? AND topic = ? AND step_index = ?"
+                        "SELECT number FROM steps WHERE nickname = ? AND topic = ? AND step_index = ?"
                     ),
                     (session["nickname"], topic, step),
-                )
-                db.commit()
-                if row["number"] == 4:
-                    flash(
-                        Markup(
-                            f'<div class="notification is-success"><p class="is-size-3 has-text-weight-bold">Good! You just finished the step #{step}</p></div>'
+                ).fetchone()
+                if row is None:
+                    db.execute(
+                        (
+                            "INSERT INTO steps (nickname, topic, step_index, number) VALUES (?, ?, ?, ?)"
                         ),
-                        "",
+                        (session["nickname"], topic, step, 1),
                     )
+                    db.commit()
 
-        return redirect(f"{app.config["APPLICATION_ROOT"]}/steps/{topic}")
+                else:
+                    db.execute(
+                        (
+                            "UPDATE steps SET number = number + 1 WHERE nickname = ? AND topic = ? AND step_index = ?"
+                        ),
+                        (session["nickname"], topic, step),
+                    )
+                    db.commit()
+                    if row["number"] == 4:
+                        flash(
+                            Markup(
+                                f'<div class="notification is-success"><p class="is-size-3 has-text-weight-bold">Good! You just finished the step #{step}</p></div>'
+                            ),
+                            "",
+                        )
+
+            return redirect(f"{app.config["APPLICATION_ROOT"]}/steps/{topic}")
 
     image_list = []
     for image in question.get("files", []):
@@ -550,8 +602,8 @@ def question(course: str, topic: str, step: int, idx: int):
     f"{app.config["APPLICATION_ROOT"]}/check_answer/<course>/<topic>/<int:step>/<int:idx>",
     methods=["POST"],
 )
-@check_login
 @course_exists
+@check_login
 def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str = ""):
     """
     check user answer and display feedback and score
@@ -660,8 +712,8 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/<course>/results", methods=["GET"])
-@check_login
 @course_exists
+@check_login
 def results(course: str):
     with get_db(course) as db:
         cursor = db.execute("SELECT * FROM users")
@@ -681,8 +733,8 @@ def results(course: str):
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/<course>/admin42", methods=["GET"])
-@check_login
 @course_exists
+@check_login
 def admin(course: str):
     with get_db(course) as db:
         questions_number = db.execute(
@@ -746,7 +798,7 @@ def login(course: str):
 
 
 @app.route(
-    f"{app.config["APPLICATION_ROOT"]}/<course>/new_nickname", methods=["GET", "POST"]
+    f"{app.config["APPLICATION_ROOT"]}/new_nickname/<course>", methods=["GET", "POST"]
 )
 @course_exists
 def new_nickname(course: str):
@@ -756,8 +808,7 @@ def new_nickname(course: str):
     config = get_course_config(course)
 
     if request.method == "GET":
-        return render_template("new_nickname.html")
-
+        return render_template("new_nickname.html", course=course)
     if request.method == "POST":
         form_data = request.form
         # Then, access form data with .get()
@@ -767,11 +818,11 @@ def new_nickname(course: str):
 
         if not password1 or not password2:
             flash("A password is missing", "error")
-            return render_template("new_nickname.html")
+            return render_template("new_nickname.html", course=course)
 
         if password1 != password2:
             flash("Passwords are not the same", "error")
-            return render_template("new_nickname.html")
+            return render_template("new_nickname.html", course=course)
 
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
@@ -783,7 +834,7 @@ def new_nickname(course: str):
 
             if n_users[0]:
                 flash("Nickname already taken", "error")
-                return render_template("new_nickname.html")
+                return render_template("new_nickname.html", course=course)
 
             try:
                 db.execute(
@@ -802,7 +853,7 @@ def new_nickname(course: str):
                     ),
                     "",
                 )
-                return redirect(app.config["APPLICATION_ROOT"])
+                return redirect(url_for("home", course=course))
 
             except Exception:
                 flash(
@@ -812,10 +863,11 @@ def new_nickname(course: str):
                     "error",
                 )
 
-                return redirect(app.config["APPLICATION_ROOT"])
+                return redirect(url_for("home", course=course))
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/<course>/delete", methods=["GET", "POST"])
+@course_exists
 @check_login
 def delete(course: str):
     with get_db(course) as db:
@@ -825,7 +877,7 @@ def delete(course: str):
         db.commit()
 
     del session["nickname"]
-    return redirect(app.config["APPLICATION_ROOT"])
+    return redirect(url_for("home", course=course))
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/logout", methods=["GET", "POST"])
