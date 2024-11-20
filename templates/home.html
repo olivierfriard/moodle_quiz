@@ -20,7 +20,7 @@
     
 <div class="block">
 <p class="subtitle">
-Welcome <strong>{{ session['nickname'] }}</strong>!
+{{ translation['Welcome'] }} <strong>{{ session['nickname'] }}</strong>!
 </p>
 </div>
 
@@ -44,25 +44,25 @@ Welcome <strong>{{ session['nickname'] }}</strong>!
 {% if session['nickname'] %}
 
 
-<a class="button is-large is-fullwidth" href="{{ url_for('topic_list', course=course) }}" style=" margin-bottom: 1.2em;">View topics</a>
+<a class="button is-large is-fullwidth" href="{{ url_for('topic_list', course=course) }}" style=" margin-bottom: 1.2em;">{{ translation['View topics'] }}</a>
 
-<a class="button is-large is-fullwidth " href="{{ url_for('recover_lives',course=course) }}" style="margin-bottom: 1.2em;">Recover lives</a>
+<a class="button is-large is-fullwidth " href="{{ url_for('recover_lives',course=course) }}" style="margin-bottom: 1.2em;">{{ translation['Recover lives'] }}</a>
 
-<a class="button is-large is-fullwidth " href="{{ url_for('brush_up',course=course) }}" style="margin-bottom: 1.2em;">Brush-up</a>
+<a class="button is-large is-fullwidth " href="{{ url_for('brush_up',course=course) }}" style="margin-bottom: 1.2em;">{{ translation['Brush-up'] }}</a>
 
 {% else %}
 
 <a class="button is-link" href="{{ url_for('login', course=course) }}">Login</a>
 
-<a class="button is-link" href="{{ url_for('new_nickname',course=course) }}">New nickname</a>
+<a class="button is-link" href="{{ url_for('new_nickname',course=course) }}">{{ translation['New nickname'] }}</a>
 
 {% endif %}
 
 </div>
 
 {% if session['nickname'] %}
-<a href="{{ url_for('logout') }}" class="button is-danger is-pulled-right" onclick="return confirm_()">Logout</a><br><br>
-<a href="{{ url_for('delete', course=course) }}" class="button is-small is-danger is-pulled-right" onclick="return confirm_()">Delete nickname</a>
+<a href="{{ url_for('logout', course=course) }}" class="button is-danger is-pulled-right" onclick="return confirm_()">{{ translation['Logout'] }}</a><br><br>
+<a href="{{ url_for('delete', course=course) }}" class="button is-small is-danger is-pulled-right" onclick="return confirm_()">{{ translation['Delete nickname'] }}</a>
 {%endif%}
 
 </div>

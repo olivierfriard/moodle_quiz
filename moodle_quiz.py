@@ -220,11 +220,13 @@ def home(course: str):
     if "quiz" in session:
         del session["quiz"]
 
+    config = get_course_config(course)
+
     lives = None
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
 
-    return render_template("home.html", course=course, lives=lives)
+    return render_template("home.html", course=course, lives=lives, translation=config["translations"])
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list/<course>", methods=["GET"])
@@ -857,9 +859,9 @@ def delete(course: str):
     return redirect(url_for("home", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/logout", methods=["GET", "POST"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/logout/<course>", methods=["GET", "POST"])
 @check_login
-def logout():
+def logout(course):
     if "nickname" in session:
         del session["nickname"]
         del session["course"]
@@ -867,7 +869,7 @@ def logout():
             del session["quiz"]
             del session["position"]
 
-    return redirect(app.config["APPLICATION_ROOT"])
+    return redirect(url_for("home", course=course))
 
 
 if __name__ == "__main__":
