@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Results - Duolinzoo</title>
+<title>{{ course }} - Results</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
 <body>
@@ -14,9 +14,13 @@
         <div class="column is-half">
 
           <div class="block">
-            <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
+            <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
           
           </div>
+
+
+<h3 class="title">{{ course }}</h3>
+
 
 <table class="table">
 <thead>

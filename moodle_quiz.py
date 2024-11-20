@@ -711,7 +711,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/<course>/results", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/results/<course>", methods=["GET"])
 @course_exists
 @check_login
 def results(course: str):
@@ -722,9 +722,9 @@ def results(course: str):
             scores[user["nickname"]] = {}
             topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
             for topic in topics:
-                scores[user["nickname"]][topic] = get_score(topic, nickname=user["nickname"])
+                scores[user["nickname"]][topic] = get_score(course, topic, nickname=user["nickname"])
 
-    return render_template("results.html", topics=topics, scores=scores)
+    return render_template("results.html", course=course, topics=topics, scores=scores)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/admin42/<course>", methods=["GET"])
