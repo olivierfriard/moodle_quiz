@@ -14,7 +14,7 @@
         <div class="column is-half">
 
           <div class="block">
-            <a href="{{ url_for('home') }}" class="button is-link is-small">Home</a>
+            <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
           
           </div>
 
@@ -29,7 +29,7 @@ Topics<br>
 {% endfor %}
 
 <br><br>
-data.txt file content:
+{{ course }}.txt file content:
 
 <pre>
 {{ data_content }}

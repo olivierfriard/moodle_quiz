@@ -745,12 +745,13 @@ def admin(course: str):
         """
 
     if Path("data.txt").exists():
-        with open("data.txt", "r") as f_in:
+        with open(Path(course).with_suffix(".txt"), "r") as f_in:
             data_content = f_in.read()
 
     return render_template(
         "admin.html",
         questions_number=questions_number,
+        course=course,
         topics=topics,
         users_number=users_number,
         data_content=data_content,
