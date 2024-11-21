@@ -18,7 +18,7 @@
             <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
           </div>
 
-<h3 class="title">{{ course }}</h3>
+<h3 class="title">{{ course }} - {{ topic }}</h3>
 
 {% if lives is not none %}
 <div class="block">
@@ -28,7 +28,6 @@
 </div>
 {% endif %}
 
-<h3 class="title">{{ topic }}</h3>
 
 
 {% with messages = get_flashed_messages(with_categories=True) %}
@@ -43,13 +42,14 @@
 
 {% for step in range(1, n_steps + 1) %}
 
-<a class="button is-large is-fullwidth" href="{{ url_for('step', course=course, topic=topic, step=step) }}" style=" margin-bottom: 1.2em;" 
+<a class="button is-large is-fullwidth" style=" margin-bottom: 1.2em;" 
 
-{% if step > 1 %}
-{% if steps_active[step - 1] < n_quiz_by_step %}
-disabled
+{% if step > 1 and steps_active[step - 1] < n_quiz_by_step %}
+       disabled
+{% else %}
+    href="{{ url_for('step', course=course, topic=topic, step=step) }}"
 {% endif %}
-{%endif%}
+
 
 >{{ step_name[step-1] }}
 &nbsp;&nbsp;

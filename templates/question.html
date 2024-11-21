@@ -14,16 +14,17 @@
     word-break: break-word; /* Break long words if necessary */
 }  
 </style>
-    <section class="section">
-        <div class="container">
-            <div class="columns is-centered">
-                <div class="column is-half">
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
 
-                  <div class="block">
-                    <a href="{{ url_for('home',course=course) }}" class="button is-link is-small">Home</a>
-                    <a href="{{ url_for('topic_list', course=course) }}" class="button is-link is-small">Topics</a>
-                  
-                  </div>
+<div class="block">
+<a href="{{ url_for('home',course=course) }}" class="button is-link is-small">Home</a>
+<a href="{{ url_for('topic_list', course=course) }}" class="button is-link is-small">Topics</a>
+
+</div>
+
 
 {#
  <div class="block">
@@ -42,7 +43,7 @@
 {% endif %}
 
 
-<h3 class="title">{{ topic }}   step #{{step}}</h3>
+<h3 class="title">{{ topic }}  {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %}</h3>
 
 {% if lives == 0 and not recover %}
 
@@ -76,8 +77,13 @@
 {% if question.type == 'truefalse' %}
 <div class="columns">
 
-<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='true') }}" class="button  is-info is-large"><strong>VERO</strong></a></div>
-<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='false') }}" class="button  is-info is-large"><strong>FALSO</strong></a></div>
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='true') }}" class="button  is-info is-large">
+<strong>{{ translation['TRUE'] }}</strong></a>
+</div>
+
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='false') }}" class="button  is-info is-large">
+<strong>{{ translation['FALSE'] }}</strong></a>
+</div>
 
 </div>
 

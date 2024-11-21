@@ -39,7 +39,7 @@
 </div>
 {% endif %}
 
-<h3 class="title">{{ topic }}   step #{{step}}</h3>
+<h3 class="title">{{ topic }}  {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %}</h3>
 {#
 {% if score is not none %}
 <div class="block">
@@ -100,7 +100,6 @@ Your answer:<br>
 
 {% if flag_recovered %}
 
-
 <!-- Modal -->
 <div class="modal is-active" id="myModal">
     <div class="modal-background"></div>
@@ -108,7 +107,7 @@ Your answer:<br>
       <div class="box">
 
 <button  class="button is-success is-fullwidth is-large wrap-text-button">
-  <strong>Congratulations! You've recovered one life!</strong>
+  <strong>{{ translation["Congratulations! You've recovered one life!"] }}</strong>
 </button>
       </div>
     </div>
@@ -125,9 +124,8 @@ Your answer:<br>
   </script>
 
 <a  class="button is-success is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
-  <strong>Congratulations! You've recovered one life!<br>Click to continue</strong>
+  <strong>{{ translation["Congratulations! You've recovered one life!"] }}<br>{{ translation['Next'] }}</strong>
 </a>
-
 
 {% endif %}
 
@@ -141,7 +139,7 @@ Your answer:<br>
 <br>
 
 {% if not flag_max_recover_errors and not flag_recovered %}
-<a href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}"  class="button is-fullwidth is-large">Next</a><br>
+<a href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}"  class="button is-fullwidth is-large">{{ translation['Next'] }}</a><br>
 {% endif %}
 
 

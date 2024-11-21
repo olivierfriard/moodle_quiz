@@ -14,7 +14,7 @@ import re
 import json
 import sys
 from markupsafe import Markup
-from flask import Flask, render_template, session, redirect, request, g, flash, url_for
+from flask import Flask, render_template, session, redirect, request, g, flash, url_for, send_from_directory
 from functools import wraps
 import moodle_xml
 
@@ -78,7 +78,7 @@ def load_questions_xml(xml_file: Path, config: dict) -> int:
     return 0
 
 
-app = Flask(__name__, static_folder="images")
+app = Flask(__name__)
 app.config.from_object("config")
 app.config["DEBUG"] = True
 # print(app.config)
@@ -184,6 +184,11 @@ def course_exists(f):
     return decorated_function
 
 
+@app.route(f"{app.config["APPLICATION_ROOT"]}/images/<course>/<path:filename>")
+def custom_static(course: str, filename):
+    return send_from_directory("images", filename)
+
+
 def get_lives_number(course: str, nickname: str) -> int | None:
     """
     get number of lives for nickname
@@ -236,6 +241,9 @@ def topic_list(course: str):
     """
     display list of topics for selected course
     """
+
+    config = get_course_config(course)
+
     if "recover" in session:
         del session["recover"]
     if "quiz" in session:
@@ -255,7 +263,7 @@ def topic_list(course: str):
         ]
         scores = {topic: get_score(course, topic) for topic in topics}
 
-    return render_template("topic_list.html", course=course, topics=topics, scores=scores, lives=lives)
+    return render_template("topic_list.html", course=course, topics=topics, scores=scores, lives=lives, translation=config["translations"])
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/recover_lives/<course>", methods=["GET"])
@@ -306,9 +314,7 @@ def recover_lives(course: str):
     session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_RECOVER"])
     session["recover"] = 0  # count number of errors
 
-    return redirect(url_for("question", course=course, topic="recover", step=1, idx=0))
-
-    # return render_template("recover_lives.html", course=course, lives=lives)
+    return redirect(url_for("question", course=course, topic=config["translations"]["Recover lives"], step=1, idx=0))
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>", methods=["GET"])
@@ -508,6 +514,9 @@ def question(course: str, topic: str, step: int, idx: int):
     """
     show question idx
     """
+
+    config = get_course_config(course)
+
     # check if quiz is finished
     if idx < len(session["quiz"]):
         # get question content
@@ -565,7 +574,7 @@ def question(course: str, topic: str, step: int, idx: int):
 
     image_list = []
     for image in question.get("files", []):
-        image_list.append(url_for("static", filename=f"{course}/{image}"))
+        image_list.append(f"{app.config["APPLICATION_ROOT"]}/images/{course}/{image}")
 
     if question["type"] == "multichoice" or question["type"] == "truefalse":
         answers = random.sample(question["answers"], len(question["answers"]))
@@ -578,6 +587,7 @@ def question(course: str, topic: str, step: int, idx: int):
 
     return render_template(
         "question.html",
+        config=config,
         question=question,
         image_list=image_list,
         answers=answers,
@@ -591,6 +601,7 @@ def question(course: str, topic: str, step: int, idx: int):
         score=get_score(course, topic),
         lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
         recover="recover" in session,
+        translation=config["translations"],
     )
 
 
@@ -612,12 +623,12 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     config = get_course_config(course)
 
     def correct_answer():
-        return "You selected the correct answer."
+        return config["translations"]["You selected the correct answer"]
 
     def wrong_answer(correct_answer, answer_feedback):
         # feedback
         if answer_feedback:
-            return f"{answer_feedback}<br><br>The correct answer is:<br>{correct_answer}"
+            return f"{answer_feedback}<br><br>{{ config['translations']['The correct answer is:'] }}<br>{correct_answer}"
         else:
             return f"The correct answer is:<br>{correct_answer}"
 
@@ -653,11 +664,14 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     flag_max_recover_errors = False
 
+    # check answer
     if str_match(user_answer, correct_answer_str):
+        # good answer
         feedback["result"] = correct_answer()
         feedback["correct"] = True
 
     else:
+        # error
         feedback["result"] = Markup(wrong_answer(correct_answer_str, answer_feedback))
         feedback["correct"] = False
 
@@ -677,7 +691,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     # check if recover is ended
     flag_recovered = False
-    if "recover" in session and idx >= config["N_QUESTIONS_BY_RECOVER"] and not flag_max_recover_errors:
+    if "recover" in session and idx + 1 >= config["N_QUESTIONS_BY_RECOVER"] and not flag_max_recover_errors:
         flag_recovered = True
 
     # save result
@@ -694,6 +708,14 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         )
         db.commit()
 
+    print()
+    print(f"{idx=}")
+    print(f"{"recover" in session=}")
+    print(f"{config["N_QUESTIONS_BY_RECOVER"]=}")
+    print(f"{flag_max_recover_errors=}")
+    print(f"{flag_recovered=}")
+    print()
+
     return render_template(
         "feedback.html",
         course=course,
@@ -708,6 +730,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         flag_max_recover_errors=flag_max_recover_errors,
         flag_recovered=flag_recovered,
         recover="recover" in session,
+        translation=config["translations"],
     )
 
 
@@ -746,9 +769,11 @@ def admin(course: str):
                 scores[user["nickname"]][topic] = get_score(topic, nickname=user["nickname"])
         """
 
-    if Path("data.txt").exists():
+    if Path(course).with_suffix(".txt").exists():
         with open(Path(course).with_suffix(".txt"), "r") as f_in:
             data_content = f_in.read()
+    else:
+        data_content = f"File {Path(course).with_suffix(".txt")} not found"
 
     return render_template(
         "admin.html",
@@ -763,8 +788,14 @@ def admin(course: str):
 @app.route(f"{app.config["APPLICATION_ROOT"]}/login/<course>", methods=["GET", "POST"])
 @course_exists
 def login(course: str):
+    """
+    manage login
+    """
+    config = get_course_config(course)
+
     if request.method == "GET":
-        return render_template("login.html", course=course)
+        return render_template("login.html", course=course, translation=config["translations"])
+
     if request.method == "POST":
         form_data = request.form
         password_hash = hashlib.sha256(form_data.get("password").encode()).hexdigest()
@@ -778,7 +809,7 @@ def login(course: str):
             )
             n_users = cursor.fetchone()
             if not n_users[0]:
-                flash("Incorrect login. Retry", "error")
+                flash(config["translations"]["Incorrect login. Retry"], "error")
                 return redirect(url_for("login", course=course))
 
             else:

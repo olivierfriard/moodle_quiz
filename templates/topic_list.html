@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Topics - Duolinzoo</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ course }} - {{ translation['Topics'] }}</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
 <body>
 
-  <section class="section">
-    <div class="container">
-      <div class="columns is-centered">
-        <div class="column is-half">
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
 
-          <div class="block">
-            <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
-          </div>
+<div class="block">
+<a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
+</div>
 
 {% if lives is not none %}
 <div class="block">
@@ -26,6 +26,8 @@
 </div>
 {% endif %}
 
+<h3 class="title">{{ course }} - {{ translation['Topics'] }}</h3>
+
 {% for topic in topics %}
 
 <a class="button is-large is-fullwidth" href="{{ url_for('steps', course=course, topic=topic) }}" style="margin-bottom: 1.2em;">
@@ -34,7 +36,8 @@
 
 {#
 {% if scores[topic] %}
-<progress class="progress is-small {% if scores[topic] < 0.7 %}is-danger{% else %}is-success{% endif %}" value="{{ scores[topic] }}" max="1" style="position: absolute; bottom: 0.5em; left: 0; width: 100%; height: 0.5em;">
+<progress class="progress is-small {% if scores[topic] < 0.7 %}is-danger{% else %}is-success{% endif %}" value="{{ scores[topic] }}" max="1" 
+style="position: absolute; bottom: 0.5em; left: 0; width: 100%; height: 0.5em;">
 </progress>
 {% endif %}
 #}
