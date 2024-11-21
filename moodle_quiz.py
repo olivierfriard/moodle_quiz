@@ -250,7 +250,6 @@ def home(course: str):
         del session["recover"]
     if "brush-up" in session:
         del session["brush-up"]
-
     if "quiz" in session:
         del session["quiz"]
 
