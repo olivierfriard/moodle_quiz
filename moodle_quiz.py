@@ -654,10 +654,14 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     def wrong_answer(correct_answer, answer_feedback):
         # feedback
+        out = []
         if answer_feedback:
-            return f"{answer_feedback}<br><br>{{ translation['The correct answer is:'] }}<br>{correct_answer}"
-        else:
-            return f"The correct answer is:<br>{correct_answer}"
+            out.append(answer_feedback)
+        out.append(translation["The correct answer is:"])
+        if correct_answer in ("true", "false"):
+            correct_answer = translation[correct_answer.upper()]
+        out.append(correct_answer)
+        return "<br>".join(out)
 
     # get question content
     with get_db(course) as db:

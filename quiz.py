@@ -229,9 +229,9 @@ def get_quiz_sc3(topic: str, n_questions: int, results: pd.DataFrame, n_lives: i
     question_id_list = []
     count = 0
     for i in questions_score:
-        nome_domanda = risposte.iloc[i]["question_name"]
+        # nome_domanda = risposte.iloc[i]["question_name"]
 
-        print(f"{nome_domanda=}")
+        # print(f"{nome_domanda=}")
 
         question_id = risposte.iloc[i]["question_id"]
 
@@ -244,8 +244,11 @@ def get_quiz_sc3(topic: str, n_questions: int, results: pd.DataFrame, n_lives: i
         question_id_list.append(int(question_id))
 
         count += 1
-        if count >= n_questions:
+        if count > n_questions:
             break
+
+    print(f"{n_questions=}")
+    print(f"{question_id_list=}")
 
     return question_id_list
 
