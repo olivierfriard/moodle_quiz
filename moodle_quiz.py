@@ -27,12 +27,33 @@ def get_course_config(course: str):
             config = tomllib.load(f)
     else:
         config = {
-            "N_QUESTIONS": 5,
+            "QUIZ_NAME": course,
+            "INITIAL_LIFE_NUMBER": 5,
+            "N_QUESTIONS": 10,
             "QUESTION_TYPES": ["truefalse", "multichoice", "shortanswer", "numerical"],
-            "DATABASE_NAME": "quiz.sqlite",
-            "INITIAL_LIFE_NUMBER": 10,
+            "TOPICS_TO_HIDE": [],
+            "N_STEPS": 3,
+            "N_QUIZ_BY_STEP": 4,
+            "STEP_NAMES": ["STEP #1", "STEP #2", "STEP #3"],
+            "N_QUESTIONS_BY_RECOVER": 3,
+            "MAX_RECOVER_ERRORS": 2,
+            "RECOVER_TOPICS": [],
         }
     return config
+
+
+def get_translation(language: str):
+    """
+    get translation
+    """
+    print("translation")
+    if Path(f"translations_{language}.txt").is_file():
+        with open(Path(f"translations_{language}.txt"), "rb") as f:
+            translation = tomllib.load(f)
+
+        return translation
+    else:
+        return None
 
 
 def load_questions_xml(xml_file: Path, config: dict) -> int:
@@ -149,9 +170,9 @@ def create_database(course) -> None:
     conn.close()
 
 
+# load courses in database
 for xml_file in Path(".").glob("*.xml"):
     # check if database sqlite file exists
-    print(xml_file)
     if not xml_file.with_suffix(".sqlite").exists():
         print(f"Database file {xml_file.with_suffix('.sqlite')} not found")
         print("Creating a new one")
@@ -225,13 +246,13 @@ def home(course: str):
     if "quiz" in session:
         del session["quiz"]
 
-    config = get_course_config(course)
+    translation = get_translation("it")
 
     lives = None
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
 
-    return render_template("home.html", course=course, lives=lives, translation=config["translations"])
+    return render_template("home.html", course=course, lives=lives, translation=translation)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list/<course>", methods=["GET"])
@@ -241,8 +262,6 @@ def topic_list(course: str):
     """
     display list of topics for selected course
     """
-
-    config = get_course_config(course)
 
     if "recover" in session:
         del session["recover"]
@@ -263,7 +282,7 @@ def topic_list(course: str):
         ]
         scores = {topic: get_score(course, topic) for topic in topics}
 
-    return render_template("topic_list.html", course=course, topics=topics, scores=scores, lives=lives, translation=config["translations"])
+    return render_template("topic_list.html", course=course, topics=topics, scores=scores, lives=lives, translation=get_translation("it"))
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/recover_lives/<course>", methods=["GET"])
@@ -280,6 +299,7 @@ def recover_lives(course: str):
     """
 
     config = get_course_config(course)
+    translation = get_translation("it")
 
     # create questions dataframe
     with get_db(course) as db:
@@ -314,7 +334,7 @@ def recover_lives(course: str):
     session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_RECOVER"])
     session["recover"] = 0  # count number of errors
 
-    return redirect(url_for("question", course=course, topic=config["translations"]["Recover lives"], step=1, idx=0))
+    return redirect(url_for("question", course=course, topic=translation["Recover lives"], step=1, idx=0))
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>", methods=["GET"])
@@ -601,7 +621,7 @@ def question(course: str, topic: str, step: int, idx: int):
         score=get_score(course, topic),
         lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
         recover="recover" in session,
-        translation=config["translations"],
+        translation=get_translation("it"),
     )
 
 
@@ -621,14 +641,15 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     """
 
     config = get_course_config(course)
+    translation = get_translation("it")
 
     def correct_answer():
-        return config["translations"]["You selected the correct answer"]
+        return translation["You selected the correct answer"]
 
     def wrong_answer(correct_answer, answer_feedback):
         # feedback
         if answer_feedback:
-            return f"{answer_feedback}<br><br>{{ config['translations']['The correct answer is:'] }}<br>{correct_answer}"
+            return f"{answer_feedback}<br><br>{{ translation['The correct answer is:'] }}<br>{correct_answer}"
         else:
             return f"The correct answer is:<br>{correct_answer}"
 
@@ -730,7 +751,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         flag_max_recover_errors=flag_max_recover_errors,
         flag_recovered=flag_recovered,
         recover="recover" in session,
-        translation=config["translations"],
+        translation=get_translation("it"),
     )
 
 
@@ -791,10 +812,11 @@ def login(course: str):
     """
     manage login
     """
-    config = get_course_config(course)
+    # config = get_course_config(course)
+    translation = get_translation("it")
 
     if request.method == "GET":
-        return render_template("login.html", course=course, translation=config["translations"])
+        return render_template("login.html", course=course, translation=translation)
 
     if request.method == "POST":
         form_data = request.form
@@ -809,7 +831,7 @@ def login(course: str):
             )
             n_users = cursor.fetchone()
             if not n_users[0]:
-                flash(config["translations"]["Incorrect login. Retry"], "error")
+                flash(translation["Incorrect login. Retry"], "error")
                 return redirect(url_for("login", course=course))
 
             else:

@@ -1,0 +1,19 @@
+# traduzioni in italiano
+
+"Welcome" = "Benvenuto"
+"Topics" = "Argomenti"
+"View topics" = "Argomenti"
+"Recover lives" = "Recupera vita"
+"Brush-up" = "Ripasso"
+"Delete nickname" = "Cancella il nickname"
+"Logout" = "Esci"
+"New nickname" = "Nuovo nickname"
+"New nickname created with 5 lives" = "Nuovo nickname creato"
+"Submit" = "Entra"
+"Incorrect login. Retry" = "Login sbagliato. Riprovare"
+"Next" = "Continua"
+"TRUE" = "VERO"
+"FALSE" = "FALSO"
+"You selected the correct answer" = "Bene! Risposta corretta"
+"Congratulations! You've recovered one life!" = "Complimenti! Hai recuperato una vita"
+'The correct answer is:' = 'La risposta corretta è:'
