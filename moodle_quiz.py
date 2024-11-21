@@ -186,7 +186,7 @@ def course_exists(f):
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/images/<course>/<path:filename>")
 def custom_static(course: str, filename):
-    return send_from_directory("images", filename)
+    return send_from_directory(f"images/{course}", filename)
 
 
 def get_lives_number(course: str, nickname: str) -> int | None:
