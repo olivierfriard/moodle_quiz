@@ -13,9 +13,12 @@
 <div class="columns is-centered">
 <div class="column is-half">
 <div class="box">
-<h1 class="title">
-{{ course }}
-</h1>
+
+
+  {%  include "display_lives.html" %}
+
+
+<h1 class="title">{{ course }}</h1>
 
     
 <div class="block">
@@ -24,7 +27,6 @@
 </p>
 </div>
 
-{%  include "display_lives.html" %}
 
 
 {% with messages = get_flashed_messages(with_categories=True) %}
@@ -37,8 +39,16 @@
 
 {% if session['nickname'] %}
 
+<a class="button is-large is-fullwidth"
+{% if lives == 0 %}
+disabled
+{% else %}
+href="{{ url_for('topic_list', course=course) }}" 
+{% endif %}
 
-<a class="button is-large is-fullwidth" href="{{ url_for('topic_list', course=course) }}" style=" margin-bottom: 1.2em;">{{ translation['View topics'] }}</a>
+style=" margin-bottom: 1.2em;"
+
+>{{ translation['View topics'] }}</a>
 
 <a class="button is-large is-fullwidth " href="{{ url_for('recover_lives',course=course) }}" style="margin-bottom: 1.2em;">{{ translation['Recover lives'] }}</a>
 

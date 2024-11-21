@@ -19,28 +19,26 @@
 <div class="columns is-centered">
 <div class="column is-half">
 
-<div class="block">
-<a href="{{ url_for('home',course=course) }}" class="button is-link is-small">Home</a>
-<a href="{{ url_for('topic_list', course=course) }}" class="button is-link is-small">{{ translation['Topics'] }}</a>
-
-</div>
-
-
-{#
- <div class="block">
-  <strong>{{ topic }}</strong> | {{ idx + 1 }} / {{ total }}
-</div>
-#}
-
-{# <h3 class="title">{{ course }}</h3> #}
-
 {%  include "display_lives.html" %}
 
 
-<h3 class="title">
-<img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="50em">
-{{ topic }}  {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %}
-</h3>
+
+<div class="is-flex is-align-items-center">
+  <figure class="image is-48x48">
+    <img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="50em">
+  </figure>
+  <p class="ml-3 is-size-5">{{ topic }}</p>
+</div>
+
+{#   {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %} #}
+
+<br>
+
+
+
+
+
+
 
 {% if lives == 0 and not recover %}
 
@@ -50,16 +48,7 @@
 
 {% else %}
 
-{#
-{% if score is not none %}
-<div class="block">
-<strong>Score</strong> {{ score }}
-<progress class="progress {% if score < 0.7 %}is-danger{% else %}is-success{% endif %}" value="{{ score }}" max="1"></progress>
-</div>
-{%endif%}
-#}
-
-<h2 class="title">{{ question.questiontext }}</h2>
+<p class="is-size-4">{{ question.questiontext }}</p>
 
 {% if image_list %}
 {% for image in image_list %}
@@ -74,11 +63,11 @@
 {% if question.type == 'truefalse' %}
 <div class="columns">
 
-<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='true') }}" class="button  is-info is-large">
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='true') }}" class="button  is-info is-medium">
 <strong>{{ translation['TRUE'] }}</strong></a>
 </div>
 
-<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='false') }}" class="button  is-info is-large">
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='false') }}" class="button  is-info is-medium">
 <strong>{{ translation['FALSE'] }}</strong></a>
 </div>
 
@@ -89,7 +78,7 @@
 {% for answer in answers %}
 <div class="columns">
 <div class="column is-full">
-<a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer=answer.text) }}" class="button is-info is-large is-fullwidth wrap-text-button"><strong>{{ answer.text }}</strong></a><br>
+<a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer=answer.text) }}" class="button is-info is-medium is-fullwidth wrap-text-button"><strong>{{ answer.text }}</strong></a><br>
 </div>
 </div>
 {%endfor%}

@@ -1,7 +1,24 @@
-{% if lives is not none %}
-<div class="block">
-{% for i in range(lives) %}
-<img src="{{ url_for('send_static', filename='heart.svg') }}" width="30em">
-{% endfor %}
+
+<div class="columns is-flex is-justify-content-space-between">
+<!-- Left-aligned content -->
+<div class="column is-narrow">
+<p><a href="{{ url_for('home', course=course) }}">X</a></p>
 </div>
+
+ {% if idx is defined %}
+ <!-- Center-aligned content -->
+ <div class="level-item has-text-centered">
+    <p>
+    <progress class="progress is-primary" value="{{ idx + 1 }}" max="{{ total }}"></progress>
+    </p>
+  </div>
 {% endif %}
+
+<!-- Right-aligned content -->
+<div class="column is-narrow has-text-right">
+<p>
+<img src="{{ url_for('send_static', filename='heart.svg') }}" width="30em"> {{ lives if lives is not none else ''}}
+</p>
+</div>
+</div>
+  

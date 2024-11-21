@@ -17,3 +17,4 @@
 "You selected the correct answer" = "Bene! Risposta corretta"
 "Congratulations! You've recovered one life!" = "Complimenti! Hai recuperato una vita"
 'The correct answer is:' = 'La risposta corretta è:'
+'Your answer:'='La tua risposta'

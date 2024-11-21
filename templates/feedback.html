@@ -14,77 +14,60 @@
     word-break: break-word; /* Break long words if necessary */
 }  
 </style>
-    <section class="section">
-        <div class="container">
-          <div class="columns is-centered">
-            <div class="column is-half">
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
 
-<div class="block">
-  <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
-  <a href="{{ url_for('topic_list', course=course) }}" class="button is-link is-small">{{ translation['Topics'] }}</a>
-
-</div>
                 
-{#
-<div class="block">
-  <strong>{{ topic }}</strong> | {{ idx + 1 }} / {{ total }}
-</div>
-#}
-
 {%  include "display_lives.html" %}
 
 
-<h3 class="title">{{ topic }}  {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %}</h3>
-{#
-{% if score is not none %}
-<div class="block">
-<strong>Score</strong> {{ score }}
-<progress class="progress {% if score < 0.7 %}is-danger{% else %}is-success{% endif %}" value="{{ score }}" max="1"></progress>
+<div class="is-flex is-align-items-center">
+  <figure class="image is-48x48">
+    <img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="50em">
+  </figure>
+  <p class="ml-3 is-size-5">{{ topic }}</p>
 </div>
-{% endif %}
-#}
-<h2 class="title">{{ feedback.questiontext }}</h2>
+
+<br>
+
+<p class="is-size-4 mb-2">{{ feedback.questiontext }}</p>
 
 
-<div class="block">
-Your answer:<br>
-<strong>{{ user_answer }}</strong>
-</div>
+<p class="is-size-5 mb-5">{{ translation['Your answer:'] }} <strong>{{ user_answer }}</strong></p>
+
+
 
 {% if feedback.correct %}
-<button class="button is-success is-fullwidth is-large wrap-text-button"><strong>{{ feedback.result }}</strong></button><br>
+<a class="button is-success is-fullwidth is-large wrap-text-button"
 
+{% if flag_recovered %}
+href="{{ url_for('home', course=course) }}"
 {%else%}
+href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}"
+{% endif %}
+>
+<strong>{{ feedback.result }}</strong>
+</a>
 
-<button  class="button is-danger is-fullwidth is-large wrap-text-button"><strong>{{ feedback.result }}</strong></button><br>
+{% else %}
+
+<a  class="button is-danger is-fullwidth is-large wrap-text-button"
+
+{% if lives == 0 and not recover %}
+href="{{ url_for('home', course=course) }}"
+{% else %}
+href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}"
+{% endif %}
+>
+<strong>{{ feedback.result }}</strong>
+</a>
+
 {%endif%}
 <br>
 
 {% if flag_max_recover_errors %}
-
-
-<!-- Modal -->
-<div class="modal is-active" id="myModal">
-  <div class="modal-background"></div>
-  <div class="modal-content">
-    <div class="box">
-
-<button  class="button is-warning is-fullwidth is-large wrap-text-button" >
-<strong>What a pity! You've failed to recover a life...</strong>
-</button>
-    </div>
-  </div>
-  <button class="modal-close is-large" aria-label="close"></button>
-</div>
-
-<script>
-  // Close modal functionality
-  document.querySelectorAll('.modal-close, .modal-background').forEach((closeButton) => {
-    closeButton.addEventListener('click', () => {
-      document.getElementById('myModal').classList.remove('is-active');
-    });
-  });
-</script>
 
 
 <a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
@@ -95,48 +78,26 @@ Your answer:<br>
 
 {% if flag_recovered %}
 
-<!-- Modal -->
-<div class="modal is-active" id="myModal">
-    <div class="modal-background"></div>
-    <div class="modal-content">
-      <div class="box">
-
-<button  class="button is-success is-fullwidth is-large wrap-text-button">
-  <strong>{{ translation["Congratulations! You've recovered one life!"] }}</strong>
-</button>
-      </div>
-    </div>
-    <button class="modal-close is-large" aria-label="close"></button>
-  </div>
-
-  <script>
-    // Close modal functionality
-    document.querySelectorAll('.modal-close, .modal-background').forEach((closeButton) => {
-      closeButton.addEventListener('click', () => {
-        document.getElementById('myModal').classList.remove('is-active');
-      });
-    });
-  </script>
-
 <a  class="button is-success is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
-  <strong>{{ translation["Congratulations! You've recovered one life!"] }}<br>{{ translation['Next'] }}</strong>
+<strong>{{ translation["Congratulations! You've recovered one life!"] }}</strong>
 </a>
 
 {% endif %}
 
 
 {% if lives == 0 and not recover %}
-<a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('recover_lives', course=course) }}">
+<a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
   <strong>You've lost all your lives...<br>Click to recover them.</strong>
 </a>
 {% endif %}
 
-<br>
+{#
 
 {% if not flag_max_recover_errors and not flag_recovered %}
 <a href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}"  class="button is-fullwidth is-large">{{ translation['Next'] }}</a><br>
 {% endif %}
 
+#}
 
 </div>
 </div>

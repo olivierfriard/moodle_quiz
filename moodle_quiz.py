@@ -559,13 +559,6 @@ def question(course: str, topic: str, step: int, idx: int):
 
         if "recover" in session:
             del session["recover"]
-            # add a new life
-            with get_db(course) as db:
-                db.execute(
-                    ("UPDATE lives SET number = number + 1 WHERE nickname = ? "),
-                    (session["nickname"],),
-                )
-                db.commit()
 
             return redirect(url_for("home", course=course))
         else:
@@ -720,10 +713,23 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             if session["recover"] >= config["MAX_RECOVER_ERRORS"]:
                 flag_max_recover_errors = True
 
+    # translate user answer if true or false
+    if user_answer in ("true", "false"):
+        user_answer = translation[user_answer.upper()]
+
     # check if recover is ended
     flag_recovered = False
     if "recover" in session and idx + 1 >= config["N_QUESTIONS_BY_RECOVER"] and not flag_max_recover_errors:
         flag_recovered = True
+
+        print("add life")
+        # add a new life
+        with get_db(course) as db:
+            db.execute(
+                (f"UPDATE lives SET number = number + 1 WHERE nickname = ? and number < {config['INITIAL_LIFE_NUMBER']}"),
+                (session["nickname"],),
+            )
+            db.commit()
 
     # save result
     with get_db(course) as db:
