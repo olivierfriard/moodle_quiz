@@ -9,21 +9,18 @@
 </head>
 <body>
 
-  <section class="section">
-    <div class="container">
-      <div class="columns is-centered">
-        <div class="column is-half">
-
-          <div class="block">
-            <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
-          </div>
-
-          <h3 class="title">{{ course }}</h3>
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
 
 
 {%  include "display_lives.html" %}
 
-<h3 class="title">Brush-up</h3>
+<h3 class="title">{{ course }}</h3>
+
+
+<h3 class="title">{{ translation['Brush-up'] }}</h3>
 
 
 to be implemented ...

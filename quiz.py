@@ -76,6 +76,9 @@ def get_quiz_brushup(df_results, recover_list, n_questions_brushup, livello_diff
 
     n_domande_da_selezionare = n_questions_brushup * livello_difficolta
 
+    print(f"{n_domande_da_selezionare=}")
+    print(f"{type(n_domande_da_selezionare)=}")
+
     tutti_argomenti = df_results["topic"].unique().tolist()
     argomenti = [argomento for argomento in tutti_argomenti if argomento not in recover_list]
     if len(argomenti) > 2:
@@ -108,9 +111,7 @@ def get_quiz_brushup(df_results, recover_list, n_questions_brushup, livello_diff
     domande_selezionate = domande_selezionate[np.argsort(diff_question)]
     diff_mean = np.mean(diff_question[np.argsort(diff_question)][-n_questions_brushup:])
 
-    print(domande_selezionate[-n_questions_brushup:])
-
-    return domande_selezionate[-n_questions_brushup:]
+    return [int(x) for x in domande_selezionate[-n_questions_brushup:]]
 
 
 def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
@@ -194,20 +195,8 @@ def get_score_studente(ok, no):
 
     domande_con_risposta = np.where(ok + no > 0)
 
-    print(f"{domande_con_risposta=}")
-
-    print(f"{ok[domande_con_risposta]=}")
-
-    print(f"{no[domande_con_risposta]=}")
-
-    print(f"{ok[domande_con_risposta] + no[domande_con_risposta]=}")
-
-    print(f"{ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta])=}")
-
     somma_scores = np.sum(ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta]))
     # somma_scores = np.sum(ok[domande_con_risposta]) / sum(ok[domande_con_risposta] + no[domande_con_risposta])
-
-    print(f"{somma_scores=}")
 
     score_studente = somma_scores / ntot_domande
     return score_studente
@@ -278,26 +267,13 @@ def get_quiz_sc3(topic: str, n_questions: int, results: pd.DataFrame, n_lives: i
     question_id_list = []
     count = 0
     for i in questions_score:
-        # nome_domanda = risposte.iloc[i]["question_name"]
-
-        # print(f"{nome_domanda=}")
-
         question_id = risposte.iloc[i]["question_id"]
-
-        # print(f"{question_id=}")
-
-        # tipologia_domanda = risposte.iloc[i]["type"]
-
-        # questions_list.append(question_data[capX][tipologia_domanda][nome_domanda])
 
         question_id_list.append(int(question_id))
 
         count += 1
         if count > n_questions:
             break
-
-    print(f"{n_questions=}")
-    print(f"{question_id_list=}")
 
     return question_id_list
 

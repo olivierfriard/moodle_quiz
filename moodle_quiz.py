@@ -248,6 +248,9 @@ def home(course: str):
     """
     if "recover" in session:
         del session["recover"]
+    if "brush-up" in session:
+        del session["brush-up"]
+
     if "quiz" in session:
         del session["quiz"]
 
@@ -342,18 +345,57 @@ def recover_lives(course: str):
     return redirect(url_for("question", course=course, topic=translation["Recover lives"], step=1, idx=0))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>/<int:level>", methods=["GET"])
 @course_exists
 @check_login
-def brush_up(course):
+def brush_up(course: str, level: int):
     """
     display ripasso
+    """
+
+    config = get_course_config(course)
+    translation = get_translation("it")
+
     """
     lives = None
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
+    """
 
-    return render_template("brush_up.html", course=course, lives=lives)
+    with get_db(course) as db:
+        # Execute the query
+        query = """
+                SELECT 
+                    q.id AS question_id,
+                    q.topic AS topic, 
+                    q.type AS type, 
+                    q.name AS question_name, 
+                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
+                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
+                FROM questions q LEFT JOIN results r 
+                    ON q.topic=r.topic 
+                        AND q.type=r.question_type 
+                        AND q.name=r.question_name
+                        AND nickname = ?
+                GROUP BY 
+                    q.topic, 
+                    q.type, 
+                    q.name
+                """
+
+        cursor = db.execute(query, (session["nickname"],))
+        # Fetch all rows
+        rows = cursor.fetchall()
+        # Get column names from the cursor description
+        columns = [description[0] for description in cursor.description]
+        # create dataframe
+        questions_df = pd.DataFrame(rows, columns=columns)
+
+    session["quiz"] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level)
+
+    session["brush-up"] = True
+
+    return redirect(url_for("question", course=course, topic=translation["Brush-up"], step=1, idx=0))
 
 
 def get_seed(nickname, topic):
@@ -732,18 +774,19 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             db.commit()
 
     # save result
-    with get_db(course) as db:
-        db.execute(
-            ("INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"),
-            (
-                session["nickname"],
-                topic,
-                question["type"],
-                question["name"],
-                feedback["correct"],
-            ),
-        )
-        db.commit()
+    if "recover" not in session:
+        with get_db(course) as db:
+            db.execute(
+                ("INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"),
+                (
+                    session["nickname"],
+                    topic,
+                    question["type"],
+                    question["name"],
+                    feedback["correct"],
+                ),
+            )
+            db.commit()
 
     print()
     print(f"{idx=}")
