@@ -1,0 +1,7 @@
+{% if lives is not none %}
+<div class="block">
+{% for i in range(lives) %}
+<img src="{{ url_for('send_static', filename='heart.svg') }}" width="30em">
+{% endfor %}
+</div>
+{% endif %}

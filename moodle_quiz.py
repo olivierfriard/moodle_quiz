@@ -205,8 +205,13 @@ def course_exists(f):
     return decorated_function
 
 
+@app.route(f"{app.config["APPLICATION_ROOT"]}/static/<path:filename>")
+def send_static(filename):
+    return send_from_directory("static", filename)
+
+
 @app.route(f"{app.config["APPLICATION_ROOT"]}/images/<course>/<path:filename>")
-def custom_static(course: str, filename):
+def images(course: str, filename):
     return send_from_directory(f"images/{course}", filename)
 
 
@@ -388,6 +393,7 @@ def steps(course: str, topic: str):
         n_quiz_by_step=config["N_QUIZ_BY_STEP"],
         steps_active=steps_active,
         step_name=config["STEP_NAMES"],
+        translation=get_translation("it"),
     )
 
 
@@ -742,6 +748,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         course=course,
         feedback=feedback,
         user_answer=user_answer,
+        config=config,
         topic=topic,
         step=step,
         idx=idx,

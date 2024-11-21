@@ -21,7 +21,7 @@
 
 <div class="block">
 <a href="{{ url_for('home',course=course) }}" class="button is-link is-small">Home</a>
-<a href="{{ url_for('topic_list', course=course) }}" class="button is-link is-small">Topics</a>
+<a href="{{ url_for('topic_list', course=course) }}" class="button is-link is-small">{{ translation['Topics'] }}</a>
 
 </div>
 
@@ -34,16 +34,13 @@
 
 {# <h3 class="title">{{ course }}</h3> #}
 
-{% if lives is not none %}
-<div class="block">
-{% for i in range(lives) %}
-<strong>&hearts;</strong>
-{% endfor %}
-</div>
-{% endif %}
+{%  include "display_lives.html" %}
 
 
-<h3 class="title">{{ topic }}  {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %}</h3>
+<h3 class="title">
+<img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="50em">
+{{ topic }}  {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %}
+</h3>
 
 {% if lives == 0 and not recover %}
 

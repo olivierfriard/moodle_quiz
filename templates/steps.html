@@ -9,25 +9,19 @@
 </head>
 <body>
 
-  <section class="section">
-    <div class="container">
-      <div class="columns is-centered">
-        <div class="column is-half">
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
 
-          <div class="block">
-            <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
-          </div>
+<div class="block">
+<a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
+<a href="{{ url_for('topic_list', course=course) }}" class="button is-link is-small">{{ translation['Topics'] }}</a>
+</div>
 
 <h3 class="title">{{ course }} - {{ topic }}</h3>
 
-{% if lives is not none %}
-<div class="block">
-{% for i in range(lives) %}
-<big>&hearts;</big>
-{% endfor %}
-</div>
-{% endif %}
-
+{%  include "display_lives.html" %}
 
 
 {% with messages = get_flashed_messages(with_categories=True) %}
@@ -51,7 +45,12 @@
 {% endif %}
 
 
->{{ step_name[step-1] }}
+>
+
+
+<img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="30em">
+&nbsp;
+{{ step_name[step-1] }}
 &nbsp;&nbsp;
 
 <progress class="progress is-primary" value="{{ steps_active[step] }}" max="{{ n_quiz_by_step }}"></progress>

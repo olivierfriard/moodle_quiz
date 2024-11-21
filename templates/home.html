@@ -24,13 +24,7 @@
 </p>
 </div>
 
-{% if lives is not none %}
-<div class="block">
-{% for i in range(lives) %}
-&hearts;
-{% endfor %}
-</div>
-{% endif %}
+{%  include "display_lives.html" %}
 
 
 {% with messages = get_flashed_messages(with_categories=True) %}
