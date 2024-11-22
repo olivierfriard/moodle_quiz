@@ -75,43 +75,33 @@ def get_quiz_brushup(df_results, recover_list, n_questions_brushup, livello_diff
     # livello di difficoltà alto = 4 ---> seleziono n_questions_brushup * 4 e prendo quelle con score di difficoltà più alto
 
     n_domande_da_selezionare = n_questions_brushup * livello_difficolta
+    # seleziono il dataframe escludendo gli argomenti del recupero vite
+    for topic in recover_list:
+        df_filtrato = df_results[~(df_results["topic"] == topic)]
 
-    print(f"{n_domande_da_selezionare=}")
-    print(f"{type(n_domande_da_selezionare)=}")
+    tutti_argomenti = df_filtrato["topic"].unique().tolist()
+    if len(tutti_argomenti) < 3:
+        print("il ripasso non è possibile")
 
-    tutti_argomenti = df_results["topic"].unique().tolist()
-    argomenti = [argomento for argomento in tutti_argomenti if argomento not in recover_list]
-    if len(argomenti) > 2:
-        # limita la lista ai topics già in parte svolti
-        ripasso_sel = []
-        for i in np.arange(len(argomenti)):
-            id_domande = df_results.loc[(df_results["n_ok"] > 0) | (df_results["n_no"] > 0)]["question_id"].to_list()
-            ripasso_sel.extend(id_domande)
-    else:
-        ripasso_sel = []
+    lista_ok = df_filtrato.groupby("topic")["n_ok"].sum().to_list()
+    lista_no = df_filtrato.groupby("topic")["n_no"].sum().to_list()
+    lista_risposte = lista_ok + lista_no
+    for i in np.arange(len(tutti_argomenti)):
+        if lista_risposte[i] == 0:
+            df_filtrato = df_filtrato[~(df_filtrato["topic"] == tutti_argomenti[i])]
+    # seleziono un sottocampione casuale
 
-        # Controllo per numero di domande sufficiente
-    if len(ripasso_sel) < n_domande_da_selezionare:
-        n_domande_da_selezionare = len(ripasso_sel)
-        n_questions_brushup = np.min(n_questions_brushup, n_domande_da_selezionare)
-
-    random.shuffle(ripasso_sel)
-    diff_question = np.zeros(n_domande_da_selezionare)
-    domande_selezionate = np.zeros(n_domande_da_selezionare)
-    for i in np.arange(n_domande_da_selezionare):
-        id_domanda = ripasso_sel[i]
-        tipo = df_results[df_results["question_id"] == ripasso_sel[i]]["type"].to_list()
-        ok = df_results[df_results["question_id"] == ripasso_sel[i]]["n_ok"].to_list()[0]
-        no = df_results[df_results["question_id"] == ripasso_sel[i]]["n_no"].to_list()[0]
-        diff_tipo = get_difficulty_tipo(tipo[0])
-        diff_question[i] = get_difficulty(diff_tipo, ok, no)
-        domande_selezionate[i] = ripasso_sel[i]
-
-    # Ordina le domande per difficoltà
-    domande_selezionate = domande_selezionate[np.argsort(diff_question)]
-    diff_mean = np.mean(diff_question[np.argsort(diff_question)][-n_questions_brushup:])
-
-    return [int(x) for x in domande_selezionate[-n_questions_brushup:]]
+    df_filtrato = df_filtrato.loc[(df_filtrato["n_ok"] > 0) | (df_filtrato["n_no"] > 0)]
+    df_ridotto = df_filtrato.sample(n_domande_da_selezionare)
+    tipologie_domande = list(df_ridotto["type"].reset_index(drop=True))
+    score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)
+    risposteOK = np.array(df_ridotto["n_ok"])
+    risposteNO = np.array(df_ridotto["n_no"])
+    diff_domande = get_difficulty(score_tipo, risposteOK, risposteNO)
+    rango_domande = np.argsort(diff_domande)
+    id_domande = np.array(df_ridotto["question_id"])
+    domande_selezionate = id_domande[rango_domande]
+    return domande_selezionate[-n_questions_brushup:]
 
 
 def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
@@ -170,20 +160,16 @@ def get_difficulty(score_tipo, ok, no):
     # se la domanda non è mai stata presentata, il valore dipende dal tipo di domanda
 
     # altrimenti dalla media tra tipo e numero di risposte corrette ed errate già fornite
-    tot_risposte = np.array([no + ok])
+    tot_risposte = np.array(no + ok)
     n_domande = len(tot_risposte)
-    if n_domande == 1:
-        diff = no / tot_risposte
-        score = tot_risposte * diff / (tot_risposte + 1) + score_tipo / (tot_risposte + 1)
-    else:
-        # print(tot_risposte)
-        score = np.zeros(len(tot_risposte))
-        for i in np.arange(np.size(score_tipo)):
-            if tot_risposte[i] > 0:
-                diff = no[i] / tot_risposte[i]
-                score[i] = tot_risposte[i] * diff / (tot_risposte[i] + 1) + score_tipo[i] / (tot_risposte[i] + 1)
-            else:
-                score[i] = score_tipo[i]
+    # print(tot_risposte)
+    score = np.zeros(len(tot_risposte))
+    for i in np.arange(np.size(score_tipo)):
+        if tot_risposte[i] > 0:
+            diff = no[i] / tot_risposte[i]
+            score[i] = tot_risposte[i] * diff / (tot_risposte[i] + 1) + score_tipo[i] / (tot_risposte[i] + 1)
+        else:
+            score[i] = score_tipo[i]
     return score
 
 
