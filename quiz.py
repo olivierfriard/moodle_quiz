@@ -67,6 +67,7 @@ def get_quiz_recover(df_results: pd.DataFrame, recover_topics: list, n_questions
     return questions_recover
 
 
+"""
 def get_quiz_brushup(df_results, recover_list, n_questions_brushup, livello_difficolta):
     # Filtra gli argomenti escludendo quelli di recover_list
     #
@@ -95,6 +96,45 @@ def get_quiz_brushup(df_results, recover_list, n_questions_brushup, livello_diff
         # seleziono un sottocampione casuale
 
         df_filtrato = df_filtrato.loc[(df_filtrato["n_ok"] > 0) | (df_filtrato["n_no"] > 0)]
+        df_ridotto = df_filtrato.sample(n_domande_da_selezionare)
+        tipologie_domande = list(df_ridotto["type"].reset_index(drop=True))
+        score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)
+        risposteOK = np.array(df_ridotto["n_ok"])
+        risposteNO = np.array(df_ridotto["n_no"])
+        diff_domande = get_difficulty(score_tipo, risposteOK, risposteNO)
+        rango_domande = np.argsort(diff_domande)
+        id_domande = np.array(df_ridotto["question_id"])
+        domande_selezionate = id_domande[rango_domande].tolist()
+    return domande_selezionate[-n_questions_brushup:]
+"""
+
+
+def get_quiz_brushup(df_results, recover_list, n_questions_brushup, livello_difficolta):
+    # Filtra gli argomenti escludendo quelli di recover_list
+    #
+    # livello di difficoltà basso = 1 --> seleziono n_questions_brushup
+    # livello di difficoltà medio = 2 --> selezione n_questions_brushup * 2 e prendo quelle con score di difficoltà più alto
+    # livello di difficoltà alto = 4 ---> seleziono n_questions_brushup * 4 e prendo quelle con score di difficoltà più alto
+
+    n_domande_da_selezionare = n_questions_brushup * livello_difficolta
+    # seleziono il dataframe escludendo gli argomenti del recupero vite
+
+    df_results["no_ok"] = df_results["n_ok"] + df_results["n_no"]
+    df_filtrato = df_results[~(df_results["no_ok"] == 0)]
+    df_filtrato = df_filtrato[~(df_filtrato["topic"].isin(recover_list))]
+
+    tutti_argomenti = df_filtrato["topic"].unique().tolist()
+
+    print(f"{tutti_argomenti=}")
+
+    if len(tutti_argomenti) < 3:
+        domande_selezionate = lista_nan = [float("nan")] * n_questions_brushup
+        return []
+    elif len(df_filtrato) < n_domande_da_selezionare:
+        df_ridotto = df_filtrato
+        domande_selezionate = df_ridotto["question_id"].tolist()
+        n_questions_brushup = len(df_filtrato)
+    else:
         df_ridotto = df_filtrato.sample(n_domande_da_selezionare)
         tipologie_domande = list(df_ridotto["type"].reset_index(drop=True))
         score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)

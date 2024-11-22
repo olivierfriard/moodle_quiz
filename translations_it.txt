@@ -18,3 +18,4 @@
 "Congratulations! You've recovered one life!" = "Complimenti! Hai recuperato una vita"
 'The correct answer is:' = 'La risposta corretta è:'
 'Your answer:'='La tua risposta'
+"The brush-up is not available" = "Il ripasso non è disponibile"

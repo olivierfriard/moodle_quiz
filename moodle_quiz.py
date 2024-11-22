@@ -349,7 +349,7 @@ def recover_lives(course: str):
 @check_login
 def brush_up(course: str, level: int):
     """
-    display ripasso
+    display brush-up
     """
 
     config = get_course_config(course)
@@ -391,6 +391,16 @@ def brush_up(course: str, level: int):
         questions_df = pd.DataFrame(rows, columns=columns)
 
     session["quiz"] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level)
+    print(f"{session["quiz"]=}")
+    if session["quiz"] == []:
+        flash(
+            Markup(
+                f'<div class="notification is-danger"><p class="is-size-5 has-text-weight-bold">{translation['The brush-up is not available']}</p></div>'
+            ),
+            "",
+        )
+
+        return redirect(url_for("home", course=course))
 
     session["brush-up"] = True
 
