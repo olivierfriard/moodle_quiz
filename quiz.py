@@ -79,28 +79,31 @@ def get_quiz_brushup(df_results, recover_list, n_questions_brushup, livello_diff
     for topic in recover_list:
         df_filtrato = df_results[~(df_results["topic"] == topic)]
 
+    df_filtrato = df_results[~(df_results["topic"].isin(recover_list))]
+
     tutti_argomenti = df_filtrato["topic"].unique().tolist()
+
     if len(tutti_argomenti) < 3:
-        print("il ripasso non è possibile")
+        domande_selezionate = lista_nan = [float("nan")] * n_questions_brushup
+    else:
+        lista_ok = df_filtrato.groupby("topic")["n_ok"].sum().to_list()
+        lista_no = df_filtrato.groupby("topic")["n_no"].sum().to_list()
+        lista_risposte = lista_ok + lista_no
+        for i in np.arange(len(tutti_argomenti)):
+            if lista_risposte[i] == 0:
+                df_filtrato = df_filtrato[~(df_filtrato["topic"] == tutti_argomenti[i])]
+        # seleziono un sottocampione casuale
 
-    lista_ok = df_filtrato.groupby("topic")["n_ok"].sum().to_list()
-    lista_no = df_filtrato.groupby("topic")["n_no"].sum().to_list()
-    lista_risposte = lista_ok + lista_no
-    for i in np.arange(len(tutti_argomenti)):
-        if lista_risposte[i] == 0:
-            df_filtrato = df_filtrato[~(df_filtrato["topic"] == tutti_argomenti[i])]
-    # seleziono un sottocampione casuale
-
-    df_filtrato = df_filtrato.loc[(df_filtrato["n_ok"] > 0) | (df_filtrato["n_no"] > 0)]
-    df_ridotto = df_filtrato.sample(n_domande_da_selezionare)
-    tipologie_domande = list(df_ridotto["type"].reset_index(drop=True))
-    score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)
-    risposteOK = np.array(df_ridotto["n_ok"])
-    risposteNO = np.array(df_ridotto["n_no"])
-    diff_domande = get_difficulty(score_tipo, risposteOK, risposteNO)
-    rango_domande = np.argsort(diff_domande)
-    id_domande = np.array(df_ridotto["question_id"])
-    domande_selezionate = id_domande[rango_domande]
+        df_filtrato = df_filtrato.loc[(df_filtrato["n_ok"] > 0) | (df_filtrato["n_no"] > 0)]
+        df_ridotto = df_filtrato.sample(n_domande_da_selezionare)
+        tipologie_domande = list(df_ridotto["type"].reset_index(drop=True))
+        score_tipo = np.vectorize(get_difficulty_tipo)(tipologie_domande)
+        risposteOK = np.array(df_ridotto["n_ok"])
+        risposteNO = np.array(df_ridotto["n_no"])
+        diff_domande = get_difficulty(score_tipo, risposteOK, risposteNO)
+        rango_domande = np.argsort(diff_domande)
+        id_domande = np.array(df_ridotto["question_id"])
+        domande_selezionate = id_domande[rango_domande].tolist()
     return domande_selezionate[-n_questions_brushup:]
 
 
