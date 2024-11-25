@@ -17,6 +17,7 @@
 {% endif %}
 
 <!-- Right-aligned content -->
+{% if lives is not none %}
 <div class="column is-narrow has-text-right">
 <p>
 <img src="{{ url_for('send_static', filename='heart.svg') }}" width="30em">
@@ -25,6 +26,7 @@
 
 </p>
 </div>
+{% endif %}
 </div>
   
 
