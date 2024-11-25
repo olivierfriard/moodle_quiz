@@ -699,13 +699,12 @@ def question(course: str, topic: str, step: int, idx: int):
     show question idx
     """
 
-    question_id = session["quiz"][idx]
-    print(session["quiz"][idx])
     config = get_course_config(course)
     translation = get_translation("it")
 
     # check if quiz is finished
     if idx < len(session["quiz"]):
+        question_id = session["quiz"][idx]
         # get question content
         with get_db(course) as db:
             question = json.loads(
