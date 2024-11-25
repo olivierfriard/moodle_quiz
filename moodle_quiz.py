@@ -1012,10 +1012,14 @@ def new_nickname(course: str):
 @course_exists
 @check_login
 def delete(course: str):
+    """
+    delete nickname and results
+    """
     with get_db(course) as db:
         db.execute("DELETE FROM users WHERE nickname = ?", (session["nickname"],))
         db.execute("DELETE FROM lives WHERE nickname = ?", (session["nickname"],))
         db.execute("DELETE FROM steps WHERE nickname = ?", (session["nickname"],))
+        db.execute("DELETE FROM bookmarks WHERE nickname = ?", (session["nickname"],))
         db.commit()
 
     del session["nickname"]
@@ -1027,8 +1031,6 @@ def logout(course):
     """
     logout
     """
-
-    print("logout")
 
     if "nickname" in session:
         del session["nickname"]
