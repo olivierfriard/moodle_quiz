@@ -975,6 +975,56 @@ def all_questions(course: str):
     return "<br>".join(out)
 
 
+@app.route(f"{app.config["APPLICATION_ROOT"]}/all_questions_gift/<course>", methods=["GET"])
+@course_exists
+@check_login
+def all_questions_gift(course: str):
+    """
+    display all questions in gift format
+    """
+
+    # check if admin
+    if session["nickname"] != "admin":
+        flash(Markup('<div class="notification is-danger">You are not allowed to access this page</div>'), "")
+        return redirect(url_for("home", course=course))
+
+    out = []
+    with get_db(course) as db:
+        cursor = db.execute("SELECT * FROM questions ORDER BY id")
+        for row in cursor.fetchall():
+            content = json.loads(row["content"])
+            if row["type"] == "truefalse":
+                for answer in content["answers"]:
+                    if answer["fraction"] == "100":
+                        ans = answer["text"][0].upper()
+
+                out.append(f"::{row['name']}::{content['questiontext']} {{{ans}}}")
+
+            if row["type"] == "multichoice":
+                out.append(f"::{row['name']}")
+                out.append(f"::{content['questiontext']} " + "{")
+                for answer in content["answers"]:
+                    if answer["fraction"] == "100":
+                        out.append(f"={answer["text"]}")
+                    else:
+                        out.append(f"~{answer["text"]}")
+                    out.append(f"#{answer["feedback"]}")
+                out.append("}")
+
+            '''
+            out.append(str(row["id"]))
+            out.append(row["topic"])
+            out.append(row["name"])
+            content = json.loads(row["content"])
+            out.append(content["questiontext"])
+            for answer in content["answers"]:
+                out.append(f"""{answer["fraction"]}  {answer["text"]}   <span style="color: gray;">feedback: {answer["feedback"]}</span>""")
+            '''
+            out.append("<hr>")
+
+    return "<br>".join(out)
+
+
 @app.route(f"{app.config["APPLICATION_ROOT"]}/saved_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
