@@ -198,6 +198,11 @@ def check_login(f):
         if "nickname" not in session:
             flash("You must be logged", "error")
             return redirect(url_for("home"), course=kwargs["course"])
+        else:
+            # check if nickname in course
+            with get_db(kwargs["course"]) as db:
+                if db.execute("SELECT * FROM users WHERE nickname = ?", (session["nickname"],)).fetchone() is None:
+                    return redirect(url_for("logout", course=kwargs["course"]))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -262,18 +267,27 @@ def home(course: str):
         del session["quiz"]
 
     config = get_course_config(course)
-
     translation = get_translation("it")
+
+    print(f"{session=}")
 
     lives = None
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
+        # check if nickname in course
+        with get_db(course) as db:
+            if db.execute("SELECT * FROM users WHERE nickname = ?", (session["nickname"],)).fetchone() is None:
+                print("go to logout")
+                return redirect(url_for("logout", course=course))
 
     # check if brush-up available
-    questions_df = get_questions_dataframe(course, session["nickname"])
     brushup_availability = {}
-    for i in [1, 2, 4]:
-        brushup_availability[i] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], 1) != []
+    if "nickname" in session:
+        questions_df = get_questions_dataframe(course, session["nickname"])
+        for i in [1, 2, 4]:
+            brushup_availability[i] = (
+                quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], 1) != []
+            )
 
     return render_template(
         "home.html",
@@ -929,7 +943,6 @@ def login(course: str):
 
             else:
                 session["nickname"] = form_data.get("nickname")
-                session["course"] = course
                 return redirect(url_for("home", course=course))
 
 
@@ -1010,11 +1023,15 @@ def delete(course: str):
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/logout/<course>", methods=["GET", "POST"])
-@check_login
 def logout(course):
+    """
+    logout
+    """
+
+    print("logout")
+
     if "nickname" in session:
         del session["nickname"]
-        del session["course"]
         if "quiz" in session:
             del session["quiz"]
             del session["position"]
