@@ -975,6 +975,30 @@ def all_questions(course: str):
     return "<br>".join(out)
 
 
+@app.route(f"{app.config["APPLICATION_ROOT"]}/saved_questions/<course>", methods=["GET"])
+@course_exists
+@check_login
+def saved_questions(course: str):
+    """
+    display saved questions
+    """
+
+    # check if admin
+    if session["nickname"] != "admin":
+        flash(Markup('<div class="notification is-danger">You are not allowed to access this page</div>'), "")
+        return redirect(url_for("home", course=course))
+
+    out = []
+    with get_db(course) as db:
+        cursor = db.execute("select topic, name from bookmarks, questions WHERE bookmarks.question_id = questions.id ORDER BY topic, name")
+        for row in cursor.fetchall():
+            out.append(str(row["topic"]))
+            out.append(row["name"])
+            out.append("<hr>")
+
+    return "<br>".join(out)
+
+
 @app.route(f"{app.config["APPLICATION_ROOT"]}/login/<course>", methods=["GET", "POST"])
 @course_exists
 def login(course: str):
