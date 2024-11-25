@@ -104,41 +104,11 @@
 
 {% endif %}{# lives == 0 #}
 
-{% if session['nickname'] == 'admin' %}
-<label>
-<input type="checkbox"  id="myCheckbox" onclick="sendCheckboxStatus()">
-{{ translation['Save the question'] }}
-</label>
-{% endif %}
 </div>
 </div>
 </div>
 </section>
 
-{% if session['nickname'] == 'admin' %}
-<script>
-  function sendCheckboxStatus() {
-    var checkbox = document.getElementById('myCheckbox');
-    var isChecked = checkbox.checked;
-
-    // Send checkbox status via AJAX (using fetch)
-    fetch("{{ url_for('toggle_checkbox', course=course, question_id=question_id)}}", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json', // Send JSON data
-      },
-      body: JSON.stringify({ checked: isChecked }) // Send checkbox status as JSON
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log('Response from server:', data);
-    })
-    .catch(error => {
-      console.error('Error:', error);
-    });
-  }
-</script>
-{% endif %}
 
 </body>
 </html>
