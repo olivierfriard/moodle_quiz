@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ course }}</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ course_name }}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
+
 <body>
 <section class="section">
 <div class="container">
@@ -15,12 +15,40 @@
 <div class="box">
 
 
-  {%  include "display_lives.html" %}
-
-
-<h1 class="title">{{ course }}</h1>
-
+{# display header #}
+<div class="columns is-flex is-justify-content-space-between">
+<!-- Left-aligned content -->
+<div class="column is-narrow">
     
+{% if self._TemplateReference__context.name != 'home.html' %}
+<p class="is-size-4"><a href="{{ url_for('home', course=course) }}">X</a></p>
+{% endif %}
+</div>
+
+
+{% if idx is defined %}
+<!-- Center-aligned content -->
+<div class="level-item has-text-centered">
+<p>
+<progress class="progress is-primary" value="{{ idx + 1 }}" max="{{ total }}"></progress>
+</p>
+</div>
+{% endif %}
+
+<!-- Right-aligned content -->
+<div class="column is-narrow has-text-right">
+<p>
+<img src="{{ url_for('send_static', filename='heart.svg') }}" width="30em">
+
+<span class="has-text-danger">{{ lives if lives is not none else ''}}</span>
+
+</p>
+</div>
+</div>
+    
+
+<h1 class="title">{{ course_name }}</h1>
+
 <div class="block">
 <p class="subtitle">
 {{ translation['Welcome'] }} <strong>{{ session['nickname'] }}</strong>!
@@ -55,6 +83,29 @@ style=" margin-bottom: 1.2em;"
 </a>
 
 
+
+<div class="field">
+<button class="button is-large is-fullwidth">
+<span style="margin-right: 1em">{{ translation['Brush-up'] }}</span>
+<span class="ml-3">
+{% for i in brushup_availability %}
+
+
+  <label class="radio">
+    <input type="radio" name="group" onclick="navigateToPage('{{ url_for('brush_up',course=course, level=i) }}')">
+    Option {{ i }}
+  </label>
+
+
+{% endfor %}
+</span>
+</button>
+</div>
+
+
+
+{#
+
 <div class="columns is-flex is-justify-content-space-between">
   <!-- Left-aligned content -->
   <div class="column is-narrow">
@@ -87,7 +138,7 @@ style=" margin-bottom: 1.2em;"
   </div>
   </div>
     
-
+#}
 
 
 
@@ -119,6 +170,10 @@ style=" margin-bottom: 1.2em;"
 function confirm_() {
     return confirm("Are you sure?");
 }
+
+function navigateToPage(url) {
+      window.location.href = url;
+    }
 </script>
 
 </html>

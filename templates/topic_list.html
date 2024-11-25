@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ course }} - {{ translation['Topics'] }}</title>
+<title>{{ course_name }} - {{ translation['Topics'] }}</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
@@ -17,7 +17,7 @@
 
 {%  include "display_lives.html" %}
 
-<h3 class="title">{{ course }} - {{ translation['Topics'] }}</h3>
+<h3 class="title">{{ course_name }} - {{ translation['Topics'] }}</h3>
 
 {% for topic in topics %}
 

@@ -10,6 +10,7 @@
 "New nickname" = "Nuovo nickname"
 "New nickname created with 5 lives" = "Nuovo nickname creato"
 "Submit" = "Entra"
+"Submit the answer" = "Invia"
 "Incorrect login. Retry" = "Login sbagliato. Riprovare"
 "Next" = "Continua"
 "TRUE" = "VERO"
@@ -18,4 +19,8 @@
 "Congratulations! You've recovered one life!" = "Complimenti! Hai recuperato una vita"
 'The correct answer is:' = 'La risposta corretta è:'
 'Your answer:'='La tua risposta'
+'Your answer'='La tua risposta'
 "The brush-up is not available" = "Il ripasso non è disponibile"
+
+"Input a text" = 'Immetti una parola'
+"Save the question" = "Salva la domanda"

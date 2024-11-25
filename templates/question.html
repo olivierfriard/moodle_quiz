@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ course }} - Question</title>
+    <title>{{ course_name }} - Question</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
@@ -44,7 +44,7 @@
 
 {% else %}
 
-<p class="is-size-4">{{ question.questiontext }}</p>
+<p class="is-size-4"><strong>{{ question.questiontext }}</strong></p>
 
 {% if image_list %}
 {% for image in image_list %}
@@ -86,8 +86,9 @@
 {%else%}
 {# shortanswer or numerical #}
 <form action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx) }}" method="post">
+  <br>
 <div class="field">
-    <label class="label">Your answer</label>
+    <label class="label">{{ translation['Your answer'] }}</label>
     <div class="control">
       <input name="user_answer" class="input" step="0.00001" type="{{ type_ }}" placeholder="{{ placeholder }}">
     </div>
@@ -95,7 +96,7 @@
 
 <div class="field">
     <div class="control">
-      <button class="button is-link">Submit</button>
+      <button class="button is-link">{{ translation['Submit the answer'] }}</button>
     </div>
 </div>
 </form>
@@ -104,10 +105,39 @@
 {% endif %}{# lives == 0 #}
 
 
-</div></div>
+<label>
+<input type="checkbox"  id="myCheckbox" onclick="sendCheckboxStatus()">
+{{ translation['Save the question'] }}
+</label>
 
 </div>
+</div>
+</div>
 </section>
+
+
+<script>
+  function sendCheckboxStatus() {
+    var checkbox = document.getElementById('myCheckbox');
+    var isChecked = checkbox.checked;
+
+    // Send checkbox status via AJAX (using fetch)
+    fetch("{{ url_for('toggle_checkbox', course=course, question_id=question_id)}}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', // Send JSON data
+      },
+      body: JSON.stringify({ checked: isChecked }) // Send checkbox status as JSON
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('Response from server:', data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+  }
+</script>
 
 
 </body>

@@ -14,7 +14,7 @@ import re
 import json
 import sys
 from markupsafe import Markup
-from flask import Flask, render_template, session, redirect, request, g, flash, url_for, send_from_directory
+from flask import Flask, render_template, session, redirect, request, g, flash, url_for, send_from_directory, jsonify
 from functools import wraps
 import moodle_xml
 
@@ -102,7 +102,6 @@ def load_questions_xml(xml_file: Path, config: dict) -> int:
 app = Flask(__name__)
 app.config.from_object("config")
 app.config["DEBUG"] = True
-# print(app.config)
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
 
@@ -163,6 +162,15 @@ def create_database(course) -> None:
     topic TEXT NOT NULL,
     step_index INTEGER NOT NULL,
     number INTEGER NOT NULL
+    )"""
+    )
+
+    cursor.execute(
+        """
+    CREATE TABLE bookmarks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT NOT NULL UNIQUE,
+    question_id INTEGER NOT NULL
     )"""
     )
 
@@ -253,13 +261,28 @@ def home(course: str):
     if "quiz" in session:
         del session["quiz"]
 
+    config = get_course_config(course)
+
     translation = get_translation("it")
 
     lives = None
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
 
-    return render_template("home.html", course=course, lives=lives, translation=translation)
+    # check if brush-up available
+    questions_df = get_questions_dataframe(course, session["nickname"])
+    brushup_availability = {}
+    for i in [1, 2, 4]:
+        brushup_availability[i] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], 1) != []
+
+    return render_template(
+        "home.html",
+        course_name=config["QUIZ_NAME"],
+        course=course,
+        lives=lives,
+        brushup_availability=brushup_availability,
+        translation=translation,
+    )
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list/<course>", methods=["GET"])
@@ -289,7 +312,15 @@ def topic_list(course: str):
         ]
         scores = {topic: get_score(course, topic) for topic in topics}
 
-    return render_template("topic_list.html", course=course, topics=topics, scores=scores, lives=lives, translation=get_translation("it"))
+    return render_template(
+        "topic_list.html",
+        course_name=config["QUIZ_NAME"],
+        course=course,
+        topics=topics,
+        scores=scores,
+        lives=lives,
+        translation=get_translation("it"),
+    )
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/recover_lives/<course>", methods=["GET"])
@@ -344,23 +375,7 @@ def recover_lives(course: str):
     return redirect(url_for("question", course=course, topic=translation["Recover lives"], step=1, idx=0))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>/<int:level>", methods=["GET"])
-@course_exists
-@check_login
-def brush_up(course: str, level: int):
-    """
-    display brush-up
-    """
-
-    config = get_course_config(course)
-    translation = get_translation("it")
-
-    """
-    lives = None
-    if "nickname" in session:
-        lives = get_lives_number(course, session["nickname"])
-    """
-
+def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
     with get_db(course) as db:
         # Execute the query
         query = """
@@ -382,16 +397,30 @@ def brush_up(course: str, level: int):
                     q.name
                 """
 
-        cursor = db.execute(query, (session["nickname"],))
+        cursor = db.execute(query, (nickname,))
         # Fetch all rows
         rows = cursor.fetchall()
         # Get column names from the cursor description
         columns = [description[0] for description in cursor.description]
         # create dataframe
-        questions_df = pd.DataFrame(rows, columns=columns)
+        return pd.DataFrame(rows, columns=columns)
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>/<int:level>", methods=["GET"])
+@course_exists
+@check_login
+def brush_up(course: str, level: int):
+    """
+    display brush-up
+    """
+
+    config = get_course_config(course)
+    translation = get_translation("it")
+
+    questions_df = get_questions_dataframe(course, session["nickname"])
 
     session["quiz"] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level)
-    print(f"{session["quiz"]=}")
+
     if session["quiz"] == []:
         flash(
             Markup(
@@ -437,6 +466,7 @@ def steps(course: str, topic: str):
 
     return render_template(
         "steps.html",
+        course_name=config["QUIZ_NAME"],
         course=course,
         topic=topic,
         lives=lives,
@@ -507,52 +537,6 @@ def step(course: str, topic: str, step: int):
     return redirect(url_for("question", course=course, topic=topic, step=step, idx=0))
 
 
-'''
-@app.route(f"{app.config["APPLICATION_ROOT"]}/quiz/<topic>", methods=["GET"])
-@check_login
-def create_quiz(topic: str):
-    """
-    create the quiz
-    """
-
-    with get_db(config["DATABASE_NAME"]) as db:
-        # Execute the query
-        query = """
-                SELECT 
-                    q.id AS question_id,
-                    q.topic AS topic, 
-                    q.type AS type, 
-                    q.name AS question_name, 
-                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
-                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
-                FROM questions q LEFT JOIN results r 
-                    ON q.topic=r.topic 
-                        AND q.type=r.question_type 
-                        AND q.name=r.question_name
-                        AND nickname = ?
-                GROUP BY 
-                    q.topic, 
-                    q.type, 
-                    q.name
-                """
-
-        cursor = db.execute(query, (session["nickname"],))
-        # Fetch all rows
-        rows = cursor.fetchall()
-        # Get column names from the cursor description
-        columns = [description[0] for description in cursor.description]
-
-        df_results = pd.DataFrame(rows, columns=columns)
-
-    session["quiz"] = quiz.get_quiz(
-        topic, config["N_QUESTIONS"], df_results, get_lives_number(session["nickname"])
-    )
-
-    # show 1st question of the new quiz
-    return redirect(f"{app.config["APPLICATION_ROOT"]}/question/{topic}/0")
-'''
-
-
 def get_score(course: str, topic: str, nickname: str = "") -> float:
     """
     get score of nickname user for topic
@@ -581,6 +565,29 @@ def get_score(course: str, topic: str, nickname: str = "") -> float:
             return 0
 
 
+@app.route(f"{app.config["APPLICATION_ROOT"]}/toggle-checkbox/<course>/<int:question_id>", methods=["POST"])
+def toggle_checkbox(course: str, question_id: int):
+    print(f"{question_id=}")
+    if request.is_json:
+        is_checked = request.json.get("checked")
+        print(is_checked)
+        with get_db(course) as db:
+            if is_checked:
+                db.execute(
+                    ("INSERT INTO bookmarks (nickname, question_id) VALUES (?, ?)"),
+                    (session["nickname"], question_id),
+                )
+            else:
+                db.execute(
+                    ("DELETE FROM bookmarks WHERE nickname = ? AND question_id = ?"),
+                    (session["nickname"], question_id),
+                )
+
+            db.commit()
+
+    return jsonify({"message": ""})
+
+
 @app.route(
     f"{app.config["APPLICATION_ROOT"]}/question/<course>/<topic>/<int:step>/<int:idx>",
     methods=["GET"],
@@ -592,7 +599,10 @@ def question(course: str, topic: str, step: int, idx: int):
     show question idx
     """
 
+    question_id = session["quiz"][idx]
+    print(session["quiz"][idx])
     config = get_course_config(course)
+    translation = get_translation("it")
 
     # check if quiz is finished
     if idx < len(session["quiz"]):
@@ -601,7 +611,7 @@ def question(course: str, topic: str, step: int, idx: int):
             question = json.loads(
                 db.execute(
                     "SELECT content FROM questions WHERE id = ?",
-                    (session["quiz"][idx],),
+                    (question_id,),
                 ).fetchone()["content"]
             )
     else:
@@ -648,17 +658,19 @@ def question(course: str, topic: str, step: int, idx: int):
 
     if question["type"] == "multichoice" or question["type"] == "truefalse":
         answers = random.sample(question["answers"], len(question["answers"]))
-        placeholder = "Input a text"
+        placeholder = translation["Input a text"]
         type_ = "text"
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
         type_ = "number" if question["type"] == "numerical" else "text"
-        placeholder = "Input a number" if question["type"] == "numerical" else "Input a text"
+        placeholder = translation["Input un numero"] if question["type"] == "numerical" else translation["Input a text"]
 
     return render_template(
         "question.html",
+        course_name=config["QUIZ_NAME"],
         config=config,
         question=question,
+        question_id=question_id,
         image_list=image_list,
         answers=answers,
         type_=type_,
@@ -671,7 +683,7 @@ def question(course: str, topic: str, step: int, idx: int):
         score=get_score(course, topic),
         lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
         recover="recover" in session,
-        translation=get_translation("it"),
+        translation=translation,
     )
 
 
@@ -919,6 +931,7 @@ def new_nickname(course: str):
 
     if request.method == "GET":
         return render_template("new_nickname.html", course=course)
+
     if request.method == "POST":
         form_data = request.form
         # Then, access form data with .get()
