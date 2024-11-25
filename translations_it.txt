@@ -28,3 +28,5 @@
 "Easy" = "Facile"
 "Hard" = "Difficile"
 "Very hard" = "Molto difficile"
+
+"Number of lives" = "Numero di vite"
