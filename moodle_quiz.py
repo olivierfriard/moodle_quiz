@@ -863,14 +863,6 @@ def admin(course: str):
 
         topics = db.execute("SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id").fetchall()
 
-        """scores: dict = {}
-        for user in cursor.fetchall():
-            scores[user["nickname"]] = {}
-            topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
-            for topic in topics:
-                scores[user["nickname"]][topic] = get_score(topic, nickname=user["nickname"])
-        """
-
     if Path(course).with_suffix(".txt").exists():
         with open(Path(course).with_suffix(".txt"), "r") as f_in:
             data_content = f_in.read()
@@ -885,6 +877,26 @@ def admin(course: str):
         users_number=users_number,
         data_content=data_content,
     )
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/all_questions/<course>", methods=["GET"])
+@course_exists
+@check_login
+def all_questions(course: str):
+    out = []
+    with get_db(course) as db:
+        cursor = db.execute("SELECT * FROM questions ORDER BY id")
+        for row in cursor.fetchall():
+            out.append(str(row["id"]))
+            out.append(row["topic"])
+            out.append(row["name"])
+            content = json.loads(row["content"])
+            out.append(content["questiontext"])
+            for answer in content["answers"]:
+                out.append(f"""{answer["fraction"]}  {answer["text"]}   <span style="color: gray;">feedback: {answer["feedback"]}</span>""")
+            out.append("<hr>")
+
+    return "<br>".join(out)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/login/<course>", methods=["GET", "POST"])
