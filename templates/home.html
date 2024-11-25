@@ -53,7 +53,14 @@
 
 <div class="block">
 <p class="subtitle">
-{{ translation['Welcome'] }} <strong>{{ session['nickname'] }}</strong>!
+{{ translation['Welcome'] }}
+{% if session['nickname'] == 'admin' %}
+<a href="{{ url_for('admin', course=course) }}">
+ {% endif %} 
+<strong>{{ session['nickname'] }}</strong>!
+{% if session['nickname'] == 'admin' %}
+</a>
+ {% endif %} 
 </p>
 </div>
 
@@ -85,24 +92,16 @@ style=" margin-bottom: 1.2em;"
 </a>
 
 
+<a class="button is-large is-fullwidth "  style="margin-bottom: 1.2em;"
+{% if brushup_availability %}
+href="{{ url_for('brush_up_home',course=course) }}"
+{% else %}
+disabled
+{% endif %}
+>
+{{ translation['Brush-up'] }}
+</a>
 
-<div class="field">
-<button class="button is-large is-fullwidth">
-<span style="margin-right: 1em">{{ translation['Brush-up'] }}</span>
-<span class="ml-3">
-{% for i in brushup_availability %}
-
-
-  <label class="radio">
-    <input type="radio" name="group" onclick="navigateToPage('{{ url_for('brush_up',course=course, level=i) }}')">
-    Option {{ i }}
-  </label>
-
-
-{% endfor %}
-</span>
-</button>
-</div>
 
 
 

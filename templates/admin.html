@@ -3,25 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Quiz</title>
+<title>{{ course_name }} - Administration</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
 <body>
 
-  <section class="section">
-    <div class="container">
-      <div class="columns is-centered">
-        <div class="column is-half">
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
 
-          <div class="block">
-            <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
-          
-          </div>
+<div class="block">
+<a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
+
+</div>
 
 Number of questions: {{ questions_number }}<br>
+<a href="{{ url_for('all_questions', course=course) }}">display all questions</a><br>
 Number of users: {{ users_number }}<br>
 <br>
-Topics<br>
+<strong>Topics</strong>
+<br>
 {% for topic in topics %}
 
 {{ topic.topic}} - {{ topic.type}}: <strong>{{ topic.n_questions }}</strong> questions<br>

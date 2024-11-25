@@ -150,7 +150,11 @@ def create_database(course) -> None:
     )
     cursor.execute(
         """
-        CREATE TABLE lives (id INTEGER PRIMARY KEY AUTOINCREMENT,nickname TEXT NOT NULL UNIQUE, number INTEGER DEFAULT 10);
+        CREATE TABLE lives (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nickname TEXT NOT NULL UNIQUE,
+        number INTEGER DEFAULT 10
+        )
         """
     )
 
@@ -269,33 +273,30 @@ def home(course: str):
     config = get_course_config(course)
     translation = get_translation("it")
 
-    print(f"{session=}")
-
     lives = None
     if "nickname" in session:
         lives = get_lives_number(course, session["nickname"])
         # check if nickname in course
         with get_db(course) as db:
             if db.execute("SELECT * FROM users WHERE nickname = ?", (session["nickname"],)).fetchone() is None:
-                print("go to logout")
                 return redirect(url_for("logout", course=course))
 
     # check if brush-up available
-    brushup_availability = {}
+    brushup_availability: bool = False
     if "nickname" in session:
         questions_df = get_questions_dataframe(course, session["nickname"])
-        for i in [1, 2, 4]:
-            brushup_availability[i] = (
-                quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], 1) != []
-            )
+        for idx, level in enumerate(config["BRUSH_UP_LEVELS"]):
+            if quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level) != []:
+                brushup_availability = True
+                break
 
     return render_template(
         "home.html",
         course_name=config["QUIZ_NAME"],
         course=course,
         lives=lives,
-        brushup_availability=brushup_availability,
         translation=translation,
+        brushup_availability=brushup_availability,
     )
 
 
@@ -420,6 +421,36 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
         return pd.DataFrame(rows, columns=columns)
 
 
+@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up_home/<course>", methods=["GET"])
+@course_exists
+@check_login
+def brush_up_home(course: str):
+    """
+    display brush-up home page
+    """
+    config = get_course_config(course)
+    translation = get_translation("it")
+
+    # check if brush-up available
+    brushup_availability = {}
+    if "nickname" in session:
+        questions_df = get_questions_dataframe(course, session["nickname"])
+        for idx, level in enumerate(config["BRUSH_UP_LEVELS"]):
+            brushup_availability[idx] = (
+                quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level) != []
+            )
+
+    return render_template(
+        "brush_up.html",
+        course_name=config["QUIZ_NAME"],
+        course=course,
+        levels=config["BRUSH_UP_LEVELS"],
+        level_names=config["BRUSH_UP_LEVEL_NAMES"],
+        brushup_availability=brushup_availability,
+        translation=translation,
+    )
+
+
 @app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>/<int:level>", methods=["GET"])
 @course_exists
 @check_login
@@ -436,6 +467,7 @@ def brush_up(course: str, level: int):
     session["quiz"] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level)
 
     if session["quiz"] == []:
+        del session["quiz"]
         flash(
             Markup(
                 f'<div class="notification is-danger"><p class="is-size-5 has-text-weight-bold">{translation['The brush-up is not available']}</p></div>'
@@ -854,6 +886,15 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 @course_exists
 @check_login
 def results(course: str):
+    """
+    display results for all users
+    """
+
+    # check if admin
+    if session["nickname"] != "admin":
+        flash(Markup('<div class="notification is-danger">You are not allowed to access this page</div>'), "")
+        return redirect(url_for("home", course=course))
+
     with get_db(course) as db:
         cursor = db.execute("SELECT * FROM users")
         scores: dict = {}
@@ -866,10 +907,21 @@ def results(course: str):
     return render_template("results.html", course=course, topics=topics, scores=scores)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/admin42/<course>", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/admin/<course>", methods=["GET"])
 @course_exists
 @check_login
 def admin(course: str):
+    """
+    administration page
+    """
+
+    # check if admin
+    if session["nickname"] != "admin":
+        flash(Markup('<div class="notification is-danger">You are not allowed to access this page</div>'), "")
+        return redirect(url_for("home", course=course))
+
+    config = get_course_config(course)
+
     with get_db(course) as db:
         questions_number = db.execute("SELECT COUNT(*) AS questions_number FROM questions").fetchone()["questions_number"]
 
@@ -885,6 +937,7 @@ def admin(course: str):
 
     return render_template(
         "admin.html",
+        course_name=config["QUIZ_NAME"],
         questions_number=questions_number,
         course=course,
         topics=topics,
@@ -897,6 +950,15 @@ def admin(course: str):
 @course_exists
 @check_login
 def all_questions(course: str):
+    """
+    display all questions
+    """
+
+    # check if admin
+    if session["nickname"] != "admin":
+        flash(Markup('<div class="notification is-danger">You are not allowed to access this page</div>'), "")
+        return redirect(url_for("home", course=course))
+
     out = []
     with get_db(course) as db:
         cursor = db.execute("SELECT * FROM questions ORDER BY id")
@@ -919,7 +981,7 @@ def login(course: str):
     """
     manage login
     """
-    # config = get_course_config(course)
+
     translation = get_translation("it")
 
     if request.method == "GET":
@@ -963,6 +1025,10 @@ def new_nickname(course: str):
         nickname = form_data.get("nickname")
         password1 = form_data.get("password1")
         password2 = form_data.get("password2")
+
+        # if nickname == "admin":
+        #    flash("This nickname is not allowed", "error")
+        #    return render_template("new_nickname.html", course=course)
 
         if not password1 or not password2:
             flash("A password is missing", "error")

@@ -104,18 +104,18 @@
 
 {% endif %}{# lives == 0 #}
 
-
+{% if session['nickname'] == 'admin' %}
 <label>
 <input type="checkbox"  id="myCheckbox" onclick="sendCheckboxStatus()">
 {{ translation['Save the question'] }}
 </label>
-
+{% endif %}
 </div>
 </div>
 </div>
 </section>
 
-
+{% if session['nickname'] == 'admin' %}
 <script>
   function sendCheckboxStatus() {
     var checkbox = document.getElementById('myCheckbox');
@@ -138,7 +138,7 @@
     });
   }
 </script>
-
+{% endif %}
 
 </body>
 </html>

@@ -24,3 +24,7 @@
 
 "Input a text" = 'Immetti una parola'
 "Save the question" = "Salva la domanda"
+
+"Easy" = "Facile"
+"Hard" = "Difficile"
+"Very hard" = "Molto difficile"

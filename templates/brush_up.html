@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Topics - {{ course }}</title>
+    <title>{{ course_name }} - {{ translation['Brush-up'] }}</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
@@ -17,13 +17,24 @@
 
 {%  include "display_lives.html" %}
 
-<h3 class="title">{{ course }}</h3>
+<h3 class="title">{{ course_name }} - {{ translation['Brush-up'] }}</h3>
 
 
-<h3 class="title">{{ translation['Brush-up'] }}</h3>
 
 
-to be implemented ...
+{% for i in brushup_availability %}
+<a class="button is-large is-fullwidth" style="margin-bottom: 1.2em;"
+
+{% if brushup_availability[i] %}
+href="{{ url_for('brush_up',course=course, level=levels[i]) }}"
+{% else %}
+disabled
+{% endif %}
+
+>
+{{ translation[level_names[i]] }}
+</a>
+{% endfor %}
 
 
 </div></div></div>
