@@ -17,10 +17,17 @@
 <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
 
 </div>
+<br>
+<strong>Questions</strong>
+<br>
 
 Number of questions: {{ questions_number }}<br>
-<a href="{{ url_for('all_questions', course=course) }}">display all questions</a><br>
-<a href="{{ url_for('saved_questions', course=course) }}">saved questions</a><br>
+<a href="{{ url_for('all_questions', course=course) }}">Display questions</a><br>
+<a href="{{ url_for('all_questions_gift', course=course) }}">Display questions (GIFT)</a><br>
+<a href="{{ url_for('saved_questions', course=course) }}">Display saved questions</a><br>
+<a href="{{ url_for('reset_saved_questions', course=course) }}">Reset saved questions</a><br>
+<br>
+<strong>Users</strong>
 <br>
 Number of users: {{ users_number }}<br>
 <br>
