@@ -6,14 +6,39 @@
     <title>Feedback - {{ course }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 
+    
+{%  include "popup.css" %}
+
+<style>
+  .wrap-text-button {
+      white-space: normal;
+      word-break: break-word; /* Break long words if necessary */
+  }  
+  </style>
+  
 </head>
 <body>
-<style>
-.wrap-text-button {
-    white-space: normal;
-    word-break: break-word; /* Break long words if necessary */
-}  
-</style>
+
+<div id="fullscreenPopup">
+  
+<img src="{{ url_for('send_static', filename='seppia.gif') }}" alt="Image du Popup">
+<div class="popup-text">{{ popup_text }}</div>
+</div>
+
+<script>
+    function showPopup() {
+        const popup = document.getElementById('fullscreenPopup');
+        popup.classList.add('show'); 
+
+        setTimeout(() => {
+            popup.classList.remove('show');
+        }, 4000);
+    }
+
+    // display popup automatically
+    {{ popup }}
+</script>
+
 <section class="section">
 <div class="container">
 <div class="columns is-centered">
@@ -78,10 +103,10 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 
 {% if flag_recovered %}
 
-<a  class="button is-success is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
+<a class="button is-success is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
 <strong>{{ translation["Congratulations! You've recovered one life!"] }}</strong>
 </a>
-
+<script>window.onload = showPopup;</script>
 {% endif %}
 
 
@@ -89,6 +114,7 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 <a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
   <strong>{{ translation["You've lost all your lives..."] }}<br>{{ translation["Click to recover them!"] }}</strong>
 </a>
+<script>window.onload = showPopup;</script>
 {% endif %}
 
 {#
@@ -137,6 +163,8 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
   }
 </script>
 {% endif %}
+
+
 
 
 </body>
