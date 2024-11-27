@@ -364,11 +364,6 @@ def recover_lives(course: str):
     """
     display recover_lives
     """
-    """
-    lives = None
-    if "nickname" in session:
-        lives = get_lives_number(course, session["nickname"])
-    """
 
     config = get_course_config(course)
     translation = get_translation("it")
@@ -404,6 +399,12 @@ def recover_lives(course: str):
         questions_df = pd.DataFrame(rows, columns=columns)
 
     session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_RECOVER"])
+
+    print(f"{config["N_QUESTIONS_BY_RECOVER"]=}")
+
+    print(f"{session["quiz"]=}")
+    print(f"{len(session["quiz"])=}")
+
     session["recover"] = 0  # count number of errors
 
     return redirect(url_for("question", course=course, topic=translation["Recover lives"], step=1, idx=0))
@@ -778,12 +779,16 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     config = get_course_config(course)
     translation = get_translation("it")
 
-    def correct_answer():
-        return translation["You selected the correct answer"]
+    def correct_answer(answer_feedback):
+        out: list = []
+        if answer_feedback:
+            out.append(answer_feedback)
+        out.append(translation["You selected the correct answer"])
+        return "<br>".join(out)
 
     def wrong_answer(correct_answer, answer_feedback):
         # feedback
-        out = []
+        out: list = []
         if answer_feedback:
             out.append(answer_feedback)
         out.append(translation["The correct answer is:"])
@@ -828,7 +833,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     # check answer
     if str_match(user_answer, correct_answer_str):
         # good answer
-        feedback["result"] = correct_answer()
+        feedback["result"] = correct_answer(answer_feedback)
         feedback["correct"] = True
 
     else:
