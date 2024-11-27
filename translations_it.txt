@@ -30,3 +30,6 @@
 "Very hard" = "Molto difficile"
 
 "Number of lives" = "Numero di vite"
+
+"You've lost all your lives..." = "Hai perso tutte le tue vite..."
+"Click to recover them!" = "Clicca per recuperarle!"

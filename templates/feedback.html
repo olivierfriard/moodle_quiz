@@ -87,7 +87,7 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 
 {% if lives == 0 and not recover %}
 <a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
-  <strong>You've lost all your lives...<br>Click to recover them.</strong>
+  <strong>{{ translation["You've lost all your lives..."] }}<br>{{ translation["Click to recover them!"] }}</strong>
 </a>
 {% endif %}
 
