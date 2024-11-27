@@ -783,7 +783,8 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         out: list = []
         if answer_feedback:
             out.append(answer_feedback)
-        out.append(translation["You selected the correct answer"])
+        if not out:
+            out.append(translation["You selected the correct answer"])
         return "<br>".join(out)
 
     def wrong_answer(correct_answer, answer_feedback):
@@ -810,7 +811,6 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             print(f"Question type error: {question["type"]}")
 
     if request.method == "POST":
-        # form_data = request.form
         user_answer = request.form.get("user_answer")
 
     # print(f"{user_answer=} {type(user_answer)}")
@@ -833,7 +833,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     # check answer
     if str_match(user_answer, correct_answer_str):
         # good answer
-        feedback["result"] = correct_answer(answer_feedback)
+        feedback["result"] = Markup(correct_answer(answer_feedback))
         feedback["correct"] = True
 
     else:
