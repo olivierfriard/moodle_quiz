@@ -33,3 +33,7 @@
 
 "You've lost all your lives..." = "Hai perso tutte le tue vite..."
 "Click to recover them!" = "Clicca per recuperarle!"
+
+
+"What a pity! You've failed to recover a life..." = "Che peccato! Non sei riuscito a recuperare una vita..."
+"Click to retry" = "Clicca per riprovare"

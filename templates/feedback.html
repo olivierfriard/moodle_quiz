@@ -71,7 +71,7 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 
 
 <a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
-  <strong>What a pity! You've failed to recover a life...<br>Click to retry</strong>
+  <strong>{{ translation["What a pity! You've failed to recover a life..."] }}<br>{{ translation["Click to retry"] }}</strong>
 </a>
 
 {% endif %}
