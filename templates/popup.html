@@ -1,0 +1,19 @@
+<div id="fullscreenPopup">
+  
+<img src="{{ url_for('send_static', filename='seppia.gif') }}" alt="Image du Popup">
+<div class="popup-text">{{ popup_text }}</div>
+</div>
+
+<script>
+    function showPopup() {
+        const popup = document.getElementById('fullscreenPopup');
+        popup.classList.add('show'); 
+
+        setTimeout(() => {
+            popup.classList.remove('show');
+        }, 4000);
+    }
+
+    // display popup automatically
+    {{ popup }}
+</script>
