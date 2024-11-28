@@ -905,6 +905,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             )
             db.commit()
 
+    """
     print()
     print(f"{idx=}")
     print(f"{"recover" in session=}")
@@ -912,6 +913,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     print(f"{flag_max_recover_errors=}")
     print(f"{flag_recovered=}")
     print()
+    """
 
     popup = ""
     popup_text = ""
@@ -921,7 +923,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     nlives = get_lives_number(course, session["nickname"] if "nickname" in session else "")
 
     if nlives == 0 and "recover" not in session:
-        popup_text = Markup(f"{ translation["You've lost all your lives..."] }<br>{ translation["Click to recover them!"]}")
+        popup_text = Markup(f"{ translation["You've lost all your lives..."] }")
 
     return render_template(
         "feedback.html",
