@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feedback - {{ course }}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+{% include "header.html" %}
 
-    
-{%  include "popup.css" %}
+<title>Feedback - {{ course }}</title>
+
+{% include "popup.css" %}
 
 <style>
   .wrap-text-button {
@@ -19,25 +14,7 @@
 </head>
 <body>
 
-<div id="fullscreenPopup">
-  
-<img src="{{ url_for('send_static', filename='seppia.gif') }}" alt="Image du Popup">
-<div class="popup-text">{{ popup_text }}</div>
-</div>
-
-<script>
-    function showPopup() {
-        const popup = document.getElementById('fullscreenPopup');
-        popup.classList.add('show'); 
-
-        setTimeout(() => {
-            popup.classList.remove('show');
-        }, 4000);
-    }
-
-    // display popup automatically
-    {{ popup }}
-</script>
+{%  include "popup.html" %}
 
 <section class="section">
 <div class="container">

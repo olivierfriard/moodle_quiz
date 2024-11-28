@@ -1,3 +1,4 @@
+{# popup parameters #}
 
 <style>
   
@@ -7,12 +8,12 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8); /* Fond semi-transparent */
+    background-color: rgba(0, 0, 0, 0.8); /* transparent */
     display: flex;
     flex-direction: column;
-    align-items: center; /* Centre horizontalement */
+    align-items: center; /* horizontal center */
     z-index: 1000;
-    visibility: hidden; /* Caché par défaut */
+    visibility: hidden; /* hidden by default */
     opacity: 0;
     transition: visibility 0s, opacity 0.5s ease;
     color: white;
@@ -25,17 +26,17 @@
   }
 
   #fullscreenPopup img {
-    margin-top: 20px; /* Espace en haut de l'image */
-    max-width: 90%; /* Limite la largeur de l'image */
-    height: auto; /* Conserve les proportions */
+    margin-top: 20px; 
+    max-width: 90%; 
+    height: auto; 
 /*            border: 3px solid white;
     border-radius: 5px;*/
 }
-   /* Texte centré sous l'image */
+   /* Text centered after image */
    #fullscreenPopup .popup-text {
-    margin-top: 0px; /* Espace entre l'image et le texte */
-    text-align: center; /* Texte centré */
-    font-size: 2.5rem; /* Texte en grand */
+    margin-top: 0px; 
+    text-align: center; 
+    font-size: 2.5rem; 
     font-weight: bold;
 }
 </style>

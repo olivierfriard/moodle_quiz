@@ -1,22 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recover lives - {{ course }}</title>
+{% include "header.html" %}
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+<title>Recover lives - {{ course }}</title>
 </head>
 <body>
 
-  <section class="section">
-    <div class="container">
-      <div class="columns is-centered">
-        <div class="column is-half">
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
 
-          <div class="block">
-            <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
-          </div>
+<div class="block">
+<a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
+</div>
 
 <h3 class="title">{{ course }}</h3>
 
