@@ -46,8 +46,7 @@ def get_course_config(course: str):
             "N_STEPS": 3,
             "N_QUIZ_BY_STEP": 4,
             "STEP_NAMES": ["STEP #1", "STEP #2", "STEP #3"],
-            "N_QUESTIONS_BY_RECOVER": 3,
-            "MAX_RECOVER_ERRORS": 2,
+            "N_QUESTIONS_FOR_RECOVER": 5,
             "RECOVER_TOPICS": [],
         }
     return config
@@ -373,8 +372,7 @@ def recover_lives(course: str):
         "recover_lives.html",
         course=course,
         course_name=config["QUIZ_NAME"],
-        n_questions=config["N_QUESTIONS_BY_RECOVER"],
-        n_questions_ok=config["N_QUESTIONS_BY_RECOVER"] - config["MAX_RECOVER_ERRORS"],
+        n_questions_ok=config["N_QUESTIONS_FOR_RECOVER"],
         translation=translation,
         lives=get_lives_number(course, session["nickname"]),
     )
@@ -421,9 +419,9 @@ def recover_quiz(course: str):
         # create dataframe
         questions_df = pd.DataFrame(rows, columns=columns)
 
-    session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_RECOVER"])
+    session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_FOR_RECOVER"] * 2)
 
-    session["recover"] = 0  # count number of errors
+    session["recover"] = 0  # count number of good answer
 
     return redirect(url_for("question", course=course, topic=translation["Recover lives"], step=1, idx=0))
 
@@ -744,7 +742,7 @@ def question(course: str, topic: str, step: int, idx: int):
 
             return redirect(url_for("steps", course=course, topic=topic))
 
-    image_list = []
+    image_list: list = []
     for image in question.get("files", []):
         image_list.append(f"{app.config["APPLICATION_ROOT"]}/images/{course}/{image}")
 
@@ -771,7 +769,7 @@ def question(course: str, topic: str, step: int, idx: int):
         topic=topic,
         step=step,
         idx=idx,
-        total=len(session["quiz"]),
+        total=len(session["quiz"]) if "recover" not in session else config["N_QUESTIONS_FOR_RECOVER"],
         score=get_score(course, topic),
         lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
         recover="recover" in session,
@@ -846,13 +844,15 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     feedback = {"questiontext": question["questiontext"]}
 
-    flag_max_recover_errors = False
-
     # check answer
     if str_match(user_answer, correct_answer_str):
         # good answer
         feedback["result"] = Markup(correct_answer(answer_feedback))
         feedback["correct"] = True
+
+        if "recover" in session:
+            # add one good answer
+            session["recover"] += 1
 
     else:
         # error
@@ -867,11 +867,6 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                     (session["nickname"],),
                 )
                 db.commit()
-        else:
-            # count recover errors
-            session["recover"] += 1
-            if session["recover"] >= config["MAX_RECOVER_ERRORS"]:
-                flag_max_recover_errors = True
 
     # translate user answer if true or false
     if user_answer in ("true", "false"):
@@ -879,7 +874,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     # check if recover is ended
     flag_recovered = False
-    if "recover" in session and idx + 1 >= config["N_QUESTIONS_BY_RECOVER"] and not flag_max_recover_errors:
+    if "recover" in session and session["recover"] >= config["N_QUESTIONS_FOR_RECOVER"]:
         flag_recovered = True
 
         # add a new life
@@ -909,8 +904,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     print()
     print(f"{idx=}")
     print(f"{"recover" in session=}")
-    print(f"{config["N_QUESTIONS_BY_RECOVER"]=}")
-    print(f"{flag_max_recover_errors=}")
+    print(f"{config["N_QUESTIONS_FOR_RECOVER"]=}")
     print(f"{flag_recovered=}")
     print()
     """
@@ -938,7 +932,6 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         total=len(session["quiz"]),
         score=get_score(course, topic),
         lives=nlives,
-        flag_max_recover_errors=flag_max_recover_errors,
         flag_recovered=flag_recovered,
         recover="recover" in session,
         popup=popup,

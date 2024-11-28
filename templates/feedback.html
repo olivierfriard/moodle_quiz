@@ -69,15 +69,6 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 {%endif%}
 <br>
 
-{% if flag_max_recover_errors %}
-
-
-<a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
-  <strong>{{ translation["What a pity! You've failed to recover a life..."] }}<br>{{ translation["Click to retry"] }}</strong>
-</a>
-
-{% endif %}
-
 {% if flag_recovered %}
 
 <a class="button is-success is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
@@ -96,7 +87,7 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 
 {#
 
-{% if not flag_max_recover_errors and not flag_recovered %}
+{% if not flag_recovered %}
 <a href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}"  class="button is-fullwidth is-large">{{ translation['Next'] }}</a><br>
 {% endif %}
 

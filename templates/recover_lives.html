@@ -18,7 +18,8 @@
 <p class="is-size-4 mb-4">{{ translation['Recover lives'] }}</p>
 
 <p class="is-size-5 mb-4">
-Il quiz di recupero è composto da  {{ n_questions }} domande e devi rispondere bene a {{ n_questions_ok }} domande.
+Il quiz di recupero è pronto!<br>
+Puoi recuperare una vita rispondendo bene a {{ n_questions_ok }} domande.
 </p>
 
 <a class="button is-warning is-large is-fullwidth" style="margin-bottom: 1.2em;" href="{{ url_for('recover_quiz', course=course) }}">

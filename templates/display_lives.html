@@ -9,13 +9,17 @@
 {% endif %}
 </div>
 
- {% if idx is defined %}
- <!-- Center-aligned content -->
- <div class="column has-text-centered">
-    <p>
-    <progress class="progress is-primary" value="{{ idx }}" max="{{ total }}"></progress>
-    </p>
-  </div>
+<!-- Center-aligned content -->
+{% if idx is defined %}
+<div class="column has-text-centered">
+<p>
+{% if 'recover' in session %}
+<progress class="progress is-primary" value="{{ session['recover'] }}" max="{{ config['N_QUESTIONS_FOR_RECOVER'] }}"></progress>
+{% else %}
+<progress class="progress is-primary" value="{{ idx }}" max="{{ total }}"></progress>
+{% endif %}
+</p>
+</div>
 {% endif %}
 
 <!-- Right-aligned content -->
