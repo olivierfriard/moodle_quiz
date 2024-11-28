@@ -17,7 +17,9 @@
 
 {%  include "display_lives.html" %}
 
-<h3 class="title">{{ course_name }} - {{ topic }}</h3>
+{%  include "course_name.html" %}
+
+<p class="is-size-4 mb-4">{{ topic }}</p> 
 
 
 {% with messages = get_flashed_messages(with_categories=True) %}

@@ -8,44 +8,12 @@
 <div class="container">
 <div class="columns is-centered">
 <div class="column is-half">
+
+{%  include "display_lives.html" %}
+
 <div class="box">
 
-
-{# display header #}
-<div class="columns is-flex is-justify-content-space-between">
-<!-- Left-aligned content -->
-<div class="column is-narrow">
-    
-{% if self._TemplateReference__context.name != 'home.html' %}
-<p class="is-size-4"><a href="{{ url_for('home', course=course) }}">X</a></p>
-{% endif %}
-</div>
-
-
-{% if idx is defined %}
-<!-- Center-aligned content -->
-<div class="level-item has-text-centered">
-<p>
-<progress class="progress is-primary" value="{{ idx + 1 }}" max="{{ total }}"></progress>
-</p>
-</div>
-{% endif %}
-
-<!-- Right-aligned content -->
-{% if lives is not none %}
-<div class="column is-narrow has-text-right">
-<p>
-<img src="{{ url_for('send_static', filename='heart.svg') }}" width="30em" title="{{ translation['Number of lives'] }}">
-
-<span class="has-text-danger">{{ lives if lives is not none else ''}}</span>
-
-</p>
-</div>
-{% endif %}
-</div>
-    
-
-<h1 class="title">{{ course_name }}</h1>
+  {%  include "course_name.html" %}
 
 <div class="block">
 <p class="subtitle">
@@ -59,7 +27,6 @@
  {% endif %} 
 </p>
 </div>
-
 
 
 {% with messages = get_flashed_messages(with_categories=True) %}

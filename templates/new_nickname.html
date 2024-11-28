@@ -8,16 +8,11 @@
 <div class="columns is-centered">
 <div class="column is-half">
 
-    <div class="block">
-        <a href="{{ url_for('home',course=course) }}" class="button is-link is-small">Home</a>
-      
-      </div>
-
+{% include "display_lives.html" %}
 
 <div class="box">
-<h1 class="title">
-    {{ course }}
-</h1>
+
+{%  include "course_name.html" %}
 
 {% with messages = get_flashed_messages(with_categories=True) %}
         {% if messages %}

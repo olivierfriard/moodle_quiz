@@ -1,10 +1,12 @@
 
+{# display home, progress and lives #}
+
 <div class="columns is-flex is-justify-content-space-between">
 <!-- Left-aligned content -->
 <div class="column is-narrow">
-
+{% if no_home is not defined %}
 <p class="is-size-4"><a href="{{ url_for('home', course=course) }}">X</a></p>
-
+{% endif %}
 </div>
 
  {% if idx is defined %}
