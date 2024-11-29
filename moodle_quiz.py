@@ -835,7 +835,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     config = get_course_config(course)
     translation = get_translation("it")
 
-    def correct_answer(answer_feedback):
+    def format_correct_answer(answer_feedback):
         out: list = []
         if answer_feedback:
             out.append(answer_feedback)
@@ -843,7 +843,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             out.append(translation["You selected the correct answer"])
         return "<br>".join(out)
 
-    def wrong_answer(correct_answer, answer_feedback):
+    def format_wrong_answer(correct_answer, answer_feedback):
         # feedback
         out: list = []
         if answer_feedback:
@@ -877,12 +877,14 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     # get correct answer
     correct_answer_str: str = ""
+    correct_answers: list = []
     feedback: str = ""
     answer_feedback: str = ""
     for answer in question["answers"]:
         if answer["fraction"] == "100":
             correct_answer_str = answer["text"]
-        # if user_answer == answer["text"]:
+            correct_answers.append(answer["text"])
+
         if str_match(user_answer, answer["text"]):
             answer_feedback = (
                 answer["feedback"] if answer["feedback"] is not None else ""
@@ -891,18 +893,23 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     feedback = {"questiontext": question["questiontext"]}
 
     # check answer
-    if str_match(user_answer, correct_answer_str):
-        # good answer
-        feedback["result"] = Markup(correct_answer(answer_feedback))
-        feedback["correct"] = True
+    for correct_answer in correct_answers:
+        if str_match(user_answer, correct_answer):
+            # good answer
+            feedback["result"] = Markup(format_correct_answer(answer_feedback))
+            feedback["correct"] = True
 
-        if "recover" in session:
-            # add one good answer
-            session["recover"] += 1
+            if "recover" in session:
+                # add one good answer
+                session["recover"] += 1
+
+            break
 
     else:
         # error
-        feedback["result"] = Markup(wrong_answer(correct_answer_str, answer_feedback))
+        feedback["result"] = Markup(
+            format_wrong_answer(correct_answer_str, answer_feedback)
+        )
         feedback["correct"] = False
 
         # remove a life if not recover
