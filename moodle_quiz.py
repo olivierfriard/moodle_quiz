@@ -444,6 +444,32 @@ def recover_quiz(course: str):
     )
 
 
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/all_topic_quiz/<course>/<topic>", methods=["GET"]
+)
+@course_exists
+@check_login
+def all_topic_quiz(course: str, topic: str):
+    # check if admin
+    if session["nickname"] != "admin":
+        flash(
+            Markup(
+                '<div class="notification is-danger">You are not allowed to access this page</div>'
+            ),
+            "",
+        )
+        return redirect(url_for("home", course=course))
+
+    with get_db(course) as db:
+        # Execute the query
+        query = "SELECT id from questions WHERE topic = ?"
+        cursor = db.execute(query, (topic,))
+
+    session["quiz"] = [row["id"] for row in cursor.fetchall()]
+
+    return redirect(url_for("question", course=course, topic=topic, step=1, idx=0))
+
+
 def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
     with get_db(course) as db:
         # Execute the query
