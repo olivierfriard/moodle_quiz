@@ -405,21 +405,21 @@ def recover_quiz(course: str):
     with get_db(course) as db:
         # Execute the query
         query = """
-                SELECT 
+                SELECT
                     q.id AS question_id,
-                    q.topic AS topic, 
-                    q.type AS type, 
-                    q.name AS question_name, 
+                    q.topic AS topic,
+                    q.type AS type,
+                    q.name AS question_name,
                     SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
                     SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
-                FROM questions q LEFT JOIN results r 
-                    ON q.topic=r.topic 
-                        AND q.type=r.question_type 
+                FROM questions q LEFT JOIN results r
+                    ON q.topic=r.topic
+                        AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = ?
-                GROUP BY 
-                    q.topic, 
-                    q.type, 
+                GROUP BY
+                    q.topic,
+                    q.type,
                     q.name
                 """
 
@@ -448,21 +448,21 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
     with get_db(course) as db:
         # Execute the query
         query = """
-                SELECT 
+                SELECT
                     q.id AS question_id,
-                    q.topic AS topic, 
-                    q.type AS type, 
-                    q.name AS question_name, 
+                    q.topic AS topic,
+                    q.type AS type,
+                    q.name AS question_name,
                     SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
                     SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
-                FROM questions q LEFT JOIN results r 
-                    ON q.topic=r.topic 
-                        AND q.type=r.question_type 
+                FROM questions q LEFT JOIN results r
+                    ON q.topic=r.topic
+                        AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = ?
-                GROUP BY 
-                    q.topic, 
-                    q.type, 
+                GROUP BY
+                    q.topic,
+                    q.type,
                     q.name
                 """
 
@@ -606,21 +606,21 @@ def step(course: str, topic: str, step: int):
     with get_db(course) as db:
         # Execute the query
         query = """
-                SELECT 
+                SELECT
                     q.id AS question_id,
-                    q.topic AS topic, 
-                    q.type AS type, 
-                    q.name AS question_name, 
+                    q.topic AS topic,
+                    q.type AS type,
+                    q.name AS question_name,
                     SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
                     SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
-                FROM questions q LEFT JOIN results r 
-                    ON q.topic=r.topic 
-                        AND q.type=r.question_type 
+                FROM questions q LEFT JOIN results r
+                    ON q.topic=r.topic
+                        AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = ?
-                GROUP BY 
-                    q.topic, 
-                    q.type, 
+                GROUP BY
+                    q.topic,
+                    q.type,
                     q.name
                 """
 
@@ -658,9 +658,9 @@ def get_score(course: str, topic: str, nickname: str = "") -> float:
         query = """
     SELECT (SUM(percentage_ok) / (SELECT COUNT(*) FROM questions WHERE topic = ?)) AS score
     FROM      (
-    SELECT 
+    SELECT
         CAST(SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF((SELECT COUNT(*) FROM results WHERE question_name = r.question_name), 0) AS percentage_ok
-    FROM 
+    FROM
         results r
 
     WHERE topic = ? AND nickname = ?
@@ -1157,17 +1157,26 @@ def all_questions_gift(course: str):
                 if feed_good and feed_wrong:
                     out.append(f"::{content['questiontext']}" + "{")
                     out.append(f"{ans}#{feed_wrong}#{feed_good}")
+                    if content["generalfeedback"]:
+                        out.append(f"####{content['generalfeedback']}")
                     out.append("}")
                 else:
                     out.append(f"::{content['questiontext']}")
-                    out.append(f"{{{ans}}}")
+                    if content["generalfeedback"]:
+                        out.append(f"{{{ans}}}####{content['generalfeedback']}")
+                    else:
+                        out.append(f"{{{ans}}}")
 
             if row["type"] == "multichoice":
                 out.append(f"::{content['questiontext']} " + "{")
                 for answer in content["answers"]:
-                    out.append(
-                        f"=%{answer["fraction"]}%{answer["text"]}#{answer["feedback"]}"
-                    )
+                    if answer["fraction"] == "100":
+                        out.append(f"={answer["text"]}#{answer["feedback"]}")
+                    else:
+                        out.append(f"~{answer["text"]}#{answer["feedback"]}")
+
+                if content["generalfeedback"]:
+                    out.append(f"####{content['generalfeedback']}")
                 out.append("}")
 
             if row["type"] == "shortanswer":
@@ -1179,6 +1188,8 @@ def all_questions_gift(course: str):
                         out.append(
                             f"=%{answer["fraction"]}%{answer['text']}#{answer['feedback']}"
                         )
+                if content["generalfeedback"]:
+                    out.append(f"####{content['generalfeedback']}")
 
                 out.append("}")
 
@@ -1305,9 +1316,12 @@ def new_nickname(course: str):
     create a nickname
     """
     config = get_course_config(course)
+    translation = get_translation("it")
 
     if request.method == "GET":
-        return render_template("new_nickname.html", course=course)
+        return render_template(
+            "new_nickname.html", course=course, translation=translation
+        )
 
     if request.method == "POST":
         form_data = request.form

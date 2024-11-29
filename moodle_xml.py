@@ -4,7 +4,9 @@ convert questions from a moodle xml file to a dictionary
 """
 
 
-def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_files_path: str) -> dict:
+def moodle_xml_to_dict_with_images(
+    xml_file: str, question_types: list, image_files_path: str
+) -> dict:
     """
     Convert a Moodle XML question file into a Python dictionary, organizing questions by categories and decoding images from base64.
 
@@ -91,7 +93,9 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
         if question_type == "category":
             if len(question.find("category/text").text) < len(prefix_to_remove):
                 continue
-            category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
+            category_text = question.find("category/text").text.removeprefix(
+                prefix_to_remove
+            )
             # print(f"{category_text=}")
             # print(question.find("idnumber").text)
             id_number = 0
@@ -114,7 +118,9 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
             if len(question.find("category/text").text) < len(prefix_to_remove):
                 continue
 
-            category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
+            category_text = question.find("category/text").text.removeprefix(
+                prefix_to_remove
+            )
             # print(f"{category_text=}")
 
             main_cat = category_text.split("/")[0]
@@ -137,18 +143,31 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 
             question_dict = {
                 "type": question_type,
-                "name": question.find("name/text").text if question.find("name/text") is not None else None,
+                "name": question.find("name/text").text
+                if question.find("name/text") is not None
+                else None,
                 "questiontext": strip_html_tags(
-                    question.find("questiontext/text").text if question.find("questiontext/text") is not None else None
+                    question.find("questiontext/text").text
+                    if question.find("questiontext/text") is not None
+                    else None
                 ),
+                "generalfeedback": "",
                 "answers": [],
                 "feedback": {},
                 "files": [],  # To store files related to the question
             }
+            # general feedback
+            question_dict["generalfeedback"] = (
+                strip_html_tags(question.find("generalfeedback/text").text)
+                if question.find("generalfeedback/text") is not None
+                else None
+            )
 
             # Process feedback
             question_dict["feedback"]["correct"] = (
-                strip_html_tags(question.find("correctfeedback/text").text) if question.find("correctfeedback/text") is not None else None
+                strip_html_tags(question.find("correctfeedback/text").text)
+                if question.find("correctfeedback/text") is not None
+                else None
             )
             question_dict["feedback"]["partiallycorrect"] = (
                 strip_html_tags(question.find("partiallycorrectfeedback/text").text)
@@ -165,8 +184,12 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
             for answer in question.findall("answer"):
                 answer_dict = {
                     "fraction": answer.get("fraction"),
-                    "text": strip_html_tags(answer.find("text").text) if answer.find("text") is not None else None,
-                    "feedback": strip_html_tags(answer.find("feedback/text").text) if answer.find("feedback/text") is not None else None,
+                    "text": strip_html_tags(answer.find("text").text)
+                    if answer.find("text") is not None
+                    else None,
+                    "feedback": strip_html_tags(answer.find("feedback/text").text)
+                    if answer.find("feedback/text") is not None
+                    else None,
                 }
                 question_dict["answers"].append(answer_dict)
 
@@ -193,7 +216,9 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
                 categories_dict[current_category[0:2]][question_dict["type"]] = []
             # if current_category[2] not in categories_dict[current_category[0:2]]:
             #    categories_dict[current_category[0:2]][current_category[2]] = []
-            categories_dict[current_category[0:2]][question_dict["type"]].append(question_dict)
+            categories_dict[current_category[0:2]][question_dict["type"]].append(
+                question_dict
+            )
 
     # sort dict categories by id_number
     categories_dict = dict(sorted(categories_dict.items()))
