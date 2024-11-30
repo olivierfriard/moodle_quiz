@@ -18,14 +18,14 @@
 "You selected the correct answer" = "Bene! Risposta corretta"
 "Congratulations! You've recovered one life!" = "Complimenti! Hai recuperato una vita"
 'The correct answer is:' = 'La risposta corretta è:'
-'Your answer:'='La tua risposta'
-'Your answer'='La tua risposta'
+'Your answer:' = 'La tua risposta'
+'Your answer' = 'La tua risposta'
 "The brush-up is not available" = "Il ripasso non è disponibile"
 
 "Input a text" = 'Immetti una parola'
 "Save the question" = "Salva la domanda"
 
-"Easy" = "Facile"
+"Easy" = "Regolare"
 "Hard" = "Difficile"
 "Very hard" = "Molto difficile"
 

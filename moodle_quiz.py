@@ -32,8 +32,7 @@ import moodle_xml
 
 def get_course_config(course: str):
     # check config file
-    xml_file = Path(course).with_suffix(".xml")
-    if xml_file.with_suffix(".txt").is_file():
+    if Path(course).with_suffix(".txt").is_file():
         with open(xml_file.with_suffix(".txt"), "rb") as f:
             config = tomllib.load(f)
     else:
@@ -56,7 +55,7 @@ def get_translation(language: str):
     """
     get translation
     """
-    print("translation")
+
     if Path(f"translations_{language}.txt").is_file():
         with open(Path(f"translations_{language}.txt"), "rb") as f:
             translation = tomllib.load(f)
@@ -234,6 +233,23 @@ def course_exists(f):
     def decorated_function(*args, **kwargs):
         if not Path(kwargs["course"]).with_suffix(".sqlite").is_file():
             return "The course does not exists"
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def is_admin(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # check if admin
+        if session["nickname"] != "admin":
+            flash(
+                Markup(
+                    '<div class="notification is-danger">You are not allowed to access this page</div>'
+                ),
+                "",
+            )
+            return redirect(url_for("home", course=kwargs["course"]))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -1065,20 +1081,11 @@ def results(course: str):
 @app.route(f"{app.config["APPLICATION_ROOT"]}/admin/<course>", methods=["GET"])
 @course_exists
 @check_login
+@is_admin
 def admin(course: str):
     """
     administration page
     """
-
-    # check if admin
-    if session["nickname"] != "admin":
-        flash(
-            Markup(
-                '<div class="notification is-danger">You are not allowed to access this page</div>'
-            ),
-            "",
-        )
-        return redirect(url_for("home", course=course))
 
     config = get_course_config(course)
 
@@ -1095,11 +1102,9 @@ def admin(course: str):
             "SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id"
         ).fetchall()
 
-    if Path(course).with_suffix(".txt").exists():
-        with open(Path(course).with_suffix(".txt"), "r") as f_in:
-            data_content = f_in.read()
-    else:
-        data_content = f"File {Path(course).with_suffix(".txt")} not found"
+        topics_list = db.execute(
+            "SELECT distinct topic FROM questions ORDER BY id"
+        ).fetchall()
 
     return render_template(
         "admin.html",
@@ -1108,29 +1113,79 @@ def admin(course: str):
         course=course,
         topics=topics,
         users_number=users_number,
-        data_content=data_content,
+        topics_list=topics_list,
     )
+
+
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/edit_parameters/<course>",
+    methods=["GET", "POST"],
+)
+@course_exists
+@check_login
+@is_admin
+def edit_parameters(course: str):
+    """
+    edit course parameters
+    """
+    if request.method == "GET":
+        # get parameters from .txt
+        if Path(course).with_suffix(".txt").exists():
+            with open(Path(course).with_suffix(".txt"), "r") as f_in:
+                parameters = f_in.read()
+        else:
+            parameters = f"File {Path(course).with_suffix(".txt")} not found"
+
+        return render_template("parameters.html", course=course, parameters=parameters)
+
+    if request.method == "POST":
+        print(request.form["parameters"])
+        # test if file is valid toml
+        try:
+            print(request.form["parameters"])
+            config = tomllib.loads(request.form["parameters"])
+        except Exception as e:
+            print(f"Errore durante il caricamento del file di configurazione: {e}")
+            flash(
+                Markup(
+                    f'<div class="notification is-danger">The parameters contain the following error:<br>{e}</div>'
+                ),
+                "error",
+            )
+            return render_template(
+                "parameters.html", course=course, parameters=request.form["parameters"]
+            )
+
+        try:
+            with open(Path(course).with_suffix(".txt"), "w") as f_out:
+                f_out.write(request.form["parameters"])
+
+        except Exception:
+            flash(
+                Markup(
+                    '<div class="notification is-danger">Error saving parameters</div>'
+                ),
+                "error",
+            )
+
+        flash(
+            Markup('<div class="notification is-success">Parameters saved</div>'),
+            "error",
+        )
+
+        return redirect(url_for("admin", course=course))
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/all_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
+@is_admin
 def all_questions(course: str):
     """
     display all questions
     """
 
-    # check if admin
-    if session["nickname"] != "admin":
-        flash(
-            Markup(
-                '<div class="notification is-danger">You are not allowed to access this page</div>'
-            ),
-            "",
-        )
-        return redirect(url_for("home", course=course))
-
-    out = []
+    out: list = []
     with get_db(course) as db:
         cursor = db.execute("SELECT * FROM questions ORDER BY id")
         for row in cursor.fetchall():
@@ -1153,22 +1208,13 @@ def all_questions(course: str):
 )
 @course_exists
 @check_login
+@is_admin
 def all_questions_gift(course: str):
     """
     display all questions in gift format
     """
 
-    # check if admin
-    if session["nickname"] != "admin":
-        flash(
-            Markup(
-                '<div class="notification is-danger">You are not allowed to access this page</div>'
-            ),
-            "",
-        )
-        return redirect(url_for("home", course=course))
-
-    out = []
+    out: list = []
     with get_db(course) as db:
         cursor = db.execute("SELECT * FROM questions ORDER BY id")
         for row in cursor.fetchall():
@@ -1226,15 +1272,6 @@ def all_questions_gift(course: str):
 
                 out.append("}")
 
-            '''
-            out.append(str(row["id"]))
-            out.append(row["topic"])
-            out.append(row["name"])
-            content = json.loads(row["content"])
-            out.append(content["questiontext"])
-            for answer in content["answers"]:
-                out.append(f"""{answer["fraction"]}  {answer["text"]}   <span style="color: gray;">feedback: {answer["feedback"]}</span>""")
-            '''
             out.append("<hr>")
 
     return "<br>".join(out)
@@ -1245,25 +1282,16 @@ def all_questions_gift(course: str):
 )
 @course_exists
 @check_login
+@is_admin
 def saved_questions(course: str):
     """
     display saved questions
     """
 
-    # check if admin
-    if session["nickname"] != "admin":
-        flash(
-            Markup(
-                '<div class="notification is-danger">You are not allowed to access this page</div>'
-            ),
-            "",
-        )
-        return redirect(url_for("home", course=course))
-
-    out = []
+    out: list = []
     with get_db(course) as db:
         cursor = db.execute(
-            "select topic, name from bookmarks, questions WHERE bookmarks.question_id = questions.id ORDER BY topic, name"
+            "SELECT topic, name FROM bookmarks, questions WHERE bookmarks.question_id = questions.id ORDER BY topic, name"
         )
         for row in cursor.fetchall():
             out.append(str(row["topic"]))
@@ -1278,20 +1306,11 @@ def saved_questions(course: str):
 )
 @course_exists
 @check_login
+@is_admin
 def reset_saved_questions(course: str):
     """
     reset saved questions
     """
-
-    # check if admin
-    if session["nickname"] != "admin":
-        flash(
-            Markup(
-                '<div class="notification is-danger">You are not allowed to access this page</div>'
-            ),
-            "",
-        )
-        return redirect(url_for("home", course=course))
 
     with get_db(course) as db:
         db.execute("DELETE FROM bookmarks")

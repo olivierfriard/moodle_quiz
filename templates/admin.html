@@ -11,8 +11,21 @@
 
 <div class="block">
 <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
-
 </div>
+
+
+{% with messages = get_flashed_messages(with_categories=True) %}
+{% if messages %}
+{% for category, message in messages %}
+{{ message }}
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<br>
+<a href="{{ url_for('edit_parameters', course=course) }}">Edit parameters</a>
+<br>
+
 <br>
 <strong>Questions</strong>
 <br>
@@ -33,17 +46,19 @@ Number of users: {{ users_number }}<br>
 
 {{ topic.topic}} - {{ topic.type}}: <strong>{{ topic.n_questions }}</strong> questions. 
 
-<a href="{{ url_for('all_topic_quiz', course=course, topic=topic.topic) }}">Quiz with all questions</a>
 <br>
 {% endfor %}
 
-<br><br>
-{{ course }}.txt file content:
+<br>
+<strong>Quiz with all questions</strong>
+<br>
+{% for topic in topics_list %}
 
-<pre>
-{{ data_content }}
+<a href="{{ url_for('all_topic_quiz', course=course, topic=topic.topic) }}">{{ topic.topic }} - Quiz with all questions</a>
+<br>
 
-</pre>
+{% endfor %}
+
 
 
 </div></div></div>
