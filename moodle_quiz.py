@@ -1142,8 +1142,7 @@ def edit_parameters(course: str):
         print(request.form["parameters"])
         # test if file is valid toml
         try:
-            print(request.form["parameters"])
-            config = tomllib.loads(request.form["parameters"])
+            _ = tomllib.loads(request.form["parameters"])
         except Exception as e:
             print(f"Errore durante il caricamento del file di configurazione: {e}")
             flash(
@@ -1174,6 +1173,23 @@ def edit_parameters(course: str):
         )
 
         return redirect(url_for("admin", course=course))
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/add_lives/<course>", methods=["GET"])
+@course_exists
+@check_login
+@is_admin
+def add_lives(course: str):
+    with get_db(course) as db:
+        db.execute("UPDATE lives SET number = number + 10 WHERE nickname = 'admin'")
+        db.commit()
+
+    flash(
+        Markup('<div class="notification is-success">10 lives added to admin</div>'),
+        "error",
+    )
+
+    return redirect(url_for("admin", course=course))
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/all_questions/<course>", methods=["GET"])
