@@ -54,7 +54,7 @@ Number of users: {{ users_number }}<br>
 <br>
 {% for topic in topics_list %}
 
-<a href="{{ url_for('all_topic_quiz', course=course, topic=topic.topic) }}">{{ topic.topic }} - Quiz with all questions</a>
+<a href="{{ url_for('all_topic_quiz', course=course, topic=topic.topic) }}">{{ topic.topic }}</a>
 <br>
 
 {% endfor %}
