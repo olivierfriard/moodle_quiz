@@ -57,7 +57,6 @@ def get_translation(language: str):
     """
     get translations
     """
-
     if Path(f"translations_{language}.txt").is_file():
         with open(Path(f"translations_{language}.txt"), "rb") as f:
             translation = tomllib.load(f)
@@ -1416,15 +1415,21 @@ def new_nickname(course: str):
 
         if nickname in ("admin", "manager"):
             flash("This nickname is not allowed", "error")
-            return render_template("new_nickname.html", course=course)
+            return render_template(
+                "new_nickname.html", course=course, translation=translation
+            )
 
         if not password1 or not password2:
             flash("A password is missing", "error")
-            return render_template("new_nickname.html", course=course)
+            return render_template(
+                "new_nickname.html", course=course, translation=translation
+            )
 
         if password1 != password2:
             flash("Passwords are not the same", "error")
-            return render_template("new_nickname.html", course=course)
+            return render_template(
+                "new_nickname.html", course=course, translation=translation
+            )
 
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
@@ -1436,7 +1441,9 @@ def new_nickname(course: str):
 
             if n_users[0]:
                 flash("Nickname already taken", "error")
-                return render_template("new_nickname.html", course=course)
+                return render_template(
+                    "new_nickname.html", course=course, translation=translation
+                )
 
             try:
                 db.execute(
