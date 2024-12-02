@@ -55,7 +55,7 @@ def get_course_config(course: str):
 
 def get_translation(language: str):
     """
-    get translation
+    get translations
     """
 
     if Path(f"translations_{language}.txt").is_file():
@@ -271,8 +271,6 @@ def get_lives_number(course: str, nickname: str) -> int | None:
     """
     get number of lives for nickname
     """
-    if not Path(course).with_suffix(".sqlite").is_file():
-        return None
     with get_db(course) as db:
         cursor = db.execute("SELECT number FROM lives WHERE nickname = ?", (nickname,))
         lives = cursor.fetchone()
@@ -1141,16 +1139,19 @@ def edit_parameters(course: str):
     """
     if request.method == "GET":
         # get parameters from .txt
-        if Path(course).with_suffix(".txt").exists():
-            with open(Path(course).with_suffix(".txt"), "r") as f_in:
+        if (Path(COURSES_DIR) / Path(course).with_suffix(".txt")).is_file():
+            with open(
+                Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "r"
+            ) as f_in:
                 parameters = f_in.read()
         else:
-            parameters = f"File {Path(course).with_suffix(".txt")} not found"
+            parameters = (
+                f"File {Path(COURSES_DIR) / Path(course).with_suffix(".txt")} not found"
+            )
 
         return render_template("parameters.html", course=course, parameters=parameters)
 
     if request.method == "POST":
-        print(request.form["parameters"])
         # test if file is valid toml
         try:
             _ = tomllib.loads(request.form["parameters"])
@@ -1167,7 +1168,9 @@ def edit_parameters(course: str):
             )
 
         try:
-            with open(Path(course).with_suffix(".txt"), "w") as f_out:
+            with open(
+                Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "w"
+            ) as f_out:
                 f_out.write(request.form["parameters"])
 
         except Exception:
