@@ -245,7 +245,7 @@ def is_admin(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # check if admin
-        if session["nickname"] != "admin":
+        if session["nickname"] not in ("admin", "manager"):
             flash(
                 Markup(
                     '<div class="notification is-danger">You are not allowed to access this page</div>'
