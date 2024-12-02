@@ -137,6 +137,7 @@ def create_database(course) -> None:
     cursor.execute("""
     CREATE TABLE results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     nickname TEXT NOT NULL,
     topic TEXT NOT NULL,
     question_type TEXT NOT NULL,
@@ -156,6 +157,7 @@ def create_database(course) -> None:
         """
     CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     nickname TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL
     )"""
