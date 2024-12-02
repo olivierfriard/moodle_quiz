@@ -119,7 +119,7 @@ app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
 
 def get_db(course):
-    database_name = Path(course).with_suffix(".sqlite")
+    database_name = Path(COURSES_DIR) / Path(course).with_suffix(".sqlite")
     db = getattr(g, "_database", None)
     if db is None:
         db = g._database = sqlite3.connect(database_name)
@@ -233,7 +233,9 @@ def check_login(f):
 def course_exists(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not Path(kwargs["course"]).with_suffix(".sqlite").is_file():
+        if not (
+            Path(COURSES_DIR) / Path(kwargs["course"]).with_suffix(".sqlite")
+        ).is_file():
             return "The course does not exists"
         return f(*args, **kwargs)
 
@@ -1412,9 +1414,9 @@ def new_nickname(course: str):
         password1 = form_data.get("password1")
         password2 = form_data.get("password2")
 
-        # if nickname == "admin":
-        #    flash("This nickname is not allowed", "error")
-        #    return render_template("new_nickname.html", course=course)
+        if nickname in ("admin", "manager"):
+            flash("This nickname is not allowed", "error")
+            return render_template("new_nickname.html", course=course)
 
         if not password1 or not password2:
             flash("A password is missing", "error")
