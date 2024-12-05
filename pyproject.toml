@@ -10,5 +10,6 @@ dependencies = [
     "hypercorn>=0.17.3",
     "kivy>=2.3.0",
     "pandas>=2.2.3",
+    "pygiftparserrgmf>=0.0.5",
     "quart>=0.19.6",
 ]
