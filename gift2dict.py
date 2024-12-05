@@ -1,114 +1,75 @@
-import re
+"""
+{"type": "truefalse",
+"name": "verofalso1",
+"questiontext": "1 + 2 = 3",
+"generalfeedback": "feedback generaleblabla",
+"answers": [{"fraction": "100", "text": "true",
+                   "feedback": "Hai risposto bene"},
+            {"fraction": "0", "text": "false",
+                 "feedback": "Risposta sbagliata"}],
+"feedback": {"correct": null, "partiallycorrect": null, "incorrect": null},
+"files": []}
+
+"""
+
+import pygiftparser
+from pygiftparser import parser
 
 
-def parse_gift_file_with_names_and_feedback(file_path):
-    """
-    Parses a GIFT format file, including question names and feedback, and stores the information in a dictionary.
+def gift_to_dict(file_path: str):
+    with open(file_path, "r") as f_in:
+        content = f_in.read()
 
-    Args:
-        file_path (str): The path to the GIFT file.
+    g = parser.parse(content)
 
-    Returns:
-        list: A list of dictionaries with question details, including names and feedback.
-    """
-    questions = []
+    questions = {}
 
-    with open(file_path, "r") as file:
-        content = [x.strip() for x in file.readlines()]
+    for question in g.questions:
+        d = {}
 
-    idx = 0
-    open_question = False
-    while True:
-        if "::" in content[idx] and not open_question:
-            open_question = True
-        if content[idx] == "}" and open_question:
-            open_question = False
-            print("-" * 30)
-        if open_question:
-            print(content[idx])
+        topic = question.category
 
-        idx += 1
+        d["name"] = question.name
+        d["questiontext"] = question.text
 
-    """
-    # Split the content into individual questions
-    question_blocks = re.split(r"\n(?=\s*[^\n]*\{)", content)
+        if isinstance(question.answer, pygiftparser.gift.TrueFalse):
+            d["type"] = "truefalse"
+        if isinstance(question.answer, pygiftparser.gift.Short):
+            d["type"] = "shortanswer"
+        if isinstance(question.answer, pygiftparser.gift.MultipleChoiceRadio):
+            d["type"] = "multichoice"
 
-    for block in question_blocks:
-        print(block)
+        answers = []
+
+        for answer in question.answer.options:
+            answers.append(
+                {
+                    "text": answer.text,
+                    "fraction": str(int(100 * answer.percentage)),
+                    "feedback": answer.feedback,
+                }
+            )
+
+        d["answers"] = list(answers)
+
+        print(d)
+
+        if topic not in questions:
+            questions[topic] = {}
+        if d["type"] not in questions[topic]:
+            questions[topic][d["type"]] = {}
+
+        questions[topic][d["type"]][d["name"]] = dict(d)
+
+        print()
+        print(questions[topic][d["type"]][d["name"]])
+
         print("-" * 20)
 
-        input()
-
-        question_dict = {}
-
-        # Extract question name (::name::)
-        name_match = re.match(r"::(.*?)::", block)
-        if name_match:
-            question_dict["name"] = name_match.group(1).strip()
-            block = block[
-                name_match.end() :
-            ]  # Remove name part from block for further parsing
-
-        # Extract question text
-        question_match = re.match(r"(.*)\{", block, re.DOTALL)
-        if question_match:
-            question_text = question_match.group(1).strip()
-            question_dict["question"] = question_text
-
-        # Extract general feedback (#### General Feedback)
-        general_feedback_match = re.search(r"####\s*(.*)", block)
-        if general_feedback_match:
-            question_dict["general_feedback"] = general_feedback_match.group(1).strip()
-
-        # Check for True/False questions
-        tf_match = re.search(r"\{\s*([TtFf])\s*(#.*?)?\}", block)
-        if tf_match:
-            question_dict["type"] = "true/false"
-            question_dict["answer"] = (
-                True if tf_match.group(1).lower() == "t" else False
-            )
-            if tf_match.group(2):
-                question_dict["feedback"] = tf_match.group(2).strip("#").strip()
-
-        # Check for Multiple Choice questions
-        mc_match = re.search(r"\{\s*(.*?)\s*\}", block, re.DOTALL)
-        if mc_match:
-            choices = mc_match.group(1).splitlines()
-            if "=" in choices[0] or "~" in choices[0]:  # MC format check
-                question_dict["type"] = "multiple choice"
-                question_dict["choices"] = []
-                for choice in choices:
-                    choice_text = re.match(r"([=~])(.*?)(#.*?)?$", choice)
-                    if choice_text:
-                        correctness = choice_text.group(1) == "="
-                        answer = choice_text.group(2).strip()
-                        feedback = (
-                            choice_text.group(3).strip("#").strip()
-                            if choice_text.group(3)
-                            else None
-                        )
-                        question_dict["choices"].append(
-                            {
-                                "answer": answer,
-                                "correct": correctness,
-                                "feedback": feedback,
-                            }
-                        )
-
-        # Check for Fill-in-the-Blank questions
-        fb_match = re.search(r"\{\s*=(.*?)\s*(#.*?)?\}", block, re.DOTALL)
-        if fb_match:
-            question_dict["type"] = "fill-in-the-blank"
-            question_dict["correct_answer"] = fb_match.group(1).strip()
-            if fb_match.group(2):
-                question_dict["feedback"] = fb_match.group(2).strip("#").strip()
-
-        if question_dict:
-            questions.append(question_dict)
-    """
+    # print(q)
     return questions
 
 
-q = parse_gift_file_with_names_and_feedback("courses/alimentazione.gift")
+import sys
 
-# print(q)
+print(gift_to_dict(sys.argv[1]))
