@@ -112,12 +112,13 @@ def load_questions_xml(xml_file: Path, config: dict) -> int:
 
 
 def load_questions_gift(gift_file_path: Path, config: dict) -> int:
-    import gift2dict
+    import gift
 
     try:
         # load questions from GIFT file
-        question_data = gift2dict.gift_to_dict(
-            gift_file_path, config["QUESTION_TYPES"], f"images/{xml_file.stem}"
+        question_data = gift.gift_to_dict(
+            gift_file_path,
+            config["QUESTION_TYPES"],
         )
 
         # re-organize the questions structure
@@ -133,7 +134,7 @@ def load_questions_gift(gift_file_path: Path, config: dict) -> int:
                     question_data[topic][question["type"]][question["name"]] = question
         """
         # load questions in database
-        conn = sqlite3.connect(xml_file.with_suffix(".sqlite"))
+        conn = sqlite3.connect(gift_file_path.with_suffix(".sqlite"))
         cursor = conn.cursor()
         cursor.execute("DELETE FROM questions")
         cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'questions'")
@@ -255,6 +256,20 @@ for xml_file in Path(COURSES_DIR).glob("*.xml"):
     # populate database with questions
     if load_questions_xml(xml_file, get_course_config(xml_file)):
         print(f"Error loading the question XML file {xml_file}")
+        sys.exit()
+
+
+# load courses in database
+for gift_file in Path(COURSES_DIR).glob("*.gift"):
+    # check if database sqlite file exists
+    if not gift_file.with_suffix(".sqlite").exists():
+        print(f"Database file {gift_file.with_suffix('.sqlite')} not found")
+        print("Creating a new one")
+        create_database(gift_file.stem)
+
+    # populate database with questions
+    if load_questions_gift(gift_file, get_course_config(gift_file)):
+        print(f"Error loading the questions GIFT file {gift_file}")
         sys.exit()
 
 
