@@ -111,6 +111,54 @@ def load_questions_xml(xml_file: Path, config: dict) -> int:
     return 0
 
 
+def load_questions_gift(gift_file_path: Path, config: dict) -> int:
+    import gift2dict
+
+    try:
+        # load questions from GIFT file
+        question_data = gift2dict.gift_to_dict(
+            gift_file_path, config["QUESTION_TYPES"], f"images/{xml_file.stem}"
+        )
+
+        # re-organize the questions structure
+        """
+        question_data: dict = {}
+        for topic in question_data1:
+            question_data[topic] = {}
+            for question_type in question_data1[topic]:
+                for question in question_data1[topic][question_type]:
+                    if question["type"] not in question_data[topic]:
+                        question_data[topic][question["type"]] = {}
+
+                    question_data[topic][question["type"]][question["name"]] = question
+        """
+        # load questions in database
+        conn = sqlite3.connect(xml_file.with_suffix(".sqlite"))
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM questions")
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'questions'")
+
+        conn.commit()
+        for topic in question_data:
+            for type_ in question_data[topic]:
+                for question_name in question_data[topic][type_]:
+                    cursor.execute(
+                        "INSERT INTO questions (topic, type, name, content) VALUES (?, ?, ?, ?)",
+                        (
+                            topic,
+                            type_,
+                            question_name,
+                            json.dumps(question_data[topic][type_][question_name]),
+                        ),
+                    )
+        conn.commit()
+        conn.close()
+    except Exception:
+        raise
+        return 1
+    return 0
+
+
 app = Flask(__name__)
 app.config.from_object("config")
 app.config["DEBUG"] = True
