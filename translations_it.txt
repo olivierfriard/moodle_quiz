@@ -26,8 +26,8 @@
 "Save the question" = "Salva la domanda"
 
 "Easy" = "Regolare"
-"Hard" = "Difficile"
-"Very hard" = "Molto difficile"
+"Hard" = "Impegnativo"
+"Very hard" = "Avanzato"
 
 "Number of lives" = "Numero di vite"
 

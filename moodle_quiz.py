@@ -368,6 +368,8 @@ def home(course: str):
         del session["brush-up"]
     if "quiz" in session:
         del session["quiz"]
+    if "quiz_position" in session:
+        del session["quiz_position"]
 
     config = get_course_config(course)
     translation = get_translation("it")
@@ -526,6 +528,7 @@ def recover_quiz(course: str):
         questions_df, config["RECOVER_TOPICS"], n_recover_questions
     )
 
+    session["quiz_position"] = 0
     session["recover"] = 0  # count number of good answer
 
     return redirect(
@@ -658,6 +661,7 @@ def brush_up(course: str, level: int):
 
         return redirect(url_for("home", course=course))
 
+    session["quiz_position"] = 0
     session["brush-up"] = True
 
     return redirect(
@@ -763,6 +767,7 @@ def step(course: str, topic: str, step: int):
         steps_df[step - 1],
         get_lives_number(course, session["nickname"]),
     )
+    session["quiz_position"] = 0
     return redirect(url_for("question", course=course, topic=topic, step=step, idx=0))
 
 
@@ -836,6 +841,36 @@ def question(course: str, topic: str, step: int, idx: int):
     config = get_course_config(course)
     translation = get_translation("it")
 
+    if "recover" not in session:
+        # check step index
+        with get_db(course) as db:
+            rows = db.execute(
+                (
+                    "SELECT number FROM steps WHERE nickname = ? AND topic = ? and step_index < ?"
+                ),
+                (session["nickname"], topic, step),
+            ).fetchall()
+            if rows is not None:
+                for row in rows:
+                    if row["number"] < config["N_QUIZ_BY_STEP"]:
+                        flash(
+                            Markup(
+                                '<div class="notification is-danger">You are not allowed to access this page</div>'
+                            ),
+                            "",
+                        )
+                        return redirect(url_for("home", course=course))
+
+        # check quiz_position
+        if session["nickname"] != "admin" and idx != session["quiz_position"]:
+            flash(
+                Markup(
+                    '<div class="notification is-danger">You are not allowed to access this page</div>'
+                ),
+                "",
+            )
+            return redirect(url_for("home", course=course))
+
     # check if quiz is finished
     if idx < len(session["quiz"]):
         question_id = session["quiz"][idx]
@@ -850,6 +885,7 @@ def question(course: str, topic: str, step: int, idx: int):
     else:
         # step/quiz finished
         del session["quiz"]
+        del session["quiz_position"]
 
         if "recover" in session:
             del session["recover"]
@@ -1076,15 +1112,6 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             )
             db.commit()
 
-    """
-    print()
-    print(f"{idx=}")
-    print(f"{"recover" in session=}")
-    print(f"{config["N_QUESTIONS_FOR_RECOVER"]=}")
-    print(f"{flag_recovered=}")
-    print()
-    """
-
     popup = ""
     popup_text = ""
     if flag_recovered:
@@ -1096,6 +1123,8 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     if nlives == 0 and "recover" not in session:
         popup_text = Markup(f"{ translation["You've lost all your lives..."] }")
+
+    session["quiz_position"] += 1
 
     return render_template(
         "feedback.html",
