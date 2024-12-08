@@ -241,11 +241,37 @@ def create_database(course) -> None:
     )"""
     )
 
+    cursor.execute("""
+    -- Set the journal mode to Write-Ahead Logging for concurrency
+    PRAGMA journal_mode = WAL;
+
+    -- Set synchronous mode to NORMAL for performance and data safety balance
+    PRAGMA synchronous = NORMAL;
+
+    -- Set busy timeout to 5 seconds to avoid "database is locked" errors
+    PRAGMA busy_timeout = 5000;
+
+    -- Set cache size to 20MB for faster data access
+    PRAGMA cache_size = -20000;
+
+    -- Enable auto vacuuming and set it to incremental mode for gradual space reclaiming
+    PRAGMA auto_vacuum = INCREMENTAL;
+
+    -- Store temporary tables and data in memory for better performance
+    PRAGMA temp_store = MEMORY;
+
+    -- Set the mmap_size to 2GB for faster read/write access using memory-mapped I/O
+    PRAGMA mmap_size = 2147483648;
+
+    -- Set the page size to 8KB for balanced memory usage and performance
+    PRAGMA page_size = 8192;
+    """)
+
     conn.commit()
     conn.close()
 
 
-# load courses in database
+# load courses from XML files in database
 for xml_file in Path(COURSES_DIR).glob("*.xml"):
     # check if database sqlite file exists
     if not xml_file.with_suffix(".sqlite").exists():
@@ -259,7 +285,7 @@ for xml_file in Path(COURSES_DIR).glob("*.xml"):
         sys.exit()
 
 
-# load courses in database
+# load courses from GIFT file in database
 for gift_file in Path(COURSES_DIR).glob("*.gift"):
     # check if database sqlite file exists
     if not gift_file.with_suffix(".sqlite").exists():
@@ -440,14 +466,14 @@ def topic_list(course: str):
             for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()
             if row["topic"] not in config["TOPICS_TO_HIDE"]
         ]
-        scores = {topic: get_score(course, topic) for topic in topics}
+        """scores = {topic: get_score(course, topic) for topic in topics}"""
 
     return render_template(
         "topic_list.html",
         course_name=config["QUIZ_NAME"],
         course=course,
         topics=topics,
-        scores=scores,
+        # scores=scores,
         lives=lives,
         translation=get_translation("it"),
     )
@@ -472,6 +498,51 @@ def recover_lives(course: str):
         translation=translation,
         lives=get_lives_number(course, session["nickname"]),
     )
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/position/<course>", methods=["GET"])
+@course_exists
+@check_login
+def position(course: str):
+    """
+    display position
+    """
+
+    config = get_course_config(course)
+    translation = get_translation("it")
+
+    with get_db(course) as db:
+        topics: list = [
+            row["topic"]
+            for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()
+            if row["topic"] not in config["TOPICS_TO_HIDE"]
+        ]
+    current_score = sum([get_score(course, topic) for topic in topics]) / len(topics)
+    print(current_score)
+
+    # all scores
+    scores = []
+    with get_db(course) as db:
+        users = db.execute(
+            "SELECT nickname FROM users WHERE nickname not in ('admin', 'manager') AND nickname != ?",
+            (session["nickname"],),
+        ).fetchall()
+        for user in users:
+            scores.append(
+                (
+                    sum([get_score(course, topic) for topic in topics]) / len(topics),
+                    user["nickname"],
+                )
+            )
+    scores.sort(reverse=True)
+
+    out = []
+    for score, user in scores:
+        if current_score <= score:
+            out.append(f"<strong>{session['nickname']}: {current_score}</strong>")
+        out.append(f"{user}: {score}")
+
+    return "<br>".join(out)
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/recover_quiz/<course>", methods=["GET"])
@@ -841,7 +912,7 @@ def question(course: str, topic: str, step: int, idx: int):
     config = get_course_config(course)
     translation = get_translation("it")
 
-    if "recover" not in session:
+    if "recover" not in session and "brush-up" not in session:
         # check step index
         with get_db(course) as db:
             rows = db.execute(
@@ -1600,6 +1671,22 @@ def logout(course):
             del session["position"]
 
     return redirect(url_for("home", course=course))
+
+
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/click_image/<course>", methods=["GET", "POST"]
+)
+@course_exists
+@check_login
+def click_image(course: str):
+    """ """
+    config = get_course_config(course)
+    translation = get_translation("it")
+
+    if request.method == "GET":
+        return render_template(
+            "click_image.html", course=course, translation=translation
+        )
 
 
 if __name__ == "__main__":
