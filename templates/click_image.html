@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Circle and Get Coordinates</title>
+    <style>
+        .container {
+            position: relative;
+            display: inline-block;
+        }
+        #myImage {
+            display: block;
+        }
+        #myCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* Allow clicks to pass through to the image */
+        }
+        #coordinates {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Click on the Image to Draw a Red Circle</h1>
+    <div class="container">
+        <img id="myImage" src="{{ url_for('images', course=course, filename='polichete.png') }}" alt="Sample Image" width="1000px">
+        <canvas id="myCanvas"></canvas>
+    </div>
+    <p id="coordinates">Coordinates: X = 0, Y = 0</p>
+    <form action="{{ url_for('click_image', course=course) }}" method="POST">
+        <input type="hidden" id="coord" name="coord" value="">
+    </form>
+
+    <script>
+        const image = document.getElementById('myImage');
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+        const coordinatesDisplay = document.getElementById('coordinates');
+
+        // Adjust the canvas size to match the image
+        image.onload = () => {
+            canvas.width = image.offsetWidth;
+            canvas.height = image.offsetHeight;
+        };
+
+        image.addEventListener('click', function(event) {
+            // Get the bounding rectangle of the image
+            const rect = image.getBoundingClientRect();
+            // Calculate the x and y coordinates relative to the image
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw a red circle at the clicked point
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, 2 * Math.PI); // 10 is the radius of the circle
+            ctx.fillStyle = 'red';
+            ctx.fill();
+
+            // Display the coordinates
+            coordinatesDisplay.textContent = `Coordinates: X = ${Math.round(x)}, Y = ${Math.round(y)}`;
+            document.getElementById('coord').value = `${Math.round(x)};${Math.round(y)}`;
+        });
+    </script>
+</body>
+</html>
