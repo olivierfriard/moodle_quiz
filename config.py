@@ -1,1 +1,1 @@
-APPLICATION_ROOT = "/quiz"
+APPLICATION_ROOT = "/quizzych"

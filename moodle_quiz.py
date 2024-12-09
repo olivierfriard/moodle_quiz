@@ -165,6 +165,9 @@ app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
 
 def get_db(course):
+    """
+    return connection to database 'course.sqlite'
+    """
     database_name = Path(COURSES_DIR) / Path(course).with_suffix(".sqlite")
     db = getattr(g, "_database", None)
     if db is None:
