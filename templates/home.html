@@ -17,14 +17,15 @@
 
 <div class="block">
 <p class="subtitle">
+
 {{ translation['Welcome'] }}
-{% if session['nickname'] == 'admin' %}
-<a href="{{ url_for('admin', course=course) }}">
- {% endif %} 
+
+{% if session['nickname'] == 'admin' %}<a href="{{ url_for('admin', course=course) }}">{% endif %} 
+
 <strong>{{ session['nickname'] }}</strong>!
-{% if session['nickname'] == 'admin' %}
-</a>
- {% endif %} 
+
+ {% if session['nickname'] == 'admin' %}</a> {% endif %} 
+
 </p>
 </div>
 
