@@ -372,6 +372,7 @@ def str_match(stringa: str, template: str) -> bool:
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}", methods=["GET"])
+@app.route(f"{app.config["APPLICATION_ROOT"]}/", methods=["GET"])
 def main_home():
     """
     Quizzych home page
