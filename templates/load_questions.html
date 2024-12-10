@@ -1,0 +1,56 @@
+{% include "header.html" %}
+
+<title>{{ course_name }} - Load questions</title>
+</head>
+<body>
+
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
+
+<div class="block">
+<a href="{{ url_for('admin', course=course) }}" class="button is-link is-small">Administration</a>
+</div>
+
+
+{% with messages = get_flashed_messages(with_categories=True) %}
+{% if messages %}
+{% for category, message in messages %}
+{{ message }}
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<form action="{{ url_for('load_questions', course=course) }}" method="POST" enctype="multipart/form-data">
+    <div class="file has-name is-primary">
+      <label class="file-label">
+        <input class="file-input" type="file" name="file" id="fileInput" accept=".xml,.gift" required>
+        <span class="file-cta">
+          <span class="icon">
+            <i class="fas fa-upload"></i>
+          </span>
+          <span class="file-label">Choose a file…</span>
+        </span>
+        <span class="file-name" id="fileName">No file selected</span>
+      </label>
+    </div>
+    <div class="field mt-4">
+      <button class="button is-primary" type="submit">Upload</button>
+    </div>
+  </form>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+
+    fileInput.addEventListener('change', () => {
+      fileName.textContent = fileInput.files.length > 0 ? fileInput.files[0].name : 'No file selected';
+    });
+  </script>
+
+</div></div></div>
+</section>
+
+</body>
+</html>
