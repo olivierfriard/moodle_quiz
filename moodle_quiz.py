@@ -1,5 +1,5 @@
 """
-Duolinzoo
+Quizzych
 
 """
 
@@ -69,7 +69,9 @@ def get_translation(language: str):
 def load_questions_xml(xml_file: Path, config: dict) -> int:
     try:
         # load questions from xml moodle file
-        question_data1 = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{xml_file.stem}")
+        question_data1 = moodle_xml.moodle_xml_to_dict_with_images(
+            xml_file, config["QUESTION_TYPES"], f"images/{xml_file.stem}"
+        )
 
         # re-organize the questions structure
         question_data: dict = {}
@@ -104,7 +106,6 @@ def load_questions_xml(xml_file: Path, config: dict) -> int:
         conn.commit()
         conn.close()
     except Exception:
-        raise
         return 1
     return 0
 
@@ -309,7 +310,12 @@ def check_login(f):
         else:
             # check if nickname in course
             with get_db(kwargs["course"]) as db:
-                if db.execute("SELECT * FROM users WHERE nickname = ?", (session["nickname"],)).fetchone() is None:
+                if (
+                    db.execute(
+                        "SELECT * FROM users WHERE nickname = ?", (session["nickname"],)
+                    ).fetchone()
+                    is None
+                ):
                     return redirect(url_for("logout", course=kwargs["course"]))
         return f(*args, **kwargs)
 
@@ -319,7 +325,9 @@ def check_login(f):
 def course_exists(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not (Path(COURSES_DIR) / Path(kwargs["course"]).with_suffix(".sqlite")).is_file():
+        if not (
+            Path(COURSES_DIR) / Path(kwargs["course"]).with_suffix(".sqlite")
+        ).is_file():
             return "The course does not exists"
         return f(*args, **kwargs)
 
@@ -332,7 +340,9 @@ def is_admin(f):
         # check if admin
         if session["nickname"] not in ("admin", "manager"):
             flash(
-                Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
+                Markup(
+                    '<div class="notification is-danger">You are not allowed to access this page</div>'
+                ),
                 "",
             )
             return redirect(url_for("home", course=kwargs["course"]))
@@ -407,7 +417,12 @@ def home(course: str = ""):
         lives = get_lives_number(course, session["nickname"])
         # check if nickname in course
         with get_db(course) as db:
-            if db.execute("SELECT * FROM users WHERE nickname = ?", (session["nickname"],)).fetchone() is None:
+            if (
+                db.execute(
+                    "SELECT * FROM users WHERE nickname = ?", (session["nickname"],)
+                ).fetchone()
+                is None
+            ):
                 return redirect(url_for("logout", course=course))
 
     # check if brush-up available
@@ -584,28 +599,40 @@ def recover_quiz(course: str):
         questions_df = pd.DataFrame(rows, columns=columns)
 
         # get number of questions in recover topic
-        placeholders = ", ".join(["?"] * len(config["RECOVER_TOPICS"]))  # Creates a placeholder string like "?, ?, ?"
+        placeholders = ", ".join(
+            ["?"] * len(config["RECOVER_TOPICS"])
+        )  # Creates a placeholder string like "?, ?, ?"
         n_recover_questions = cursor = db.execute(
             f"SELECT COUNT(*) AS n_questions FROM questions WHERE topic IN ({placeholders})",
             config["RECOVER_TOPICS"],
         ).fetchone()["n_questions"]
 
-    session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], n_recover_questions)
+    session["quiz"] = quiz.get_quiz_recover(
+        questions_df, config["RECOVER_TOPICS"], n_recover_questions
+    )
 
     session["quiz_position"] = 0
     session["recover"] = 0  # count number of good answer
 
-    return redirect(url_for("question", course=course, topic=translation["Recover lives"], step=1, idx=0))
+    return redirect(
+        url_for(
+            "question", course=course, topic=translation["Recover lives"], step=1, idx=0
+        )
+    )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/all_topic_quiz/<course>/<topic>", methods=["GET"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/all_topic_quiz/<course>/<topic>", methods=["GET"]
+)
 @course_exists
 @check_login
 def all_topic_quiz(course: str, topic: str):
     # check if admin
     if session["nickname"] != "admin":
         flash(
-            Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
+            Markup(
+                '<div class="notification is-danger">You are not allowed to access this page</div>'
+            ),
             "",
         )
         return redirect(url_for("home", course=course))
@@ -687,7 +714,9 @@ def brush_up_home(course: str):
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>/<int:level>", methods=["GET"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>/<int:level>", methods=["GET"]
+)
 @course_exists
 @check_login
 def brush_up(course: str, level: int):
@@ -700,7 +729,9 @@ def brush_up(course: str, level: int):
 
     questions_df = get_questions_dataframe(course, session["nickname"])
 
-    session["quiz"] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level)
+    session["quiz"] = quiz.get_quiz_brushup(
+        questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level
+    )
 
     if session["quiz"] == []:
         del session["quiz"]
@@ -716,7 +747,9 @@ def brush_up(course: str, level: int):
     session["quiz_position"] = 0
     session["brush-up"] = True
 
-    return redirect(url_for("question", course=course, topic=translation["Brush-up"], step=1, idx=0))
+    return redirect(
+        url_for("question", course=course, topic=translation["Brush-up"], step=1, idx=0)
+    )
 
 
 def get_seed(nickname, topic):
@@ -840,7 +873,9 @@ def get_score(course: str, topic: str, nickname: str = "") -> float:
     GROUP BY question_name
     ) AS subquery;
     """
-        cursor = db.execute(query, (topic, topic, session["nickname"] if nickname == "" else nickname))
+        cursor = db.execute(
+            query, (topic, topic, session["nickname"] if nickname == "" else nickname)
+        )
         # Fetch all rows
         score = cursor.fetchone()[0]
         if score is not None:
@@ -893,14 +928,18 @@ def question(course: str, topic: str, step: int, idx: int):
         # check step index
         with get_db(course) as db:
             rows = db.execute(
-                ("SELECT number FROM steps WHERE nickname = ? AND topic = ? and step_index < ?"),
+                (
+                    "SELECT number FROM steps WHERE nickname = ? AND topic = ? and step_index < ?"
+                ),
                 (session["nickname"], topic, step),
             ).fetchall()
             if rows is not None:
                 for row in rows:
                     if row["number"] < config["N_QUIZ_BY_STEP"]:
                         flash(
-                            Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
+                            Markup(
+                                '<div class="notification is-danger">You are not allowed to access this page</div>'
+                            ),
                             "",
                         )
                         return redirect(url_for("home", course=course))
@@ -908,7 +947,9 @@ def question(course: str, topic: str, step: int, idx: int):
         # check quiz_position
         if session["nickname"] != "admin" and idx != session["quiz_position"]:
             flash(
-                Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
+                Markup(
+                    '<div class="notification is-danger">You are not allowed to access this page</div>'
+                ),
                 "",
             )
             return redirect(url_for("home", course=course))
@@ -937,19 +978,25 @@ def question(course: str, topic: str, step: int, idx: int):
             # normal quiz
             with get_db(course) as db:
                 row = db.execute(
-                    ("SELECT number FROM steps WHERE nickname = ? AND topic = ? AND step_index = ?"),
+                    (
+                        "SELECT number FROM steps WHERE nickname = ? AND topic = ? AND step_index = ?"
+                    ),
                     (session["nickname"], topic, step),
                 ).fetchone()
                 if row is None:
                     db.execute(
-                        ("INSERT INTO steps (nickname, topic, step_index, number) VALUES (?, ?, ?, ?)"),
+                        (
+                            "INSERT INTO steps (nickname, topic, step_index, number) VALUES (?, ?, ?, ?)"
+                        ),
                         (session["nickname"], topic, step, 1),
                     )
                     db.commit()
 
                 else:
                     db.execute(
-                        ("UPDATE steps SET number = number + 1 WHERE nickname = ? AND topic = ? AND step_index = ?"),
+                        (
+                            "UPDATE steps SET number = number + 1 WHERE nickname = ? AND topic = ? AND step_index = ?"
+                        ),
                         (session["nickname"], topic, step),
                     )
                     db.commit()
@@ -974,7 +1021,11 @@ def question(course: str, topic: str, step: int, idx: int):
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
         type_ = "number" if question["type"] == "numerical" else "text"
-        placeholder = translation["Input un numero"] if question["type"] == "numerical" else translation["Input a text"]
+        placeholder = (
+            translation["Input un numero"]
+            if question["type"] == "numerical"
+            else translation["Input a text"]
+        )
 
     return render_template(
         "question.html",
@@ -990,9 +1041,13 @@ def question(course: str, topic: str, step: int, idx: int):
         topic=topic,
         step=step,
         idx=idx,
-        total=len(session["quiz"]) if "recover" not in session else config["N_QUESTIONS_FOR_RECOVER"],
+        total=len(session["quiz"])
+        if "recover" not in session
+        else config["N_QUESTIONS_FOR_RECOVER"],
         score=get_score(course, topic),
-        lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
+        lives=get_lives_number(
+            course, session["nickname"] if "nickname" in session else ""
+        ),
         recover="recover" in session,
         translation=translation,
     )
@@ -1038,7 +1093,11 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     question_id = session["quiz"][idx]
     # get question content
     with get_db(course) as db:
-        question = json.loads(db.execute("SELECT content FROM questions WHERE id = ?", (question_id,)).fetchone()["content"])
+        question = json.loads(
+            db.execute(
+                "SELECT content FROM questions WHERE id = ?", (question_id,)
+            ).fetchone()["content"]
+        )
 
     if request.method == "GET":
         # get user answer
@@ -1063,7 +1122,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             correct_answers.append(answer["text"])
 
         if str_match(user_answer, answer["text"]):
-            answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
+            answer_feedback = (
+                answer["feedback"] if answer["feedback"] is not None else ""
+            )
 
     feedback = {"questiontext": question["questiontext"]}
 
@@ -1082,14 +1143,18 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     else:
         # error
-        feedback["result"] = Markup(format_wrong_answer(correct_answer_str, answer_feedback))
+        feedback["result"] = Markup(
+            format_wrong_answer(correct_answer_str, answer_feedback)
+        )
         feedback["correct"] = False
 
         # remove a life if not recover
         if "recover" not in session:
             with get_db(course) as db:
                 db.execute(
-                    ("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "),
+                    (
+                        "UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "
+                    ),
                     (session["nickname"],),
                 )
                 db.commit()
@@ -1106,7 +1171,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         # add a new life
         with get_db(course) as db:
             db.execute(
-                (f"UPDATE lives SET number = number + 1 WHERE nickname = ? and number < {config['INITIAL_LIFE_NUMBER']}"),
+                (
+                    f"UPDATE lives SET number = number + 1 WHERE nickname = ? and number < {config['INITIAL_LIFE_NUMBER']}"
+                ),
                 (session["nickname"],),
             )
             db.commit()
@@ -1115,7 +1182,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     if "recover" not in session:
         with get_db(course) as db:
             db.execute(
-                ("INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"),
+                (
+                    "INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"
+                ),
                 (
                     session["nickname"],
                     topic,
@@ -1131,7 +1200,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     if flag_recovered:
         popup_text = translation["Congratulations! You've recovered one life!"]
 
-    nlives = get_lives_number(course, session["nickname"] if "nickname" in session else "")
+    nlives = get_lives_number(
+        course, session["nickname"] if "nickname" in session else ""
+    )
 
     if nlives == 0 and "recover" not in session:
         popup_text = Markup(f"{ translation["You've lost all your lives..."] }")
@@ -1170,7 +1241,9 @@ def results(course: str):
     # check if admin
     if session["nickname"] != "admin":
         flash(
-            Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
+            Markup(
+                '<div class="notification is-danger">You are not allowed to access this page</div>'
+            ),
             "",
         )
         return redirect(url_for("home", course=course))
@@ -1180,9 +1253,14 @@ def results(course: str):
         scores: dict = {}
         for user in cursor.fetchall():
             scores[user["nickname"]] = {}
-            topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
+            topics: list = [
+                row["topic"]
+                for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()
+            ]
             for topic in topics:
-                scores[user["nickname"]][topic] = get_score(course, topic, nickname=user["nickname"])
+                scores[user["nickname"]][topic] = get_score(
+                    course, topic, nickname=user["nickname"]
+                )
 
     return render_template("results.html", course=course, topics=topics, scores=scores)
 
@@ -1199,13 +1277,21 @@ def admin(course: str):
     config = get_course_config(course)
 
     with get_db(course) as db:
-        questions_number = db.execute("SELECT COUNT(*) AS questions_number FROM questions").fetchone()["questions_number"]
+        questions_number = db.execute(
+            "SELECT COUNT(*) AS questions_number FROM questions"
+        ).fetchone()["questions_number"]
 
-        users_number = db.execute("SELECT COUNT(*) AS users_number FROM users").fetchone()["users_number"]
+        users_number = db.execute(
+            "SELECT COUNT(*) AS users_number FROM users"
+        ).fetchone()["users_number"]
 
-        topics = db.execute("SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id").fetchall()
+        topics = db.execute(
+            "SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id"
+        ).fetchall()
 
-        topics_list = db.execute("SELECT distinct topic FROM questions ORDER BY id").fetchall()
+        topics_list = db.execute(
+            "SELECT distinct topic FROM questions ORDER BY id"
+        ).fetchall()
 
     return render_template(
         "admin.html",
@@ -1216,6 +1302,50 @@ def admin(course: str):
         users_number=users_number,
         topics_list=topics_list,
     )
+
+
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/load_questions/<course>", methods=["GET", "POST"]
+)
+@course_exists
+@check_login
+@is_admin
+def load_questions(course: str):
+    """
+    load questions
+    """
+
+    # config = get_course_config(course)
+    if request.method == "GET":
+        return render_template("load_questions.html", course=course)
+
+    if request.method == "POST":
+        if "file" not in request.files:
+            flash("No file part")
+            return redirect(request.url)
+
+        file = request.files["file"]
+
+        if file.filename == "":
+            flash("No selected file")
+            return redirect(request.url)
+
+        # check file name
+        if file.filename not in (f"{course}.xml", f"{course}.gift"):
+            flash("The file name must be COURSE_NAME.xml or COURSE_NAME.gift")
+            return redirect(request.url)
+
+        if file:
+            file_path = Path(COURSES_DIR) / Path(file.filename)
+            file.save(file_path)
+
+            # load questions in database
+            if load_questions_xml(file_path, get_course_config(course)):
+                flash(f"Error loading questions from {file.filename}")
+            else:
+                flash(f"Questions loaded successfully from {file.filename}!")
+
+            return redirect(url_for("admin", course=course))
 
 
 @app.route(
@@ -1232,10 +1362,14 @@ def edit_parameters(course: str):
     if request.method == "GET":
         # get parameters from .txt
         if (Path(COURSES_DIR) / Path(course).with_suffix(".txt")).is_file():
-            with open(Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "r") as f_in:
+            with open(
+                Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "r"
+            ) as f_in:
                 parameters = f_in.read()
         else:
-            parameters = f"File {Path(COURSES_DIR) / Path(course).with_suffix(".txt")} not found"
+            parameters = (
+                f"File {Path(COURSES_DIR) / Path(course).with_suffix(".txt")} not found"
+            )
 
         return render_template("parameters.html", course=course, parameters=parameters)
 
@@ -1246,18 +1380,26 @@ def edit_parameters(course: str):
         except Exception as e:
             print(f"Errore durante il caricamento del file di configurazione: {e}")
             flash(
-                Markup(f'<div class="notification is-danger">The parameters contain the following error:<br>{e}</div>'),
+                Markup(
+                    f'<div class="notification is-danger">The parameters contain the following error:<br>{e}</div>'
+                ),
                 "error",
             )
-            return render_template("parameters.html", course=course, parameters=request.form["parameters"])
+            return render_template(
+                "parameters.html", course=course, parameters=request.form["parameters"]
+            )
 
         try:
-            with open(Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "w") as f_out:
+            with open(
+                Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "w"
+            ) as f_out:
                 f_out.write(request.form["parameters"])
 
         except Exception:
             flash(
-                Markup('<div class="notification is-danger">Error saving parameters</div>'),
+                Markup(
+                    '<div class="notification is-danger">Error saving parameters</div>'
+                ),
                 "error",
             )
 
@@ -1305,13 +1447,17 @@ def all_questions(course: str):
             content = json.loads(row["content"])
             out.append(content["questiontext"])
             for answer in content["answers"]:
-                out.append(f"""{answer["fraction"]}  {answer["text"]}   <span style="color: gray;">feedback: {answer["feedback"]}</span>""")
+                out.append(
+                    f"""{answer["fraction"]}  {answer["text"]}   <span style="color: gray;">feedback: {answer["feedback"]}</span>"""
+                )
             out.append("<hr>")
 
     return "<br>".join(out)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/all_questions_gift/<course>", methods=["GET"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/all_questions_gift/<course>", methods=["GET"]
+)
 @course_exists
 @check_login
 @is_admin
@@ -1370,7 +1516,9 @@ def all_questions_gift(course: str):
                     if answer["fraction"] == "100":
                         out.append(f"=%100%{answer['text']}#{answer['feedback']}")
                     else:
-                        out.append(f"=%{answer["fraction"]}%{answer['text']}#{answer['feedback']}")
+                        out.append(
+                            f"=%{answer["fraction"]}%{answer['text']}#{answer['feedback']}"
+                        )
                 if content["generalfeedback"]:
                     out.append(f"####{content['generalfeedback']}")
 
@@ -1381,7 +1529,9 @@ def all_questions_gift(course: str):
     return "<br>".join(out)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/saved_questions/<course>", methods=["GET"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/saved_questions/<course>", methods=["GET"]
+)
 @course_exists
 @check_login
 @is_admin
@@ -1392,7 +1542,9 @@ def saved_questions(course: str):
 
     out: list = []
     with get_db(course) as db:
-        cursor = db.execute("SELECT topic, name FROM bookmarks, questions WHERE bookmarks.question_id = questions.id ORDER BY topic, name")
+        cursor = db.execute(
+            "SELECT topic, name FROM bookmarks, questions WHERE bookmarks.question_id = questions.id ORDER BY topic, name"
+        )
         for row in cursor.fetchall():
             out.append(str(row["topic"]))
             out.append(row["name"])
@@ -1401,7 +1553,9 @@ def saved_questions(course: str):
     return "<br>".join(out)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/reset_saved_questions/<course>", methods=["GET"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/reset_saved_questions/<course>", methods=["GET"]
+)
 @course_exists
 @check_login
 @is_admin
@@ -1457,7 +1611,9 @@ def login(course: str):
                 return redirect(url_for("home", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/new_nickname/<course>", methods=["GET", "POST"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/new_nickname/<course>", methods=["GET", "POST"]
+)
 @course_exists
 def new_nickname(course: str):
     """
@@ -1467,7 +1623,9 @@ def new_nickname(course: str):
     translation = get_translation("it")
 
     if request.method == "GET":
-        return render_template("new_nickname.html", course=course, translation=translation)
+        return render_template(
+            "new_nickname.html", course=course, translation=translation
+        )
 
     if request.method == "POST":
         form_data = request.form
@@ -1478,25 +1636,35 @@ def new_nickname(course: str):
 
         if nickname in ("admin", "manager"):
             flash("This nickname is not allowed", "error")
-            return render_template("new_nickname.html", course=course, translation=translation)
+            return render_template(
+                "new_nickname.html", course=course, translation=translation
+            )
 
         if not password1 or not password2:
             flash("A password is missing", "error")
-            return render_template("new_nickname.html", course=course, translation=translation)
+            return render_template(
+                "new_nickname.html", course=course, translation=translation
+            )
 
         if password1 != password2:
             flash("Passwords are not the same", "error")
-            return render_template("new_nickname.html", course=course, translation=translation)
+            return render_template(
+                "new_nickname.html", course=course, translation=translation
+            )
 
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
         with get_db(course) as db:
-            cursor = db.execute("SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,))
+            cursor = db.execute(
+                "SELECT count(*) AS n_users FROM users WHERE nickname = ?", (nickname,)
+            )
             n_users = cursor.fetchone()
 
             if n_users[0]:
                 flash("Nickname already taken", "error")
-                return render_template("new_nickname.html", course=course, translation=translation)
+                return render_template(
+                    "new_nickname.html", course=course, translation=translation
+                )
 
             try:
                 db.execute(
@@ -1510,14 +1678,18 @@ def new_nickname(course: str):
                 db.commit()
 
                 flash(
-                    Markup(f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'),
+                    Markup(
+                        f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'
+                    ),
                     "",
                 )
                 return redirect(url_for("home", course=course))
 
             except Exception:
                 flash(
-                    Markup('<div class="notification is-danger">Error creating the new nickname</div>'),
+                    Markup(
+                        '<div class="notification is-danger">Error creating the new nickname</div>'
+                    ),
                     "error",
                 )
 
@@ -1557,7 +1729,9 @@ def logout(course):
     return redirect(url_for("home", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/click_image/<course>", methods=["GET", "POST"])
+@app.route(
+    f"{app.config["APPLICATION_ROOT"]}/click_image/<course>", methods=["GET", "POST"]
+)
 @course_exists
 @check_login
 def click_image(course: str):
@@ -1566,7 +1740,9 @@ def click_image(course: str):
     translation = get_translation("it")
 
     if request.method == "GET":
-        return render_template("click_image.html", course=course, translation=translation)
+        return render_template(
+            "click_image.html", course=course, translation=translation
+        )
 
 
 if __name__ == "__main__":
