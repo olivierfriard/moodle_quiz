@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limiter l'image à l'écran</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden; /* Empêche le défilement */
+            display: flex;
+            justify-content: center; /* Centre horizontalement */
+            align-items: center; /* Centre verticalement */
+        }
+
+        img {
+            max-width: 100vw; /* Ne dépasse pas la largeur de la fenêtre */
+            max-height: 100vh; /* Ne dépasse pas la hauteur de la fenêtre */
+            object-fit: contain; /* Ajuste l'image pour qu'elle soit entièrement visible */
+        }
+    </style>
+</head>
+<body>
+    <img src="{{ url_for('send_static', filename='seppia_sc.gif') }}" alt="Image ajustée à l'écran">
+</body>
+</html>
+
