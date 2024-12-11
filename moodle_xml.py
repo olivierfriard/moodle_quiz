@@ -55,6 +55,7 @@ def moodle_xml_to_dict_with_images(
         """
         if text is None:
             return ""
+        text = text.translate({10: 20, 13: 20})
         clean = re.compile("<.*?>")
         return re.sub(clean, "", text)
 

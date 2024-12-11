@@ -402,6 +402,8 @@ def home(course: str = ""):
 
     if "recover" in session:
         del session["recover"]
+    if "check" in session:
+        del session["check"]
     if "brush-up" in session:
         del session["brush-up"]
     if "quiz" in session:
@@ -626,30 +628,25 @@ def recover_quiz(course: str):
 )
 @course_exists
 @check_login
+@is_admin
 def all_topic_quiz(course: str, topic: str):
-    # check if admin
-    if session["nickname"] != "admin":
-        flash(
-            Markup(
-                '<div class="notification is-danger">You are not allowed to access this page</div>'
-            ),
-            "",
-        )
-        return redirect(url_for("home", course=course))
-
     with get_db(course) as db:
         # Execute the query
         query = "SELECT id from questions WHERE topic = ?"
         cursor = db.execute(query, (topic,))
 
     session["quiz"] = [row["id"] for row in cursor.fetchall()]
+    session["quiz_position"] = 0
+    session["check"] = 1
 
     return redirect(url_for("question", course=course, topic=topic, step=1, idx=0))
 
 
 def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
+    """
+    returns pandas dataframe with questions and results for nickname
+    """
     with get_db(course) as db:
-        # Execute the query
         query = """
                 SELECT
                     q.id AS question_id,
@@ -670,9 +667,7 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
                 """
 
         cursor = db.execute(query, (nickname,))
-        # Fetch all rows
         rows = cursor.fetchall()
-        # Get column names from the cursor description
         columns = [description[0] for description in cursor.description]
         # create dataframe
         return pd.DataFrame(rows, columns=columns)
@@ -972,8 +967,12 @@ def question(course: str, topic: str, step: int, idx: int):
 
         if "recover" in session:
             del session["recover"]
-
             return redirect(url_for("home", course=course))
+
+        elif "check" in session:
+            del session["check"]
+            return redirect(url_for("admin", course=course))
+
         else:
             # normal quiz
             with get_db(course) as db:
