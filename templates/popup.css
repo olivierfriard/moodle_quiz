@@ -28,11 +28,17 @@
   #fullscreenPopup img {
     margin-top: 20px; 
     max-width: 90%; 
-    height: auto; 
-/*            border: 3px solid white;
-    border-radius: 5px;*/
+    height: 100%;  /* auto */
 }
-   /* Text centered after image */
+
+#fullscreenPopup video {
+    /*margin-top: 20px; 
+    max-width: 90%; */
+    height: 100%;  /* auto */
+}
+
+
+/* Text centered after image */
    #fullscreenPopup .popup-text {
     margin-top: 0px; 
     text-align: center; 

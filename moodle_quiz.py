@@ -1115,15 +1115,17 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     correct_answers: list = []
     feedback: str = ""
     answer_feedback: str = ""
+    flag_feedback_found = False
     for answer in question["answers"]:
         if answer["fraction"] == "100":
             correct_answer_str = answer["text"]
             correct_answers.append(answer["text"])
 
-        if str_match(user_answer, answer["text"]):
+        if str_match(user_answer, answer["text"]) and not flag_feedback_found:
             answer_feedback = (
                 answer["feedback"] if answer["feedback"] is not None else ""
             )
+            flag_feedback_found = True
 
     feedback = {"questiontext": question["questiontext"]}
 
@@ -1742,6 +1744,12 @@ def click_image(course: str):
         return render_template(
             "click_image.html", course=course, translation=translation
         )
+
+
+@app.route(f"{app.config["APPLICATION_ROOT"]}/test_popup", methods=["GET", "POST"])
+def test_popup():
+    """ """
+    return render_template("test_popup.html")
 
 
 if __name__ == "__main__":
