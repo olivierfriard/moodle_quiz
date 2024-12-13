@@ -76,11 +76,11 @@ def moodle_xml_to_dict_with_images(
     # remove 2 first categories ("$course$/top/Default ..." ...)
     all_categories = remove_two_shortest(all_categories)
 
-    # print(f"{all_categories=}")
+    print(f"{all_categories=}")
 
     prefix_to_remove = find_common_prefix(all_categories)
 
-    # print(f"{prefix_to_remove=}")
+    print(f"{prefix_to_remove=}")
 
     # Dictionary to hold questions organized by category
     categories_dict = defaultdict(list)
@@ -97,7 +97,7 @@ def moodle_xml_to_dict_with_images(
             category_text = question.find("category/text").text.removeprefix(
                 prefix_to_remove
             )
-            # print(f"{category_text=}")
+            print(f"{category_text=}")
             # print(question.find("idnumber").text)
             id_number = 0
             if question.find("idnumber").text is not None:
@@ -105,10 +105,21 @@ def moodle_xml_to_dict_with_images(
                     id_number = float(question.find("idnumber").text)
                 except Exception:
                     id_number = question.find("idnumber").text
-            if len(category_text.split("/")) == 1:
-                main_categories.add((id_number, category_text.split("/")[0]))
+            print(f"{len(category_text.split("/"))=}")
+            print()
 
-    # print(f"{sorted(main_categories)=}")
+            main_cat = category_text.split("/")[0]
+
+            try:
+                position = int(main_cat.split(" ")[0])
+            except Exception:
+                position = 0
+
+            main_categories.add((position, main_cat))
+            # if len(category_text.split("/")) == 1:
+            #    main_categories.add((id_number, category_text.split("/")[0]))
+
+    print(f"{sorted(main_categories)=}")
 
     # Parse the XML tree
     for question in root.findall("question"):
@@ -225,7 +236,7 @@ def moodle_xml_to_dict_with_images(
     categories_dict = dict(sorted(categories_dict.items()))
 
     # print()
-    # print(categories_dict.keys())
+    print(f"{categories_dict.keys()=}")
 
     # print([categories_dict[x] for x in categories_dict])
 
@@ -233,3 +244,11 @@ def moodle_xml_to_dict_with_images(
     categories_dict = {key[1]: value for key, value in categories_dict.items()}
 
     return dict(categories_dict)
+
+
+if __name__ == "__main__":
+    import sys
+
+    moodle_xml_to_dict_with_images(
+        sys.argv[1], ["multichoice", "truefalse", "shortanswer"], "tmp"
+    )
