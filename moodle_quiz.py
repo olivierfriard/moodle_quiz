@@ -1236,7 +1236,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/results/<course>", methods=["GET"])
-@course_exists
+# @course_exists
 @check_login
 @is_admin
 def results(course: str):
