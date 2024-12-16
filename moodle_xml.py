@@ -150,17 +150,25 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
             if question_type not in question_types:
                 continue
 
+            question_text = question.find("questiontext/text").text
+
             question_dict = {
                 "type": question_type,
                 "name": question.find("name/text").text if question.find("name/text") is not None else None,
-                "questiontext": strip_html_tags(
-                    question.find("questiontext/text").text if question.find("questiontext/text") is not None else None
-                ),
+                "questiontext": strip_html_tags(question_text if question_text is not None else None),
                 "generalfeedback": "",
                 "answers": [],
                 "feedback": {},
                 "files": [],  # To store files related to the question
             }
+
+            # check if external image(s)
+            if question_text is not None and "<img src=" in question_text:
+                img_tag_pattern = r'<img[^>]*src=["\']([^"\']+)["\'][^>]*>'
+                img_sources = re.findall(img_tag_pattern, question_text)
+                for img_source in img_sources:
+                    question_dict["files"].append(img_source)
+
             # general feedback
             question_dict["generalfeedback"] = (
                 strip_html_tags(question.find("generalfeedback/text").text) if question.find("generalfeedback/text") is not None else None
@@ -190,7 +198,7 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
                 }
                 question_dict["answers"].append(answer_dict)
 
-            # Process files (decode base64 encoded content)
+            # Process embedded files (decode base64 encoded content)
             file_list = question.findall("questiontext/file")
             # print(f"{file_list=}")
             for file_ in file_list:
