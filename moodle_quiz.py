@@ -977,7 +977,7 @@ def question(course: str, topic: str, step: int, idx: int):
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
         type_ = "number" if question["type"] == "numerical" else "text"
-        placeholder = translation["Input un numero"] if question["type"] == "numerical" else translation["Input a text"]
+        placeholder = translation["Input a number"] if question["type"] == "numerical" else translation["Input a text"]
 
     return render_template(
         "question.html",
