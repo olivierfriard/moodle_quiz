@@ -1245,20 +1245,36 @@ def results(course: str):
     """
 
     with get_db(course) as db:
-        cursor = db.execute("SELECT * FROM users")
-        scores: dict = {}
-        for user in cursor.fetchall():
-            scores[user["nickname"]] = {}
-            topics: list = [
-                row["topic"]
-                for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()
-            ]
-            for topic in topics:
-                scores[user["nickname"]][topic] = get_score(
-                    course, topic, nickname=user["nickname"]
-                )
+        topics: list = [
+            row["topic"]
+            for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()
+        ]
 
-    return render_template("results.html", course=course, topics=topics, scores=scores)
+        cursor = db.execute("SELECT * FROM users WHERE nickname NOT IN ('admin')")
+        scores: dict = {}
+        n_questions: dict = {}
+        for user in cursor.fetchall():
+            tot_score = 0
+            n_topic = 0
+            for topic in topics:
+                score = get_score(course, topic, nickname=user["nickname"])
+                if score:
+                    n_topic += 1
+                    tot_score += score
+            scores[user["nickname"]] = score / n_topic
+
+            n_questions[user["nickname"]] = db.execute(
+                "SELECT count(*) AS n_questions FROM results WHERE nickname = ?",
+                (user["nickname"],),
+            ).fetchone()["n_questions"]
+
+    return render_template(
+        "results.html",
+        course=course,
+        topics=topics,
+        scores=scores,
+        n_questions=n_questions,
+    )
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/admin/<course>", methods=["GET"])
