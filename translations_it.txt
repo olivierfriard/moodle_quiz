@@ -23,6 +23,7 @@
 "The brush-up is not available" = "Il ripasso non è disponibile"
 
 "Input a text" = 'Immetti una parola'
+"Input a number" = 'Immetti un numero'
 "Save the question" = "Salva la domanda"
 
 "Easy" = "Regolare"
