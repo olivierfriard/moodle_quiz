@@ -1236,15 +1236,13 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
 
 @app.route(f"{app.config["APPLICATION_ROOT"]}/results/<course>", methods=["GET"])
-# @course_exists
+@course_exists
 @check_login
 @is_admin
 def results(course: str):
     """
     display results for all users
     """
-
-    return "ciao"
 
     with get_db(course) as db:
         cursor = db.execute("SELECT * FROM users")
