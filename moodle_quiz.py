@@ -1261,8 +1261,10 @@ def results(course: str):
                 if score:
                     n_topic += 1
                     tot_score += score
-            scores[user["nickname"]] = score / n_topic
-
+            if n_topic:
+                scores[user["nickname"]] = score / n_topic
+            else:
+                scores[user["nickname"]] = "-"
             n_questions[user["nickname"]] = db.execute(
                 "SELECT count(*) AS n_questions FROM results WHERE nickname = ?",
                 (user["nickname"],),
