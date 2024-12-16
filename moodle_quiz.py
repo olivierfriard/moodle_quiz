@@ -1262,7 +1262,7 @@ def results(course: str):
                     n_topic += 1
                     tot_score += score
             if n_topic:
-                scores[user["nickname"]] = score / n_topic
+                scores[user["nickname"]] = tot_score / n_topic
             else:
                 scores[user["nickname"]] = "-"
             n_questions[user["nickname"]] = db.execute(
