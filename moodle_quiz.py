@@ -1244,6 +1244,8 @@ def results(course: str):
     display results for all users
     """
 
+    return "ciao"
+
     with get_db(course) as db:
         cursor = db.execute("SELECT * FROM users")
         scores: dict = {}
