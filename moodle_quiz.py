@@ -996,7 +996,6 @@ def question(course: str, topic: str, step: int, idx: int):
         step=step,
         idx=idx,
         total=len(session["quiz"]) if "recover" not in session else config["N_QUESTIONS_FOR_RECOVER"],
-        score=get_score(course, topic),
         lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
         recover="recover" in session,
         translation=translation,
@@ -1156,7 +1155,6 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         step=step,
         idx=idx,
         total=len(session["quiz"]),
-        score=get_score(course, topic),
         lives=nlives,
         flag_recovered=flag_recovered,
         recover="recover" in session,
@@ -1196,7 +1194,7 @@ def results(course: str):
 
             for row in user_topics:
                 score = get_score(course, row["topic"], nickname=user["nickname"])
-                # print(user["nickname"], row["topic"], score)
+                print(user["nickname"], row["topic"], score)
                 tot_score += score
 
             if len(user_topics):
@@ -1210,7 +1208,7 @@ def results(course: str):
                 (user["nickname"],),
             ).fetchone()["n_questions"]
 
-            # print()
+            print()
 
     return render_template(
         "results.html",
