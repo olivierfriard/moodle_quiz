@@ -26,20 +26,20 @@
 <thead>
     
 <tr>
-<td>User</td><td>Mean score</td><td>Number of questions</td>
+<td>User</td><td>Mean score</td><td>Number of topics</td><td>Number of questions</td>
 </tr>
 </thead>
 {% for user in scores %}
 
 <tr class="has-text-white">
-<td>{{ user }}</td>
-<td >
-  {{  scores[user] }}
-</td>
 
-<td >
-  {{  n_questions[user] }}
-</td>
+<td>{{ user }}</td>
+
+<td>{{  scores[user] }}</td>
+
+<td>{{  n_topics[user] }}</td>
+
+<td>{{  n_questions[user] }}</td>
 
 
 
