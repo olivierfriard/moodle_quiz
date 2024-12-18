@@ -13,6 +13,9 @@ import random
 import re
 import json
 import sys
+import unicodedata
+import numpy as np
+from rapidfuzz import fuzz
 from markupsafe import Markup
 from flask import (
     Flask,
@@ -1002,6 +1005,55 @@ def question(course: str, topic: str, step: int, idx: int):
     )
 
 
+def normalize_text(text):
+    """
+    Converts text to lowercase, removes accents, and extra spaces.
+    """
+    text = text.lower()
+    # Normalize text to remove accents and special characters
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
+    # Remove extra spaces
+    text = " ".join(text.split())
+    return text
+
+
+def calculate_similarity_score(student_answer, correct_answer, response_thresholds, response_phrases):
+    """
+    Calculates a similarity score between the student's answer and the correct answer,
+    considering both word order and the presence of words.
+
+    :param student_answer: The answer provided by the student
+    :param correct_answer: The correct answer to compare against
+
+    """
+
+    response_thresholds = [80, 90, 95]  # set the thresholds
+    response_phrases = ["NO. Sbagliato!", "OK, qualche imprecisione, controlla!", "OK, ma rivedi la sintassi"]
+
+    # Normalize both the student's answer and the correct answer
+    student_answer = normalize_text(student_answer)
+    st_answer = student_answer.split()
+    length_st_answer = len(st_answer)
+    correct_answer = normalize_text(correct_answer)
+    cor_answer = correct_answer.split()
+    length_cor_answer = len(cor_answer)
+    score_array = np.zeros(length_cor_answer)
+    for i in range(length_cor_answer):
+        score_max = 0
+        for ii in range(length_st_answer):
+            score = fuzz.ratio(st_answer[ii], cor_answer[i])
+            if score > score_max:
+                score_max = score
+            score_array[i] = score_max
+    final_score = np.mean(score_array)
+    for i in np.arange(len(response_thresholds)):
+        if final_score <= response_thresholds[i]:
+            reply = response_phrases[i]
+            break
+        reply = "Ottimo!"
+    return final_score, reply
+
+
 @app.route(
     f"{app.config["APPLICATION_ROOT"]}/check_answer/<course>/<topic>/<int:step>/<int:idx>/<path:user_answer>",
     methods=["GET"],
@@ -1087,18 +1139,34 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             break
 
     else:
-        # error
-        feedback["result"] = Markup(format_wrong_answer(correct_answer_str, answer_feedback))
-        feedback["correct"] = False
-
-        # remove a life if not recover
-        if "recover" not in session:
-            with get_db(course) as db:
-                db.execute(
-                    ("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "),
-                    (session["nickname"],),
+        for correct_answer in correct_answers:
+            final_score, reply = calculate_similarity_score(user_answer, correct_answer, [], [])
+            print(f"{final_score=}")
+            if "NO" not in reply:
+                # good answer
+                feedback["result"] = Markup(
+                    format_correct_answer(reply + "<br>" + 'La risposta corretta è "' + correct_answer_str + '"<br>' + answer_feedback)
                 )
-                db.commit()
+                feedback["correct"] = True
+
+                if "recover" in session:
+                    # add one good answer
+                    session["recover"] += 1
+
+                break
+        else:
+            # error
+            feedback["result"] = Markup(format_wrong_answer(correct_answer_str, answer_feedback))
+            feedback["correct"] = False
+
+            # remove a life if not recover
+            if "recover" not in session:
+                with get_db(course) as db:
+                    db.execute(
+                        ("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "),
+                        (session["nickname"],),
+                    )
+                    db.commit()
 
     # translate user answer if true or false
     if user_answer in ("true", "false"):
