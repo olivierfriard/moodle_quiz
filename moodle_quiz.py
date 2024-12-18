@@ -1203,7 +1203,7 @@ def results(course: str):
         topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
 
         # cursor = db.execute("SELECT * FROM users WHERE nickname NOT IN ('admin') ORDER BY nickname")
-        cursor = db.execute("SELECT * FROM users ORDER BY nickname")
+        cursor = db.execute("SELECT * FROM users ORDER BY LOWER(nickname)")
         scores: dict = {}
         n_questions: dict = {}
         n_topics: dict = {}
