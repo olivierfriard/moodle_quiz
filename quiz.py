@@ -136,6 +136,7 @@ def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
     for i in range(n_tappe):
         end = start + chunk_size + (1 if i < resto else 0)
         df_tappa = df_capitolo.iloc[shuffled_indices[start:end]]
+        print(f"{i=}   {len(df_tappa)}")
         df_tappe.append(df_tappa)
         start = end
 
@@ -177,9 +178,13 @@ def get_difficulty(score_tipo, ok, no):
 
 
 def get_score_studente(ok, no):
-    print()
+    print("-" * 50)
+
     print(f"{ok=}")
+    print(f"{len(ok)=}")
+
     print(f"{no=}")
+    print(f"{len(no)=}")
 
     # domande già sottoposte
     ntot_domande = np.size(ok)
@@ -227,7 +232,7 @@ def get_random_select(score_medio_studente, score_domande, f_rnd, f_studente_sco
     return rank_t, t
 
 
-def get_quiz_sc3(topic: str, n_questions: int, results: pd.DataFrame, n_lives: int) -> list:
+def get_quiz(topic: str, n_questions: int, results: pd.DataFrame, n_lives: int) -> list:
     """
     return a quiz (list of questions)
 
@@ -239,6 +244,12 @@ def get_quiz_sc3(topic: str, n_questions: int, results: pd.DataFrame, n_lives: i
         n_lives (int):  number of lives
 
     """
+
+    print("get_quiz")
+
+    print(f"{topic=}")
+
+    print(results.info)
 
     capX = topic
     risultati = results  # pd.DataFrame({"cod_capitolo": cod_capitolo, "cod_tipo": cod_tipo, "cod_domanda": cod_domanda})
@@ -288,5 +299,3 @@ f_rnd = 0.15  # deviazione standard della normale usata nel random walk
 f_student_score = 1.1  # fattore di moltiplicazione dello score dello studente. se maggiore di 1 le domande selezionate
 # hanno un livello di difficoltà superiore allo score medio dello studente
 # (e.g livello medio di difficoltà = f_studente_score * studente_score)
-
-get_quiz = get_quiz_sc3

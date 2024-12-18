@@ -99,6 +99,7 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 <input type="checkbox"  id="myCheckbox" onclick="sendCheckboxStatus()">
 {{ translation['Save the question'] }}
 </label>
+<br>Overall results: {{ overall_str }}
 {% endif %}
 
 

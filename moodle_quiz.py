@@ -1144,6 +1144,31 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     session["quiz_position"] += 1
 
+    # get overall score (for admin)
+    if session["nickname"] in ("admin", "manager"):
+        with get_db(course) as db:
+            overall = {}
+            for row in db.execute(
+                (
+                    "select good_answer, count(*) AS n FROM results "
+                    "where topic = ? AND question_name = ? AND nickname != 'admin' "
+                    "GROUP BY good_answer"
+                ),
+                (
+                    topic,
+                    question["name"],
+                ),
+            ):
+                overall[row["good_answer"]] = row["n"]
+
+        overall_str = (
+            f"{overall.get(1, 0) / (overall.get(1, 0) + overall.get(0, 0)):0.3f} ({overall.get(1, 0) + overall.get(0, 0)} answers)"
+            if overall
+            else ""
+        )
+    else:
+        overall_str = ""
+
     return render_template(
         "feedback.html",
         course=course,
@@ -1158,6 +1183,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         lives=nlives,
         flag_recovered=flag_recovered,
         recover="recover" in session,
+        overall_str=overall_str,
         popup=popup,
         popup_text=popup_text,
         translation=translation,
