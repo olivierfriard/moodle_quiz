@@ -1086,9 +1086,10 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             out.append(answer_feedback)
         else:
             out.append(translation["The correct answer is:"])
+            if correct_answers in (["true"], ["false"]):
+                correct_answers = [translation[correct_answers[0].upper()]]
+
             out.append(" o ".join(correct_answers))
-        # if correct_answer in ("true", "false"):
-        #    correct_answer = translation[correct_answer.upper()]
         # out.append(correct_answer)
         return "<br>".join(out)
 
