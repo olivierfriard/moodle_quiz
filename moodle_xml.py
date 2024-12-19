@@ -163,7 +163,7 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
             }
 
             # check if external image(s)
-            if question_text is not None and "<img src=" in question_text:
+            if question_text is not None and '<img src="http' in question_text:
                 img_tag_pattern = r'<img[^>]*src=["\']([^"\']+)["\'][^>]*>'
                 img_sources = re.findall(img_tag_pattern, question_text)
                 for img_source in img_sources:

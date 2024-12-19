@@ -243,31 +243,17 @@ def create_database(course) -> None:
     )"""
     )
 
-    cursor.execute("""
-    -- Set the journal mode to Write-Ahead Logging for concurrency
-    PRAGMA journal_mode = WAL;
-
-    -- Set synchronous mode to NORMAL for performance and data safety balance
-    PRAGMA synchronous = NORMAL;
-
-    -- Set busy timeout to 5 seconds to avoid "database is locked" errors
-    PRAGMA busy_timeout = 5000;
-
-    -- Set cache size to 20MB for faster data access
-    PRAGMA cache_size = -20000;
-
-    -- Enable auto vacuuming and set it to incremental mode for gradual space reclaiming
-    PRAGMA auto_vacuum = INCREMENTAL;
-
-    -- Store temporary tables and data in memory for better performance
-    PRAGMA temp_store = MEMORY;
-
-    -- Set the mmap_size to 2GB for faster read/write access using memory-mapped I/O
-    PRAGMA mmap_size = 2147483648;
-
-    -- Set the page size to 8KB for balanced memory usage and performance
-    PRAGMA page_size = 8192;
-    """)
+    for sql in [
+        "PRAGMA journal_mode = WAL",
+        "PRAGMA synchronous = NORMAL",
+        "PRAGMA busy_timeout = 5000",
+        "PRAGMA cache_size = -20000",
+        "PRAGMA auto_vacuum = INCREMENTAL",
+        "PRAGMA temp_store = MEMORY",
+        "PRAGMA mmap_size = 2147483648",
+        "PRAGMA page_size = 8192",
+    ]:
+        cursor.execute(sql)
 
     conn.commit()
     conn.close()
@@ -930,8 +916,7 @@ def question(course: str, topic: str, step: int, idx: int):
         del session["quiz"]
         del session["quiz_position"]
 
-        if "recover" in session:
-            del session["recover"]
+        if "recover" in session or "brush-up" in session:
             return redirect(url_for("home", course=course))
 
         elif "check" in session:
@@ -1017,6 +1002,14 @@ def normalize_text(text):
     return text
 
 
+def checked_text(text):
+    if "*" in text:
+        text_revised = text.split("*")[0]
+    else:
+        text_revised = text
+    return text_revised
+
+
 def calculate_similarity_score(student_answer, correct_answer, response_thresholds, response_phrases):
     """
     Calculates a similarity score between the student's answer and the correct answer,
@@ -1027,6 +1020,9 @@ def calculate_similarity_score(student_answer, correct_answer, response_threshol
 
     """
 
+    if correct_answer == "*":
+        return True, 100.0, "Ottimo!"
+
     response_thresholds = [80, 90, 95]  # set the thresholds
     response_phrases = ["NO. Sbagliato!", "OK, qualche imprecisione, controlla!", "OK, ma rivedi la sintassi"]
 
@@ -1035,13 +1031,16 @@ def calculate_similarity_score(student_answer, correct_answer, response_threshol
     st_answer = student_answer.split()
     length_st_answer = len(st_answer)
     correct_answer = normalize_text(correct_answer)
+
     cor_answer = correct_answer.split()
     length_cor_answer = len(cor_answer)
     score_array = np.zeros(length_cor_answer)
     for i in range(length_cor_answer):
         score_max = 0
+        text_correct = checked_text(cor_answer[i])
         for ii in range(length_st_answer):
-            score = fuzz.ratio(st_answer[ii], cor_answer[i])
+            text_student = st_answer[ii][0 : len(text_correct)]
+            score = fuzz.ratio(text_student, text_correct)
             if score > score_max:
                 score_max = score
             score_array[i] = score_max
@@ -1051,7 +1050,7 @@ def calculate_similarity_score(student_answer, correct_answer, response_threshol
             reply = response_phrases[i]
             break
         reply = "Ottimo!"
-    return final_score, reply
+    return final_score > response_thresholds[0], final_score, reply
 
 
 @app.route(
@@ -1080,15 +1079,17 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             out.append(translation["You selected the correct answer"])
         return "<br>".join(out)
 
-    def format_wrong_answer(correct_answer, answer_feedback):
+    def format_wrong_answer(answer_feedback, correct_answers):
         # feedback
         out: list = []
         if answer_feedback:
             out.append(answer_feedback)
-        out.append(translation["The correct answer is:"])
-        if correct_answer in ("true", "false"):
-            correct_answer = translation[correct_answer.upper()]
-        out.append(correct_answer)
+        else:
+            out.append(translation["The correct answer is:"])
+            out.append(" o ".join(correct_answers))
+        # if correct_answer in ("true", "false"):
+        #    correct_answer = translation[correct_answer.upper()]
+        # out.append(correct_answer)
         return "<br>".join(out)
 
     question_id = session["quiz"][idx]
@@ -1111,54 +1112,50 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     # get correct answer
     correct_answer_str: str = ""
     correct_answers: list = []
-    feedback: str = ""
+
     answer_feedback: str = ""
-    flag_feedback_found = False
+
+    response = {"questiontext": question["questiontext"]}
+
+    answers = {}
+
     for answer in question["answers"]:
         if answer["fraction"] == "100":
-            correct_answer_str = answer["text"]
             correct_answers.append(answer["text"])
 
-        if str_match(user_answer, answer["text"]) and not flag_feedback_found:
-            answer_feedback = answer["feedback"] if answer["feedback"] is not None else ""
-            flag_feedback_found = True
+            match, score, reply = calculate_similarity_score(user_answer, answer["text"], [], [])
+            answers[score] = {
+                "correct_answer": answer["fraction"] == "100",
+                "match": match,
+                "feedback": answer["feedback"] if answer["feedback"] is not None else "",
+                "reply": reply,
+            }
 
-    feedback = {"questiontext": question["questiontext"]}
+    print(f"good {answers=}")
 
-    # check answer
-    for correct_answer in correct_answers:
-        if str_match(user_answer, correct_answer):
-            # good answer
-            feedback["result"] = Markup(format_correct_answer(answer_feedback))
-            feedback["correct"] = True
-
-            if "recover" in session:
-                # add one good answer
-                session["recover"] += 1
-
-            break
-
+    if answers[sorted(answers)[-1]]["match"]:  # user gave correct answer
+        response = response | answers[sorted(answers)[-1]]
+        response["result"] = Markup(format_correct_answer(response["reply"] + " " + response["feedback"]))
+        response["correct"] = True
+        if "recover" in session:
+            # add one good answer
+            session["recover"] += 1
     else:
-        for correct_answer in correct_answers:
-            final_score, reply = calculate_similarity_score(user_answer, correct_answer, [], [])
-            print(f"{final_score=}")
-            if "NO" not in reply:
-                # good answer
-                feedback["result"] = Markup(
-                    format_correct_answer(reply + "<br>" + 'La risposta corretta è "' + correct_answer_str + '"<br>' + answer_feedback)
-                )
-                feedback["correct"] = True
+        answers = {}
+        for answer in question["answers"]:
+            if answer["fraction"] != "100":
+                match, score, reply = calculate_similarity_score(user_answer, answer["text"], [], [])
+                answers[score] = {
+                    "correct_answer": False,
+                    "match": match,
+                    "feedback": answer["feedback"] if answer["feedback"] is not None else "",
+                }
 
-                if "recover" in session:
-                    # add one good answer
-                    session["recover"] += 1
+        print(f"wrong {answers=}")
 
-                break
-        else:
-            # error
-            feedback["result"] = Markup(format_wrong_answer(correct_answer_str, answer_feedback))
-            feedback["correct"] = False
-
+        if not answers:
+            response["result"] = Markup(format_wrong_answer("", correct_answers))
+            response["correct"] = False
             # remove a life if not recover
             if "recover" not in session:
                 with get_db(course) as db:
@@ -1167,6 +1164,24 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                         (session["nickname"],),
                     )
                     db.commit()
+
+        else:
+            if answers[sorted(answers)[-1]]["match"]:  # user gave wrong answer
+                response = response | answers[sorted(answers)[-1]]
+                response["result"] = Markup(format_wrong_answer(response["feedback"], correct_answers))
+                response["correct"] = False
+                # remove a life if not recover
+                if "recover" not in session:
+                    with get_db(course) as db:
+                        db.execute(
+                            ("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = ? "),
+                            (session["nickname"],),
+                        )
+                        db.commit()
+            else:
+                return "NO MATCH"
+
+    print(f"{response=}")
 
     # translate user answer if true or false
     if user_answer in ("true", "false"):
@@ -1195,7 +1210,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                     topic,
                     question["type"],
                     question["name"],
-                    feedback["correct"],
+                    response["correct"],
                 ),
             )
             db.commit()
@@ -1241,7 +1256,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         "feedback.html",
         course=course,
         question_id=question_id,
-        feedback=feedback,
+        feedback=response,
         user_answer=user_answer,
         config=config,
         topic=topic,
