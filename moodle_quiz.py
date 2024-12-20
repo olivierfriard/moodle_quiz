@@ -1072,6 +1072,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     translation = get_translation("it")
 
     def format_correct_answer(answer_feedback):
+        """
+        format feedback for good answer
+        """
         out: list = []
         if answer_feedback:
             out.append(answer_feedback)
@@ -1080,7 +1083,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         return "<br>".join(out)
 
     def format_wrong_answer(answer_feedback, correct_answers):
-        # feedback
+        """
+        format feedback for wrong answer
+        """
         out: list = []
         if answer_feedback:
             out.append(answer_feedback)
@@ -1110,16 +1115,13 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     # print(f"{user_answer=} {type(user_answer)}")
 
-    # get correct answer
-    correct_answer_str: str = ""
     correct_answers: list = []
-
-    answer_feedback: str = ""
 
     response = {"questiontext": question["questiontext"]}
 
+    # iterate over correct answers
     answers = {}
-
+    negative_feedback = ""
     for answer in question["answers"]:
         if answer["fraction"] == "100":
             correct_answers.append(answer["text"])
@@ -1131,17 +1133,33 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                 "feedback": answer["feedback"] if answer["feedback"] is not None else "",
                 "reply": reply,
             }
+        else:
+            negative_feedback = answer["feedback"] if answer["feedback"] is not None else ""
 
     print(f"good {answers=}")
 
     if answers[sorted(answers)[-1]]["match"]:  # user gave correct answer
         response = response | answers[sorted(answers)[-1]]
-        response["result"] = Markup(format_correct_answer(response["reply"] + " " + response["feedback"]))
+        if sorted(answers)[-1] < 95:
+            negative_feedback = negative_feedback.replace("Sbagliato!", "")
+            negative_feedback = negative_feedback.replace("Sbagliato,", "")
+            negative_feedback = negative_feedback.replace("Sbagliato", "")
+            if not negative_feedback:
+                negative_feedback = f'<br>La risposta giustà è "{correct_answers[0]}"'
+
+            response["result"] = Markup(format_correct_answer(f"{sorted(answers)[-1]}<br>" + response["reply"] + " " + negative_feedback))
+        else:
+            # positive_feedback = response["feedback"]
+            response["result"] = Markup(
+                format_correct_answer(f"{sorted(answers)[-1]}<br>" + response["reply"])  # + " " + response["feedback"])
+            )
+
         response["correct"] = True
         if "recover" in session:
             # add one good answer
             session["recover"] += 1
     else:
+        # iterate over wrong answers
         answers = {}
         for answer in question["answers"]:
             if answer["fraction"] != "100":
@@ -1157,6 +1175,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         if not answers:
             response["result"] = Markup(format_wrong_answer("", correct_answers))
             response["correct"] = False
+
             # remove a life if not recover
             if "recover" not in session:
                 with get_db(course) as db:
@@ -1171,6 +1190,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                 response = response | answers[sorted(answers)[-1]]
                 response["result"] = Markup(format_wrong_answer(response["feedback"], correct_answers))
                 response["correct"] = False
+
                 # remove a life if not recover
                 if "recover" not in session:
                     with get_db(course) as db:
