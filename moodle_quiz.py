@@ -1143,6 +1143,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             score = f"{sorted(answers)[-1]}<br>"
         else:
             score = ""
+
+        score = ""
+
         response = response | answers[sorted(answers)[-1]]
         if sorted(answers)[-1] < 95:
             negative_feedback = negative_feedback.replace("Sbagliato!", "")
