@@ -1139,6 +1139,10 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     print(f"good {answers=}")
 
     if answers[sorted(answers)[-1]]["match"]:  # user gave correct answer
+        if session["nickname"] == "admin":
+            score = f"{sorted(answers)[-1]}<br>"
+        else:
+            score = ""
         response = response | answers[sorted(answers)[-1]]
         if sorted(answers)[-1] < 95:
             negative_feedback = negative_feedback.replace("Sbagliato!", "")
@@ -1147,12 +1151,13 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             if not negative_feedback:
                 negative_feedback = f'<br>La risposta giustà è "{correct_answers[0]}"'
 
-            response["result"] = Markup(format_correct_answer(f"{sorted(answers)[-1]}<br>" + response["reply"] + " " + negative_feedback))
-        else:
+            # response["result"] = Markup(format_correct_answer(f"{sorted(answers)[-1]}<br>" + response["reply"] + " " + negative_feedback))
+            response["result"] = Markup(format_correct_answer(score + response["reply"] + " " + negative_feedback))
+        elif sorted(answers)[-1] < 100:
             # positive_feedback = response["feedback"]
-            response["result"] = Markup(
-                format_correct_answer(f"{sorted(answers)[-1]}<br>" + response["reply"])  # + " " + response["feedback"])
-            )
+            response["result"] = Markup(format_correct_answer(score + response["reply"] + " " + response["feedback"]))
+        else:
+            response["result"] = Markup(format_correct_answer(score + response["reply"]))
 
         response["correct"] = True
         if "recover" in session:
