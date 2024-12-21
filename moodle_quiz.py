@@ -969,6 +969,11 @@ def question(course: str, topic: str, step: int, idx: int):
         type_ = "number" if question["type"] == "numerical" else "text"
         placeholder = translation["Input a number"] if question["type"] == "numerical" else translation["Input a text"]
 
+    if question["questiontext"].count("*") == 2:
+        question["questiontext"] = question["questiontext"].replace("*", "<i>", 1)
+        question["questiontext"] = question["questiontext"].replace("*", "</i>", 1)
+        question["questiontext"] = Markup(question["questiontext"])
+
     return render_template(
         "question.html",
         course_name=config["QUIZ_NAME"],
@@ -1077,6 +1082,10 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         """
         out: list = []
         if answer_feedback:
+            if answer_feedback.count("*") == 2:
+                answer_feedback = answer_feedback.replace("*", "<i>", 1)
+                answer_feedback = answer_feedback.replace("*", "</i>", 1)
+
             out.append(answer_feedback)
         if not out:
             out.append(translation["You selected the correct answer"])
@@ -1088,7 +1097,16 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         """
         out: list = []
         if answer_feedback:
+            if answer_feedback.count("*") == 2:
+                answer_feedback = answer_feedback.replace("*", "<i>", 1)
+                answer_feedback = answer_feedback.replace("*", "</i>", 1)
             out.append(answer_feedback)
+
+            out.append(translation["The correct answer is:"])
+            if correct_answers in (["true"], ["false"]):
+                correct_answers = [translation[correct_answers[0].upper()]]
+            out.append(" o ".join(correct_answers))
+
         else:
             out.append("Sbagliato...")
             out.append(translation["The correct answer is:"])
@@ -1120,6 +1138,11 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     response = {"questiontext": question["questiontext"]}
 
+    if response["questiontext"].count("*") == 2:
+        response["questiontext"] = response["questiontext"].replace("*", "<i>", 1)
+        response["questiontext"] = response["questiontext"].replace("*", "</i>", 1)
+        response["questiontext"] = Markup(response["questiontext"])
+
     # iterate over correct answers
     answers = {}
     negative_feedback = ""
@@ -1145,7 +1168,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         else:
             score = ""
 
-        score = ""
+        # score = ""
         print(f"{score=}")
 
         response = response | answers[sorted(answers)[-1]]
@@ -1201,6 +1224,11 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         else:
             if answers[sorted(answers)[-1]]["match"]:  # user gave wrong answer
                 response = response | answers[sorted(answers)[-1]]
+
+                print()
+                print(f"{correct_answers=}")
+                print()
+
                 response["result"] = Markup(format_wrong_answer(response["feedback"], correct_answers))
                 response["correct"] = False
 
