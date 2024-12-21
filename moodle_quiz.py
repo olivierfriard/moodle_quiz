@@ -1090,6 +1090,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         if answer_feedback:
             out.append(answer_feedback)
         else:
+            out.append("Sbagliato...")
             out.append(translation["The correct answer is:"])
             if correct_answers in (["true"], ["false"]):
                 correct_answers = [translation[correct_answers[0].upper()]]
@@ -1145,6 +1146,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             score = ""
 
         score = ""
+        print(f"{score=}")
 
         response = response | answers[sorted(answers)[-1]]
         if sorted(answers)[-1] < 95:
@@ -1160,7 +1162,10 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             # positive_feedback = response["feedback"]
             response["result"] = Markup(format_correct_answer(score + response["reply"] + " " + response["feedback"]))
         else:
-            response["result"] = Markup(format_correct_answer(score + response["reply"]))
+            positive_feedback = response["feedback"].replace("Esatto!", "")
+            positive_feedback = positive_feedback.replace("Esatto", "")
+            positive_feedback = positive_feedback.replace("Corretto!", "")
+            response["result"] = Markup(format_correct_answer(score + response["reply"] + " " + positive_feedback))
 
         response["correct"] = True
         if "recover" in session:
@@ -1208,7 +1213,8 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                         )
                         db.commit()
             else:
-                return "NO MATCH"
+                response["result"] = Markup(format_wrong_answer("", correct_answers))
+                response["correct"] = False
 
     print(f"{response=}")
 
