@@ -196,6 +196,9 @@ def create_database(course) -> None:
     question_name TEXT NOT NULL,
     good_answer BOOL NOT NULL)""")
 
+    cursor.execute("CREATE INDEX idx_results_topic ON results(topic)")
+    cursor.execute("CREATE INDEX idx_results_nickname ON results(nickname)")
+
     cursor.execute("""
     CREATE TABLE questions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -204,6 +207,8 @@ def create_database(course) -> None:
     name TEXT NOT NULL,
     content TEXT not NULL
     )""")
+
+    cursor.execute("CREATE INDEX idx_questions_topic ON questions(topic)")
 
     cursor.execute(
         """
