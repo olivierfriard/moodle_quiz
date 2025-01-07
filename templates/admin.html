@@ -36,7 +36,7 @@
 <strong>Questions</strong>
 <br>
 
-Number of questions: {{ questions_number }}<br>
+Number of questions in course: {{ questions_number }}<br>
 <a href="{{ url_for('all_questions', course=course) }}">Display questions</a><br>
 <a href="{{ url_for('all_questions_gift', course=course) }}">Display questions (GIFT)</a><br>
 <br>
@@ -45,8 +45,14 @@ Number of questions: {{ questions_number }}<br>
 <br>
 <strong>Users</strong>
 <br>
-Number of users: {{ users_number }}<br>
-<a href="{{ url_for('results', course=course) }}">Statistics</a><br>
+Number of registrered of users: {{ users_number }}<br>
+
+Number of active users in last hour: {{ active_users_last_hour }}<br>
+Number of active users in last day: {{ active_users_last_day }}<br>
+Number of active users in last week: {{ active_users_last_week }}<br>
+Number of active users in last month: {{ active_users_last_month }}<br>
+
+<a href="{{ url_for('results', course=course) }}">User results</a><br>
 <br>
 <strong>Topics</strong>
 <br>

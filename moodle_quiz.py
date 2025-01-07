@@ -1349,7 +1349,7 @@ def results(course: str):
         topics: list = [row["topic"] for row in db.execute("SELECT DISTINCT topic FROM questions").fetchall()]
 
         # cursor = db.execute("SELECT * FROM users WHERE nickname NOT IN ('admin') ORDER BY nickname")
-        cursor = db.execute("SELECT * FROM users ORDER BY LOWER(nickname)")
+        cursor = db.execute("SELECT * FROM users WHERE nickname != 'admin' ORDER BY LOWER(nickname)")
         scores: dict = {}
         n_questions: dict = {}
         n_topics: dict = {}
@@ -1412,6 +1412,22 @@ def admin(course: str):
 
         topics_list = db.execute("SELECT distinct topic FROM questions ORDER BY id").fetchall()
 
+        active_users_last_hour = db.execute(
+            "select count(distinct nickname) AS active_users_last_hour FROM results where timestamp >= DATETIME('now', '-1 hour')"
+        ).fetchone()["active_users_last_hour"]
+
+        active_users_last_day = db.execute(
+            "select count(distinct nickname) AS active_users_last_day FROM results where timestamp >= DATETIME('now', '-1 day')"
+        ).fetchone()["active_users_last_day"]
+
+        active_users_last_week = db.execute(
+            "select count(distinct nickname) AS active_users_last_week FROM results where timestamp >= DATETIME('now', '-7 days')"
+        ).fetchone()["active_users_last_week"]
+
+        active_users_last_month = db.execute(
+            "select count(distinct nickname) AS active_users_last_month FROM results where timestamp >= DATETIME('now', '-30 days')"
+        ).fetchone()["active_users_last_month"]
+
     return render_template(
         "admin.html",
         course_name=config["QUIZ_NAME"],
@@ -1420,6 +1436,10 @@ def admin(course: str):
         topics=topics,
         users_number=users_number,
         topics_list=topics_list,
+        active_users_last_hour=active_users_last_hour,
+        active_users_last_day=active_users_last_day,
+        active_users_last_week=active_users_last_week,
+        active_users_last_month=active_users_last_month,
     )
 
 
