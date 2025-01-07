@@ -1180,15 +1180,15 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                 negative_feedback = f'<br>La risposta giustà è "{correct_answers[0]}"'
 
             # response["result"] = Markup(format_correct_answer(f"{sorted(answers)[-1]}<br>" + response["reply"] + " " + negative_feedback))
-            response["result"] = Markup(format_correct_answer(score + response["reply"] + " " + negative_feedback))
+            response["result"] = Markup(format_correct_answer(response["reply"] + " " + negative_feedback))
         elif sorted(answers)[-1] < 100:
             # positive_feedback = response["feedback"]
-            response["result"] = Markup(format_correct_answer(score + response["reply"] + " " + response["feedback"]))
+            response["result"] = Markup(format_correct_answer(response["reply"] + " " + response["feedback"]))
         else:
             positive_feedback = response["feedback"].replace("Esatto!", "")
             positive_feedback = positive_feedback.replace("Esatto", "")
             positive_feedback = positive_feedback.replace("Corretto!", "")
-            response["result"] = Markup(format_correct_answer(score + response["reply"] + " " + positive_feedback))
+            response["result"] = Markup(format_correct_answer(response["reply"] + " " + positive_feedback))
 
         response["correct"] = True
         if "recover" in session:
