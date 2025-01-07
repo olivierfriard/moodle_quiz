@@ -1418,7 +1418,7 @@ def admin(course: str):
         topics_list = db.execute("SELECT distinct topic FROM questions ORDER BY id").fetchall()
 
         n_questions_by_day = db.execute(
-            "select DATE(timestamp) AS day, count(*) AS n_questions FROM results WHERE nickname != 'admim' GROUP BY day ORDER BY day"
+            "select DATE(timestamp) AS day, count(*) AS n_questions, count(distinct nickname) AS n_users FROM results WHERE nickname != 'admim' GROUP BY day ORDER BY day"
         ).fetchall()
 
         active_users_last_hour = db.execute(
@@ -1451,6 +1451,7 @@ def admin(course: str):
         active_users_last_month=active_users_last_month,
         days=Markup(str([x["day"] for x in n_questions_by_day])),
         n_questions_by_day=Markup(str([x["n_questions"] for x in n_questions_by_day])),
+        n_users_by_day=Markup(str([x["n_users"] for x in n_questions_by_day])),
     )
 
 

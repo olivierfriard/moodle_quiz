@@ -67,11 +67,17 @@ Number of active users in last day: {{ active_users_last_day }}<br>
 Number of active users in last week: {{ active_users_last_week }}<br>
 Number of active users in last month: {{ active_users_last_month }}<br>
 
-
-Number of user answers by day<br>
-
-<canvas id="myChart"></canvas>
+Number of users by day<br>
+<canvas id="users_by_day"></canvas>
 <br>
+
+
+Number of answers by day<br>
+
+<canvas id="answers_by_day"></canvas>
+<br>
+
+
 
 <a href="{{ url_for('results', course=course) }}">User results</a><br>
 <br>
@@ -102,7 +108,7 @@ Number of user answers by day<br>
 
 <script>
     // Get the canvas element by its ID
-    var ctx = document.getElementById('myChart').getContext('2d');
+    var ctx = document.getElementById('answers_by_day').getContext('2d');
 
     // Create a new bar chart
     var myChart = new Chart(ctx, {
@@ -112,6 +118,35 @@ Number of user answers by day<br>
             datasets: [{
                 label: 'Number of answers',  // Dataset label
                 data: {{ n_questions_by_day }},  // Data for each bar
+                /*backgroundColor: 'rgba(54, 162, 235, 0.2)',  // Bar color*/
+                /*borderColor: 'rgba(54, 162, 235, 1)',  // Border color*/
+                /* borderWidth: 1  // Border width */
+            }]
+        },
+        options: {
+            
+            scales: {
+                y: {
+                    beginAtZero: true  // Start Y-axis from zero
+                }
+            }
+        }
+    });
+</script>
+
+
+<script>
+    // Get the canvas element by its ID
+    var ctx = document.getElementById('users_by_day').getContext('2d');
+
+    // Create a new bar chart
+    var myChart = new Chart(ctx, {
+        type: 'bar',  // Type of chart: bar chart
+        data: {
+            labels: {{ days }},  // X-axis labels
+            datasets: [{
+                label: 'Number of users',  // Dataset label
+                data: {{ n_users_by_day }},  // Data for each bar
                 /*backgroundColor: 'rgba(54, 162, 235, 0.2)',  // Bar color*/
                 /*borderColor: 'rgba(54, 162, 235, 1)',  // Border color*/
                 /* borderWidth: 1  // Border width */
