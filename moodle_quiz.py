@@ -1406,26 +1406,30 @@ def admin(course: str):
     with get_db(course) as db:
         questions_number = db.execute("SELECT COUNT(*) AS questions_number FROM questions").fetchone()["questions_number"]
 
-        users_number = db.execute("SELECT COUNT(*) AS users_number FROM users").fetchone()["users_number"]
+        users_number = db.execute("SELECT COUNT(*) AS users_number FROM users WHERE nickname != 'admin'").fetchone()["users_number"]
 
-        topics = db.execute("SELECT topic,  type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id").fetchall()
+        topics = db.execute("SELECT topic, type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id").fetchall()
 
         topics_list = db.execute("SELECT distinct topic FROM questions ORDER BY id").fetchall()
 
+        n_questions_by_day = db.execute(
+            "select DATE(timestamp) AS day, count(*) AS n_questions FROM results WHERE nickname != 'admim' GROUP BY day ORDER BY day"
+        ).fetchall()
+
         active_users_last_hour = db.execute(
-            "select count(distinct nickname) AS active_users_last_hour FROM results where timestamp >= DATETIME('now', '-1 hour')"
+            "SELECT count(distinct nickname) AS active_users_last_hour FROM results WHERE nickname != 'admin' AND timestamp >= DATETIME('now', '-1 hour')"
         ).fetchone()["active_users_last_hour"]
 
         active_users_last_day = db.execute(
-            "select count(distinct nickname) AS active_users_last_day FROM results where timestamp >= DATETIME('now', '-1 day')"
+            "SELECT count(distinct nickname) AS active_users_last_day FROM results WHERE nickname != 'admin' AND timestamp >= DATETIME('now', '-1 day')"
         ).fetchone()["active_users_last_day"]
 
         active_users_last_week = db.execute(
-            "select count(distinct nickname) AS active_users_last_week FROM results where timestamp >= DATETIME('now', '-7 days')"
+            "SELECT count(distinct nickname) AS active_users_last_week FROM results WHERE nickname != 'admin' AND timestamp >= DATETIME('now', '-7 days')"
         ).fetchone()["active_users_last_week"]
 
         active_users_last_month = db.execute(
-            "select count(distinct nickname) AS active_users_last_month FROM results where timestamp >= DATETIME('now', '-30 days')"
+            "SELECT count(distinct nickname) AS active_users_last_month FROM results WHERE nickname != 'admin' AND timestamp >= DATETIME('now', '-30 days')"
         ).fetchone()["active_users_last_month"]
 
     return render_template(
@@ -1440,6 +1444,8 @@ def admin(course: str):
         active_users_last_day=active_users_last_day,
         active_users_last_week=active_users_last_week,
         active_users_last_month=active_users_last_month,
+        days=Markup(str([x["day"] for x in n_questions_by_day])),
+        n_questions_by_day=Markup(str([x["n_questions"] for x in n_questions_by_day])),
     )
 
 
