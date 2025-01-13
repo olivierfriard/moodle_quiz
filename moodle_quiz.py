@@ -219,6 +219,12 @@ def create_database(course) -> None:
     password_hash TEXT NOT NULL
     )"""
     )
+    conn.commit()
+    cursor.execute(
+        "INSERT INTO users (nickname, password_hash) VALUES ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9')"
+    )
+    conn.commit()
+
     cursor.execute(
         """
         CREATE TABLE lives (
@@ -247,6 +253,8 @@ def create_database(course) -> None:
     question_id INTEGER NOT NULL
     )"""
     )
+
+    conn.commit()
 
     for sql in [
         "PRAGMA journal_mode = WAL",
@@ -333,12 +341,12 @@ def is_admin(f):
     return decorated_function
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/static/<path:filename>")
+@app.route(f"{app.config['APPLICATION_ROOT']}/static/<path:filename>")
 def send_static(filename):
     return send_from_directory("static", filename)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/images/<course>/<path:filename>")
+@app.route(f"{app.config['APPLICATION_ROOT']}/images/<course>/<path:filename>")
 def images(course: str, filename):
     return send_from_directory(f"images/{course}", filename)
 
@@ -366,8 +374,8 @@ def str_match(stringa: str, template: str) -> bool:
     return re.fullmatch(regex_pattern, stringa, re.IGNORECASE) is not None
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}", methods=["GET"])
-@app.route(f"{app.config["APPLICATION_ROOT"]}/", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/", methods=["GET"])
 def main_home():
     """
     Quizzych home page
@@ -375,7 +383,7 @@ def main_home():
     return render_template("main_home.html")
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/<course>", methods=["GET"])
 @course_exists
 def home(course: str = ""):
     """
@@ -432,7 +440,7 @@ def home(course: str = ""):
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/topic_list/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/topic_list/<course>", methods=["GET"])
 @course_exists
 @check_login
 def topic_list(course: str):
@@ -470,7 +478,7 @@ def topic_list(course: str):
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/recover_lives/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/recover_lives/<course>", methods=["GET"])
 @course_exists
 @check_login
 def recover_lives(course: str):
@@ -491,7 +499,7 @@ def recover_lives(course: str):
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/position/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/position/<course>", methods=["GET"])
 @course_exists
 @check_login
 def position(course: str):
@@ -536,7 +544,7 @@ def position(course: str):
     return "<br>".join(out)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/recover_quiz/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/recover_quiz/<course>", methods=["GET"])
 @course_exists
 @check_login
 def recover_quiz(course: str):
@@ -592,7 +600,7 @@ def recover_quiz(course: str):
     return redirect(url_for("question", course=course, topic=translation["Recover lives"], step=1, idx=0))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/all_topic_quiz/<course>/<topic>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/all_topic_quiz/<course>/<topic>", methods=["GET"])
 @course_exists
 @check_login
 @is_admin
@@ -640,7 +648,7 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
         return pd.DataFrame(rows, columns=columns)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up_home/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/brush_up_home/<course>", methods=["GET"])
 @course_exists
 @check_login
 def brush_up_home(course: str):
@@ -676,7 +684,7 @@ def brush_up_home(course: str):
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/brush_up/<course>/<int:level>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/brush_up/<course>/<int:level>", methods=["GET"])
 @course_exists
 @check_login
 def brush_up(course: str, level: int):
@@ -695,7 +703,7 @@ def brush_up(course: str, level: int):
         del session["quiz"]
         flash(
             Markup(
-                f'<div class="notification is-danger"><p class="is-size-5 has-text-weight-bold">{translation['The brush-up is not available']}</p></div>'
+                f'<div class="notification is-danger"><p class="is-size-5 has-text-weight-bold">{translation["The brush-up is not available"]}</p></div>'
             ),
             "",
         )
@@ -712,7 +720,7 @@ def get_seed(nickname, topic):
     return int(hashlib.md5((nickname + topic).encode()).hexdigest(), 16)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/steps/<course>/<topic>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/steps/<course>/<topic>", methods=["GET"])
 @course_exists
 @check_login
 def steps(course: str, topic: str):
@@ -751,7 +759,7 @@ def steps(course: str, topic: str):
 
 
 @app.route(
-    f"{app.config["APPLICATION_ROOT"]}/step/<course>/<topic>/<int:step>",
+    f"{app.config['APPLICATION_ROOT']}/step/<course>/<topic>/<int:step>",
     methods=["GET"],
 )
 @course_exists
@@ -842,7 +850,7 @@ def get_score(course: str, topic: str, nickname: str = "") -> float:
 
 
 @app.route(
-    f"{app.config["APPLICATION_ROOT"]}/toggle-checkbox/<course>/<int:question_id>",
+    f"{app.config['APPLICATION_ROOT']}/toggle-checkbox/<course>/<int:question_id>",
     methods=["POST"],
 )
 def toggle_checkbox(course: str, question_id: int):
@@ -868,7 +876,7 @@ def toggle_checkbox(course: str, question_id: int):
 
 
 @app.route(
-    f"{app.config["APPLICATION_ROOT"]}/question/<course>/<topic>/<int:step>/<int:idx>",
+    f"{app.config['APPLICATION_ROOT']}/question/<course>/<topic>/<int:step>/<int:idx>",
     methods=["GET"],
 )
 @course_exists
@@ -963,7 +971,7 @@ def question(course: str, topic: str, step: int, idx: int):
         if image.startswith("http"):
             image_list.append(image)
         else:
-            image_list.append(f"{app.config["APPLICATION_ROOT"]}/images/{course}/{image}")
+            image_list.append(f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}")
 
     if question["type"] == "multichoice" or question["type"] == "truefalse":
         answers = random.sample(question["answers"], len(question["answers"]))
@@ -1064,11 +1072,11 @@ def calculate_similarity_score(student_answer, correct_answer, response_threshol
 
 
 @app.route(
-    f"{app.config["APPLICATION_ROOT"]}/check_answer/<course>/<topic>/<int:step>/<int:idx>/<path:user_answer>",
+    f"{app.config['APPLICATION_ROOT']}/check_answer/<course>/<topic>/<int:step>/<int:idx>/<path:user_answer>",
     methods=["GET"],
 )
 @app.route(
-    f"{app.config["APPLICATION_ROOT"]}/check_answer/<course>/<topic>/<int:step>/<int:idx>",
+    f"{app.config['APPLICATION_ROOT']}/check_answer/<course>/<topic>/<int:step>/<int:idx>",
     methods=["POST"],
 )
 @course_exists
@@ -1132,7 +1140,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         if question["type"] in ("truefalse", "multichoice"):
             user_answer = user_answer
         else:
-            print(f"Question type error: {question["type"]}")
+            print(f"Question type error: {question['type']}")
 
     if request.method == "POST":
         user_answer = request.form.get("user_answer")
@@ -1291,7 +1299,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     nlives = get_lives_number(course, session["nickname"] if "nickname" in session else "")
 
     if nlives == 0 and "recover" not in session:
-        popup_text = Markup(f"{ translation["You've lost all your lives..."] }")
+        popup_text = Markup(f"{translation["You've lost all your lives..."]}")
 
     session["quiz_position"] += 1
 
@@ -1341,7 +1349,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/results/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/results/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_admin
@@ -1397,7 +1405,7 @@ def results(course: str):
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/admin/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/admin/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_admin
@@ -1455,7 +1463,7 @@ def admin(course: str):
     )
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/load_questions/<course>", methods=["GET", "POST"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/load_questions/<course>", methods=["GET", "POST"])
 @course_exists
 @check_login
 @is_admin
@@ -1498,7 +1506,7 @@ def load_questions(course: str):
 
 
 @app.route(
-    f"{app.config["APPLICATION_ROOT"]}/edit_parameters/<course>",
+    f"{app.config['APPLICATION_ROOT']}/edit_parameters/<course>",
     methods=["GET", "POST"],
 )
 @course_exists
@@ -1514,7 +1522,7 @@ def edit_parameters(course: str):
             with open(Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "r") as f_in:
                 parameters = f_in.read()
         else:
-            parameters = f"File {Path(COURSES_DIR) / Path(course).with_suffix(".txt")} not found"
+            parameters = f"File {Path(COURSES_DIR) / Path(course).with_suffix('.txt')} not found"
 
         return render_template("parameters.html", course=course, parameters=parameters)
 
@@ -1548,7 +1556,7 @@ def edit_parameters(course: str):
         return redirect(url_for("admin", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/add_lives/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/add_lives/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_admin
@@ -1565,7 +1573,7 @@ def add_lives(course: str):
     return redirect(url_for("admin", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/all_questions/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/all_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_admin
@@ -1590,7 +1598,7 @@ def all_questions(course: str):
     return "<br>".join(out)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/all_questions_gift/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/all_questions_gift/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_admin
@@ -1605,7 +1613,7 @@ def all_questions_gift(course: str):
         for row in cursor.fetchall():
             # out.append(f"::{row['id']}")
             # category / topic
-            out.append(f"$CATEGORY: {row["topic"]}")
+            out.append(f"$CATEGORY: {row['topic']}")
             out.append("")
             out.append(f"::{row['name']}")
 
@@ -1635,9 +1643,9 @@ def all_questions_gift(course: str):
                 out.append(f"::{content['questiontext']} " + "{")
                 for answer in content["answers"]:
                     if answer["fraction"] == "100":
-                        out.append(f"={answer["text"]}#{answer["feedback"]}")
+                        out.append(f"={answer['text']}#{answer['feedback']}")
                     else:
-                        out.append(f"~{answer["text"]}#{answer["feedback"]}")
+                        out.append(f"~{answer['text']}#{answer['feedback']}")
 
                 if content["generalfeedback"]:
                     out.append(f"####{content['generalfeedback']}")
@@ -1649,7 +1657,7 @@ def all_questions_gift(course: str):
                     if answer["fraction"] == "100":
                         out.append(f"=%100%{answer['text']}#{answer['feedback']}")
                     else:
-                        out.append(f"=%{answer["fraction"]}%{answer['text']}#{answer['feedback']}")
+                        out.append(f"=%{answer['fraction']}%{answer['text']}#{answer['feedback']}")
                 if content["generalfeedback"]:
                     out.append(f"####{content['generalfeedback']}")
 
@@ -1660,7 +1668,7 @@ def all_questions_gift(course: str):
     return "<br>".join(out)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/saved_questions/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/saved_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_admin
@@ -1680,7 +1688,7 @@ def saved_questions(course: str):
     return "<br>".join(out)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/reset_saved_questions/<course>", methods=["GET"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/reset_saved_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_admin
@@ -1696,7 +1704,7 @@ def reset_saved_questions(course: str):
     return redirect(url_for("admin", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/login/<course>", methods=["GET", "POST"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/login/<course>", methods=["GET", "POST"])
 @course_exists
 def login(course: str):
     """
@@ -1736,7 +1744,7 @@ def login(course: str):
                 return redirect(url_for("home", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/new_nickname/<course>", methods=["GET", "POST"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/new_nickname/<course>", methods=["GET", "POST"])
 @course_exists
 def new_nickname(course: str):
     """
@@ -1803,7 +1811,7 @@ def new_nickname(course: str):
                 return redirect(url_for("home", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/<course>/delete", methods=["GET", "POST"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/<course>/delete", methods=["GET", "POST"])
 @course_exists
 @check_login
 def delete(course: str):
@@ -1821,7 +1829,7 @@ def delete(course: str):
     return redirect(url_for("home", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/logout/<course>", methods=["GET", "POST"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/logout/<course>", methods=["GET", "POST"])
 def logout(course):
     """
     logout
@@ -1836,7 +1844,7 @@ def logout(course):
     return redirect(url_for("home", course=course))
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/click_image/<course>", methods=["GET", "POST"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/click_image/<course>", methods=["GET", "POST"])
 @course_exists
 @check_login
 def click_image(course: str):
@@ -1848,7 +1856,7 @@ def click_image(course: str):
         return render_template("click_image.html", course=course, translation=translation)
 
 
-@app.route(f"{app.config["APPLICATION_ROOT"]}/test_popup", methods=["GET", "POST"])
+@app.route(f"{app.config['APPLICATION_ROOT']}/test_popup", methods=["GET", "POST"])
 def test_popup():
     """ """
     return render_template("test_popup.html")
