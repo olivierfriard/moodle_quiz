@@ -16,8 +16,6 @@
 
 {%  include "display_lives.html" %}
 
-
-
 <div class="is-flex is-align-items-center">
   <figure class="image is-48x48">
     <img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="50em">
@@ -28,7 +26,6 @@
 {#   {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %} #}
 
 <br>
-
 
 
 {% if lives == 0 and not recover %}
@@ -98,6 +95,9 @@
 {%endif%}
 
 {% endif %}{# lives == 0 #}
+
+
+
 
 </div>
 </div>

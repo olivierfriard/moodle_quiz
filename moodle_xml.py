@@ -3,8 +3,19 @@ convert questions from a moodle xml file to a dictionary
 
 """
 
+import re
+from pathlib import Path
+import xml.etree.ElementTree as ET
+import base64
+from collections import defaultdict
+import logging
 
-def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_files_path: str) -> dict:
+from typing import List
+
+
+def moodle_xml_to_dict_with_images(
+    xml_file: str, question_types: list, image_files_path: str
+) -> dict:
     """
     Convert a Moodle XML question file into a Python dictionary, organizing questions by categories and decoding images from base64.
 
@@ -15,37 +26,7 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
         dict: A dictionary with categories as keys and lists of questions as values.
     """
 
-    import re
-    from pathlib import Path
-    import xml.etree.ElementTree as ET
-    import base64
-    from collections import defaultdict
-
-    from typing import List
-
     FILES_PATH = image_files_path
-
-    def remove_two_shortest(strings):
-        # written by chatGPT
-        # Sort the list by length of strings
-        sorted_strings = sorted(strings, key=len)
-        # Remove the two shortest strings
-        if len(sorted_strings) > 2:
-            return [s for s in strings if s not in sorted_strings[:2]]
-        return strings  # If there are fewer than 3 elements, return the original list
-
-    def find_common_prefix(lista: List[list]) -> str:
-        # written by chatGPT
-        if not lista:
-            return ""
-        common_prefix: list = []
-        for idx, element in enumerate(lista[0]):
-            if len(set([x[idx] for x in lista])) == 1:
-                common_prefix.append(element)
-            else:
-                return "/".join(common_prefix) + "/"
-
-        return "/".join(common_prefix) + "/"
 
     def strip_html_tags(text: str) -> str:
         """
@@ -64,85 +45,57 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
     root = tree.getroot()
 
     # check categories
-    all_categories: list = []
+    unique_categories: list = []
+    max_element_len: int = 0
+    elements: dict = {}
     for question in root.findall("question"):
         question_type = question.get("type")
 
-        # Handle category change
         if question_type == "category":
             category_text = question.find("category/text").text
-            if category_text not in all_categories:
-                all_categories.append(category_text.split("/"))
+            category_elements = category_text.split("/")
+            max_element_len = max(max_element_len, len(category_elements))
+            for idx, element in enumerate(category_elements):
+                if idx not in elements:
+                    elements[idx] = set()
+                elements[idx].add(element)
 
-    # remove 2 first categories ("$course$/top/Default ..." ...)
-    all_categories = remove_two_shortest(all_categories)
+            if category_elements not in unique_categories:
+                unique_categories.append(category_elements)
 
-    print(f"{all_categories=}")
+    logging.debug(f"{elements=}")
+    logging.debug(f"{max_element_len=}")
 
-    prefix_to_remove = find_common_prefix(all_categories)
+    start: int | None = None
+    for idx in range(max_element_len):
+        if len(elements[idx]) > 1:
+            start = idx
+            break
+    logging.debug(f"starting element: {start}")
 
-    print(f"{prefix_to_remove=}")
+    unique_categories = elements[start]
+    logging.debug(f"{unique_categories=}")
 
     # Dictionary to hold questions organized by category
     categories_dict = defaultdict(list)
     current_category = "Uncategorized"
-    current_id_number = 0
 
-    main_categories = set()
-    # parse all main categories
-    for question in root.findall("question"):
-        question_type = question.get("type")
-        if question_type == "category":
-            if len(question.find("category/text").text) < len(prefix_to_remove):
-                continue
-            category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
-            print(f"{category_text=}")
-            # print(question.find("idnumber").text)
-            id_number = 0
-            if question.find("idnumber").text is not None:
-                try:
-                    id_number = float(question.find("idnumber").text)
-                except Exception:
-                    id_number = question.find("idnumber").text
-            print(f"{len(category_text.split("/"))=}")
-            print()
-
-            main_cat = category_text.split("/")[0]
-
-            try:
-                position = int(main_cat.split(" ")[0])
-            except Exception:
-                position = 0
-
-            main_categories.add((position, main_cat))
-            # if len(category_text.split("/")) == 1:
-            #    main_categories.add((id_number, category_text.split("/")[0]))
-
-    print(f"{sorted(main_categories)=}")
-
+    question_names: dict = {}
+    errors: list = []
     # Parse the XML tree
     for question in root.findall("question"):
         question_type = question.get("type")
 
         # Handle category change
         if question_type == "category":
-            if len(question.find("category/text").text) < len(prefix_to_remove):
+            category_text = question.find("category/text").text
+            category_elements = category_text.split("/")
+            if len(category_elements) < start + 1:
                 continue
 
-            category_text = question.find("category/text").text.removeprefix(prefix_to_remove)
-            # print(f"{category_text=}")
-
-            main_cat = category_text.split("/")[0]
-
-            for idx, cat in main_categories:
-                if main_cat == cat:
-                    current_category = (idx, cat)
-                    break
-            else:
-                # print("ERROR {main_cat} not found")
-                continue
-
-            # print(f"{current_category=}")
+            current_category = category_elements[start]
+            if current_category not in question_names:
+                question_names[current_category] = []
 
         # Handle actual questions
         else:
@@ -150,12 +103,25 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
             if question_type not in question_types:
                 continue
 
+            question_name = (
+                question.find("name/text").text
+                if question.find("name/text") is not None
+                else None
+            )
+            # if question name already used in topic change it
+            while question_name in question_names[current_category]:
+                question_name += "_"
+
             question_text = question.find("questiontext/text").text
+
+            question_names[current_category].append(question_name)
 
             question_dict = {
                 "type": question_type,
-                "name": question.find("name/text").text if question.find("name/text") is not None else None,
-                "questiontext": strip_html_tags(question_text if question_text is not None else None),
+                "name": question_name,
+                "questiontext": strip_html_tags(
+                    question_text if question_text is not None else None
+                ),
                 "generalfeedback": "",
                 "answers": [],
                 "feedback": {},
@@ -171,12 +137,16 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 
             # general feedback
             question_dict["generalfeedback"] = (
-                strip_html_tags(question.find("generalfeedback/text").text) if question.find("generalfeedback/text") is not None else None
+                strip_html_tags(question.find("generalfeedback/text").text)
+                if question.find("generalfeedback/text") is not None
+                else None
             )
 
             # Process feedback
             question_dict["feedback"]["correct"] = (
-                strip_html_tags(question.find("correctfeedback/text").text) if question.find("correctfeedback/text") is not None else None
+                strip_html_tags(question.find("correctfeedback/text").text)
+                if question.find("correctfeedback/text") is not None
+                else None
             )
             question_dict["feedback"]["partiallycorrect"] = (
                 strip_html_tags(question.find("partiallycorrectfeedback/text").text)
@@ -193,14 +163,17 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
             for answer in question.findall("answer"):
                 answer_dict = {
                     "fraction": answer.get("fraction"),
-                    "text": strip_html_tags(answer.find("text").text) if answer.find("text") is not None else None,
-                    "feedback": strip_html_tags(answer.find("feedback/text").text) if answer.find("feedback/text") is not None else None,
+                    "text": strip_html_tags(answer.find("text").text)
+                    if answer.find("text") is not None
+                    else None,
+                    "feedback": strip_html_tags(answer.find("feedback/text").text)
+                    if answer.find("feedback/text") is not None
+                    else None,
                 }
                 question_dict["answers"].append(answer_dict)
 
             # Process embedded files (decode base64 encoded content)
             file_list = question.findall("questiontext/file")
-            # print(f"{file_list=}")
             for file_ in file_list:
                 # print(f"{file_.get("name")=}")
                 # print(f"{file_.text=}")
@@ -215,24 +188,17 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
                 question_dict["files"].append(file_.get("name"))
 
             # Add the question to the respective category
-            if current_category[0:2] not in categories_dict:
-                categories_dict[current_category[0:2]] = {}
-            if question_dict["type"] not in categories_dict[current_category[0:2]]:
-                categories_dict[current_category[0:2]][question_dict["type"]] = []
-            # if current_category[2] not in categories_dict[current_category[0:2]]:
-            #    categories_dict[current_category[0:2]][current_category[2]] = []
-            categories_dict[current_category[0:2]][question_dict["type"]].append(question_dict)
+            if current_category not in categories_dict:
+                categories_dict[current_category] = []
+            categories_dict[current_category].append(question_dict)
 
-    # sort dict categories by id_number
+    # sort categories
     categories_dict = dict(sorted(categories_dict.items()))
 
-    # print()
-    print(f"{categories_dict.keys()=}")
+    logging.debug(f"{categories_dict.keys()=}")
 
-    # print([categories_dict[x] for x in categories_dict])
-
-    # remove id_number
-    categories_dict = {key[1]: value for key, value in categories_dict.items()}
+    if errors:
+        return {"error": errors}
 
     return dict(categories_dict)
 
@@ -240,4 +206,14 @@ def moodle_xml_to_dict_with_images(xml_file: str, question_types: list, image_fi
 if __name__ == "__main__":
     import sys
 
-    moodle_xml_to_dict_with_images(sys.argv[1], ["multichoice", "truefalse", "shortanswer"], "tmp")
+    questions = moodle_xml_to_dict_with_images(
+        sys.argv[1], ["multichoice", "truefalse", "shortanswer"], "tmp"
+    )
+
+    if "error" in questions:
+        for row in questions["error"]:
+            print(row)
+
+    for category in questions:
+        print(category, len(questions[category]))
+    print("total number of questions", sum([len(questions[x]) for x in questions]))

@@ -40,3 +40,8 @@
 "Click to retry" = "Clicca per riprovare"
 
 "Start now !" = "Comincia adesso !"
+
+"New course" = "Crea nuovo corso"
+"Edit question" = "Modifica domanda"
+
+"Remove from saved questions" = "Rimuovi da domande salvate"

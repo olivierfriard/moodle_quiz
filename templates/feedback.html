@@ -79,7 +79,7 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 
 
 {% if lives == 0 and not recover %}
-<a  class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
+<a class="button is-warning is-fullwidth is-large wrap-text-button" href="{{ url_for('home', course=course) }}">
   <strong>{{ translation["You've lost all your lives..."] }}<br>{{ translation["Click to recover them!"] }}</strong>
 </a>
 <script>window.onload = showPopup;</script>
@@ -94,7 +94,7 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 #}
 
 
-{% if session['nickname'] == 'admin' %}
+{% if session['nickname'] == 'manager' %}
 <label>
 <input type="checkbox"  id="myCheckbox" onclick="sendCheckboxStatus()">
 {{ translation['Save the question'] }}
@@ -108,7 +108,7 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 </div>
 </section>
 
-{% if session['nickname'] == 'admin' %}
+{% if session['nickname'] == 'manager' %}
 <script>
   function sendCheckboxStatus() {
     var checkbox = document.getElementById('myCheckbox');

@@ -28,7 +28,7 @@
 <p>
 <img src="{{ url_for('send_static', filename='heart.svg') }}" width="30em" title="{{ translation['Number of lives'] }}">
 
-<span class="has-text-danger">{{ lives if lives is not none else ''}}</span>
+<span class="has-text-danger">{{ lives }}</span>
 
 </p>
 </div>
