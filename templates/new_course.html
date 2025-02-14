@@ -1,0 +1,53 @@
+{% include "header.html" %}
+
+<title>Quizzych</title>
+</head>
+
+<body>
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
+
+
+<div class="box">
+
+<p class="title">Quizzych</p>
+
+New course<br>
+
+{% if session['nickname'] == 'admin' %}
+
+<form action="{{ url_for('new_course') }}" method="POST">
+    <div class="field">
+      <label class="label">New course name</label>
+      <div class="control">
+<input name="course_name" class="input" type="text">        
+</div>
+</div>
+
+    <div class="field">
+      <div class="control">
+        <button type="submit" class="button is-primary">Create course</button>
+        <a href="{{ url_for('main_home') }}" class="button is-primary">Cancel</a>
+      </div>
+    </div>
+  </form>
+
+
+{% else %}
+
+<a class="button is-link" href="{{ url_for('admin_login') }}">Login</a>
+
+{% endif %}
+
+</div> {# box #}
+
+</div>
+</div>
+</div>
+
+</section>
+</body>
+
+</html>

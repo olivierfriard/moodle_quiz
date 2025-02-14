@@ -1,0 +1,56 @@
+{% include "header.html" %}
+
+<title>Admin login</title>
+
+</head>
+<body>
+<section class="section">
+<div class="container">
+<div class="columns is-centered">
+<div class="column is-half">
+
+
+<div class="box">
+
+
+{% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="notification is-danger">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+{% endwith %}
+
+<form action="{{ url_for('admin_login') }}" method="post">
+<div class="field">
+<label class="label">Nickname</label>
+<div class="control">
+<input name="nickname" class="input" type="text" autocomplete="off">
+</div>
+</div>
+
+<div class="field">
+    <label class="label">Password</label>
+    <div class="control">
+    <input name="password" class="input" type="password" autocomplete="off">
+    </div>
+    </div>
+
+
+<div class="field">
+<div class="control">
+<button class="button is-link">{{ translation['Submit'] }}</button>
+</div>
+</div>
+</form>
+
+
+</div>
+</div>
+</div>
+</div>
+</section>
+</body>
+</html>

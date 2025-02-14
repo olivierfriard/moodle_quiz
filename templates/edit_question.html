@@ -1,0 +1,83 @@
+{% include "header.html" %}
+
+<title>Edit question - Quizzych</title>
+</head>
+
+<body>
+<section class="section">
+<div class="container">
+{{ content }}
+<br>
+
+Question type: <b>{{ content.type }}</b><br>
+<br>
+<form action="{{ url_for('edit_question', course=course, question_id=question_id) }}" method="post" enctype="multipart/form-data">
+
+<div class="field">
+<label class="label">Question text</label>
+<div class="control">
+<input name="questiontext" class="input" type="text" autocomplete="off" value="{{ content['questiontext'] }}">
+</div>
+</div>
+
+{% for answer in content.answers %}
+    <div class="field">
+    <label class="label">{{ answer.id }}</label>
+    <div class="control">
+    <input name="{{ answer.id }}" class="input" type="text" autocomplete="off" value="{{ answer.text }}">
+    </div>
+    </div>
+
+    <div class="field">
+        <label class="label">Score {{ answer.id }}</label>
+        <div class="control">
+        <input name="score_{{ answer.id }}" class="input" type="text" autocomplete="off" value="{{ answer.fraction }}">
+        </div>
+        </div>
+
+
+    <div class="field">
+        <label class="label">Feedback {{ answer.id }}</label>
+        <div class="control">
+        <input name="feedback_{{ answer.id }}" class="input" type="text" autocomplete="off" value="{{ answer.feedback }}">
+        </div>
+        </div>
+    
+{% endfor %}
+
+
+<div class="file has-name is-primary">
+    <label class="file-label">
+      <input class="file-input" type="file" name="file" id="fileInput" accept=".png,.jpg,.jpeg">
+      <span class="file-cta">
+        <span class="icon">
+          <i class="fas fa-upload"></i>
+        </span>
+        <span class="file-label">Add an image</span>
+      </span>
+      <span class="file-name" id="fileName">No file selected</span>
+    </label>
+  </div>
+
+<button class="button is-link" href="url_for('saved_questions', course=course)">Cancel</button>
+
+<button class="button is-link" type="submit">Save</button>
+
+</form>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+
+    fileInput.addEventListener('change', () => {
+      fileName.textContent = fileInput.files.length > 0 ? fileInput.files[0].name : 'No file selected';
+    });
+  </script>
+
+
+</div>
+
+</section>
+</body>
+
+</html>
