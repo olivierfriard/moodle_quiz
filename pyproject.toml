@@ -13,4 +13,5 @@ dependencies = [
     "pygiftparserrgmf>=0.0.5",
     "quart>=0.19.6",
     "rapidfuzz>=3.11.0",
+    "sqlalchemy>=2.0.41",
 ]
