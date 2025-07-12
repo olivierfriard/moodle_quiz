@@ -30,6 +30,7 @@ from flask import (
 )
 from functools import wraps
 import logging
+from sqlalchemy import create_engine, text
 
 import moodle_xml
 import quiz
@@ -43,6 +44,7 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
+engine = create_engine("sqlite:///")
 
 def get_course_config(course: str):
     # check config file
@@ -168,12 +170,15 @@ def get_db(course):
     return connection to database 'course.sqlite'
     """
     database_name = Path(COURSES_DIR) / Path(course).with_suffix(".sqlite")
+    engine = create_engine("sqlite:///" + database_name)
+    return engine
+    '''
     db = getattr(g, "_database", None)
     if db is None:
         db = g._database = sqlite3.connect(database_name)
         db.row_factory = sqlite3.Row
     return db
-
+    '''
 
 def create_database(course) -> None:
     """
