@@ -34,7 +34,6 @@ from sqlalchemy import create_engine, text
 import moodle_xml
 import quiz
 
-
 COURSES_DIR = "courses"
 
 logging.basicConfig(
