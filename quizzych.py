@@ -43,7 +43,9 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-engine = create_engine("sqlite:///")
+# engine = create_engine("sqlite:///")
+DATABASE_URL = "postgresql://quizzych_user@localhost:5432/quizzych"
+engine = create_engine(DATABASE_URL)
 
 
 def get_course_config(course: str):
@@ -80,10 +82,10 @@ def get_translation(language: str):
         return None
 
 
-def load_questions_xml(xml_file: Path, config: dict) -> int:
+def load_questions_xml(xml_file: Path, course_name: str, config: dict) -> int:
     try:
         # load questions from xml moodle file
-        question_data = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{xml_file.stem}")
+        question_data = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{course_name}")
 
         # load questions in database
         """
@@ -109,15 +111,17 @@ def load_questions_xml(xml_file: Path, config: dict) -> int:
 
         """
 
-        with get_db(xml_file.stem).connect() as conn:
-            conn.execute(text("DELETE FROM questions"))
-            conn.execute(text("DELETE FROM sqlite_sequence WHERE name = 'questions'"))
+        with engine.connect() as conn:
+            conn.execute(text("DELETE FROM questions WHERE course = :course_name"), {"course_name": course_name})
 
             for topic in question_data:
                 for question in question_data[topic]:
                     conn.execute(
-                        text("INSERT INTO questions (topic, type, name, content) VALUES (:topic, :type, :name, :content)"),
+                        text(
+                            "INSERT INTO questions (course, topic, type, name, content) VALUES (:course_name, :topic, :type, :name, :content)"
+                        ),
                         {
+                            "course_name": course_name,
                             "topic": topic,
                             "type": question["type"],
                             "name": question["name"],
@@ -201,94 +205,33 @@ def create_database(course) -> None:
     """
     create a new course in database
     """
-    database_name = Path(COURSES_DIR) / Path(course).with_suffix(".sqlite")
-
+    """database_name = Path(COURSES_DIR) / Path(course).with_suffix(".sqlite")
     conn = sqlite3.connect(database_name)
     cursor = conn.cursor()
-    cursor.execute("""
-    CREATE TABLE results (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    nickname TEXT NOT NULL,
-    topic TEXT NOT NULL,
-    question_type TEXT NOT NULL,
-    question_name TEXT NOT NULL,
-    good_answer BOOL NOT NULL)""")
+    """
 
-    cursor.execute("CREATE INDEX idx_results_topic ON results(topic)")
-    cursor.execute("CREATE INDEX idx_results_nickname ON results(nickname)")
-
-    cursor.execute("""
-    CREATE TABLE questions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    topic TEXT NOT NULL,
-    type TEXT NOT NULL,
-    name TEXT NOT NULL,
-    content TEXT not NULL
-    )""")
-
-    cursor.execute("CREATE INDEX idx_questions_topic ON questions(topic)")
-
-    cursor.execute(
-        """
-    CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    nickname TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL
-    )"""
-    )
-    conn.commit()
-    cursor.execute(
-        "INSERT INTO users (nickname, password_hash) VALUES ('manager', '866485796cfa8d7c0cf7111640205b83076433547577511d81f8030ae99ecea5')"
-    )
-    conn.commit()
-
-    cursor.execute(
-        """
-        CREATE TABLE lives (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nickname TEXT NOT NULL UNIQUE,
-        number INTEGER DEFAULT 10
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO courses (name, question_types, initial_life_number, topics_to_hide, topic_question_number, steps, step_quiz_number, recover_question_number, recover_topics, brush_up_question_number, brush_up_level_names, brush_up_levels) VALUES ("
+                ":course_name,"
+                """'{"truefalse","multichoice", "shortanswer", "numerical"}',"""
+                "5,"
+                """'{"Ripasso e recupero vite"}',"""
+                "10,"
+                """'{"Esploratore", "Ricercatore", "Maestro"}',"""
+                "4,"
+                "5,"
+                """'{"Ripasso e recupero vite"}',"""
+                "10,"
+                """'{"Easy", "Hard", "Very hard"}',"""
+                "'{1, 2, 4}'"
+                ")"
+            ),
+            {"course_name": course},
         )
-        """
-    )
 
-    cursor.execute(
-        """
-    CREATE TABLE steps (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nickname TEXT NOT NULL,
-    topic TEXT NOT NULL,
-    step_index INTEGER NOT NULL,
-    number INTEGER NOT NULL
-    )"""
-    )
-
-    cursor.execute(
-        """
-    CREATE TABLE bookmarks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    question_id INTEGER NOT NULL
-    )"""
-    )
-
-    conn.commit()
-
-    for sql in [
-        "PRAGMA journal_mode = WAL",
-        "PRAGMA synchronous = NORMAL",
-        "PRAGMA busy_timeout = 5000",
-        "PRAGMA cache_size = -20000",
-        "PRAGMA auto_vacuum = INCREMENTAL",
-        "PRAGMA temp_store = MEMORY",
-        "PRAGMA mmap_size = 2147483648",
-        "PRAGMA page_size = 8192",
-    ]:
-        cursor.execute(sql)
-
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 # load courses from XML files in database
@@ -329,7 +272,7 @@ def check_login(f):
         else:
             # check if nickname in course
 
-            with get_db(kwargs["course"]).connect() as conn:
+            with engine.connect() as conn:
                 # with get_db(kwargs["course"]) as db:
                 if (
                     conn.execute(
@@ -383,11 +326,11 @@ def get_lives_number(course: str, nickname: str) -> int | None:
     """
     get number of lives for nickname
     """
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         lives = (
             conn.execute(
-                text("SELECT number FROM lives WHERE nickname = :nickname"),
-                {"nickname": nickname},
+                text("SELECT number FROM lives WHERE nickname = :nickname AND course = :course"),
+                {"course": course, "nickname": nickname},
             )
             .mappings()
             .fetchone()
@@ -456,11 +399,10 @@ def home(course: str = ""):
     translation = get_translation("it")
 
     lives = None
-    """if "nickname" in session and session["nickname"] not in ("admin", "manager"):"""
     if session.get("nickname", "") not in ("", "admin", "manager"):
         lives = get_lives_number(course, session["nickname"])
         # check if nickname in course
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             if (
                 conn.execute(
                     text("SELECT * FROM users WHERE nickname = :nickname"),
@@ -473,7 +415,6 @@ def home(course: str = ""):
     # check if brush-up available
     brushup_availability: bool = False
 
-    """if "nickname" in session and session["nickname"] != "admin":"""
     if session.get("nickname", "") not in ("", "admin"):
         questions_df = get_questions_dataframe(course, session["nickname"])
         for idx, level in enumerate(config["BRUSH_UP_LEVELS"]):
@@ -559,10 +500,12 @@ def get_visible_topics(course):
     """
     config = get_course_config(course)
 
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         topics: list = [
             row["topic"]
-            for row in conn.execute(text("SELECT DISTINCT topic FROM questions")).mappings().fetchall()
+            for row in conn.execute(text("SELECT DISTINCT topic FROM questions WHERE course = :course"), {"course": course})
+            .mappings()
+            .fetchall()
             if row["topic"] not in config["TOPICS_TO_HIDE"]
         ]
     return topics
@@ -581,10 +524,10 @@ def position(course: str):
 
     # all scores
     scores = []
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         users = (
             conn.execute(
-                text("SELECT nickname FROM users WHERE nickname NOT IN ('admin', 'manager') AND nickname != :conn"),
+                text("SELECT nickname FROM users WHERE nickname NOT IN ('admin', 'manager') AND nickname != :nickname"),
                 {"nickname": session["nickname"]},
             )
             .mappings()
@@ -620,9 +563,10 @@ def recover_quiz(course: str):
     translation = get_translation("it")
 
     # create questions dataframe
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         # Execute the query
-        query = text("""
+        query = text(
+            """
                 SELECT
                     q.id AS question_id,
                     q.topic AS topic,
@@ -631,17 +575,20 @@ def recover_quiz(course: str):
                     SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
                     SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
                 FROM questions q LEFT JOIN results r
-                    ON q.topic=r.topic
+                    ON q.course = r.course
+                        AND q.topic=r.topic
                         AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = :nickname
+                WHERE course = :course
                 GROUP BY
                     q.topic,
                     q.type,
                     q.name
-                """)
+                """
+        )
 
-        result = conn.execute(query, {"nickname": session["nickname"]})
+        result = conn.execute(query, {"course": course, "nickname": session["nickname"]})
         columns = result.keys()
         rows = result.mappings().fetchall()
         # Fetch all rows
@@ -695,9 +642,9 @@ def all_topic_quiz(course: str, topic: str):
     """
     create a quiz with all questions of a topic
     """
-    with get_db(course).connect() as conn:
-        query = text("SELECT id from questions WHERE topic = :topic")
-        rows = conn.execute(query, {"topic": topic}).mappings().fetchall()
+    with engine.connect() as conn:
+        query = text("SELECT id from questions WHERE course = :course AND topic = :topic")
+        rows = conn.execute(query, {"course": course, "topic": topic}).mappings().fetchall()
 
     session["quiz"] = [row["id"] for row in rows]
     session["quiz_position"] = 0
@@ -710,7 +657,7 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
     """
     returns pandas dataframe with questions and results for nickname
     """
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         query = text("""
                 SELECT
                     q.id AS question_id,
@@ -720,17 +667,19 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
                     SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
                     SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
                 FROM questions q LEFT JOIN results r
-                    ON q.topic=r.topic
+                    ON q.course = r.course
+                        AND q.topic=r.topic
                         AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = :nickname
+                WHERE course = :course
                 GROUP BY
                     q.topic,
                     q.type,
                     q.name
                 """)
 
-        result = conn.execute(query, {"nickname": nickname})
+        result = conn.execute(query, {"course": course, "nickname": nickname})
         columns = result.keys()
         rows = result.mappings().fetchall()
 
@@ -826,11 +775,11 @@ def steps(course: str, topic: str):
         lives = get_lives_number(course, session["nickname"])
 
     steps_active = {x: 0 for x in range(1, config["N_STEPS"] + 1)}
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         rows = (
             conn.execute(
-                text("SELECT step_index, number FROM steps WHERE nickname = :nickname AND topic = :topic "),
-                {"nickname": session["nickname"], "topic": topic},
+                text("SELECT step_index, number FROM steps WHERE course = :course AND nickname = :nickname AND topic = :topic "),
+                {"course": course, "nickname": session["nickname"], "topic": topic},
             )
             .mappings()
             .fetchall()
@@ -868,7 +817,7 @@ def step(course: str, topic: str, step: int):
 
     config = get_course_config(course)
 
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         # Execute the query
         query = text("""
                 SELECT
@@ -879,17 +828,19 @@ def step(course: str, topic: str, step: int):
                     SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
                     SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
                 FROM questions q LEFT JOIN results r
-                    ON q.topic=r.topic
+                    ON q.course = r.course
+                        AND q.topic=r.topic
                         AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = :nickname
+                WHERE course = :course
                 GROUP BY
                     q.topic,
                     q.type,
                     q.name
                 """)
 
-        result = conn.execute(query, {"nickname": session["nickname"]})
+        result = conn.execute(query, {"course": course, "nickname": session["nickname"]})
         columns = result.keys()
         rows = result.mappings().fetchall()
 
@@ -933,7 +884,7 @@ def step_testing(course: str, topic: str, step: int):
 
     config = get_course_config(course)
 
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         # Execute the query
         query = text("""
                 SELECT
@@ -944,7 +895,8 @@ def step_testing(course: str, topic: str, step: int):
                     SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
                     SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
                 FROM questions q LEFT JOIN results r
-                    ON q.topic=r.topic
+                    ON q.course = r.course
+                        AND q.topic=r.topic
                         AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = :nickname
@@ -954,7 +906,7 @@ def step_testing(course: str, topic: str, step: int):
                     q.name
                 """)
 
-        result = conn.execute(query, {"nickname": session["nickname"]})
+        result = conn.execute(query, {"course": course, "nickname": session["nickname"]})
         columns = result.keys()
 
         # Fetch all rows
@@ -1001,7 +953,7 @@ def get_score(course: str, topic: str, nickname: str = "") -> float:
     ) AS subquery;
     """
 
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         query = text("""
 SELECT
     SUM(percentage_ok) / COUNT(DISTINCT q.name) AS score
@@ -1012,15 +964,17 @@ FROM (
         NULLIF(COUNT(r.good_answer), 0) AS percentage_ok
     FROM questions q
     LEFT JOIN results r
-        ON q.name = r.question_name
+        ON q.course = r.course
+        AND q.name = r.question_name
         AND r.nickname = :nickname
-    WHERE q.topic = :topic
+    WHERE q.course = r.course AND q.topic = :topic
     GROUP BY q.name
 ) AS subquery
 """)
         cursor = conn.execute(
             query,
             {
+                "course": course,
                 "topic": topic,
                 "nickname": session["nickname"] if nickname == "" else nickname,
             },
@@ -1040,16 +994,16 @@ FROM (
 def toggle_checkbox(course: str, question_id: int):
     if request.is_json:
         is_checked = request.json.get("checked")
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             if is_checked:
                 conn.execute(
-                    text("INSERT INTO bookmarks (question_id) VALUES (:question_id)"),
-                    {"question_is": question_id},
+                    text("INSERT INTO bookmarks (course, question_id) VALUES (:course, :question_id)"),
+                    {"course": course, "question_is": question_id},
                 )
             else:
                 conn.execute(
-                    text("DELETE FROM bookmarks WHERE question_id = :question_id"),
-                    {"question_is": question_id},
+                    text("DELETE FROM bookmarks WHERE course= :course AND question_id = :question_id"),
+                    {"course": course, "question_is": question_id},
                 )
 
             conn.commit()
@@ -1064,10 +1018,10 @@ def delete_bookmark(course: str, question_id: int):
     """
     delete a question from bookmarks
     """
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         conn.execute(
-            text("DELETE FROM bookmarks WHERE question_id = :question_id"),
-            {"question_is": question_id},
+            text("DELETE FROM bookmarks WHERE course = :course AND question_id = :question_id"),
+            {"course": course, "question_is": question_id},
         )
     conn.commit()
 
@@ -1090,11 +1044,15 @@ def question(course: str, topic: str, step: int, idx: int):
 
     if "recover" not in session and "brush-up" not in session:
         # check step index
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             rows = (
                 conn.execute(
-                    (text("SELECT number FROM steps WHERE nickname = :nickname AND topic = :topic and step_index < :step")),
-                    {"nickname": session["nickname"], "topic": topic, "step": step},
+                    (
+                        text(
+                            "SELECT number FROM steps WHERE course = :course AND nickname = :nickname AND topic = :topic and step_index < :step"
+                        )
+                    ),
+                    {"course": course, "nickname": session["nickname"], "topic": topic, "step": step},
                 )
                 .mappings()
                 .fetchall()
@@ -1120,11 +1078,11 @@ def question(course: str, topic: str, step: int, idx: int):
     if idx < len(session["quiz"]):
         question_id = session["quiz"][idx]
         # get question content
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             question = json.loads(
                 conn.execute(
-                    text("SELECT content FROM questions WHERE id = :question_id"),
-                    {"question_id": question_id},
+                    text("SELECT content FROM questions WHERE course= :course AND id = :question_id"),
+                    {"course": course, "question_id": question_id},
                 )
                 .mappings()
                 .fetchone()["content"]
@@ -1143,10 +1101,13 @@ def question(course: str, topic: str, step: int, idx: int):
 
         else:
             # normal quiz
-            with get_db(course) as conn:
+            with engine as conn:
                 result = conn.execute(
-                    text("SELECT number FROM steps WHERE nickname = :nickname AND topic = :topic AND step_index = :step_index"),
+                    text(
+                        "SELECT number FROM steps WHERE course= :course AND nickname = :nickname AND topic = :topic AND step_index = :step_index"
+                    ),
                     {
+                        "course": course,
                         "nickname": session["nickname"],
                         "topic": topic,
                         "step_index": step,
@@ -1158,10 +1119,11 @@ def question(course: str, topic: str, step: int, idx: int):
                 if row is None:
                     conn.execute(
                         text("""
-                            INSERT INTO steps (nickname, topic, step_index, number)
-                            VALUES (:nickname, :topic, :step_index, :number)
+                            INSERT INTO steps (course, nickname, topic, step_index, number)
+                            VALUES (:course, :nickname, :topic, :step_index, :number)
                         """),
                         {
+                            "course": course,
                             "nickname": session["nickname"],
                             "topic": topic,
                             "step_index": step,
@@ -1176,9 +1138,10 @@ def question(course: str, topic: str, step: int, idx: int):
                         text("""
             UPDATE steps
             SET number = number + 1
-            WHERE nickname = :nickname AND topic = :topic AND step_index = :step_index
+            WHERE course = :course AND nickname = :nickname AND topic = :topic AND step_index = :step_index
         """),
                         {
+                            "course": course,
                             "nickname": session["nickname"],
                             "topic": topic,
                             "step_index": step,
@@ -1366,11 +1329,11 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     question_id = session["quiz"][idx]
     # get question content
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         question = json.loads(
             conn.execute(
-                text("SELECT content FROM questions WHERE id = :id"),
-                {"id": question_id},
+                text("SELECT content FROM questions WHERE course = :course AND id = :id"),
+                {"course": course, "id": question_id},
             )
             .mappings()
             .fetchone()["content"]
@@ -1468,10 +1431,10 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
             # remove a life if not recover
             if "recover" not in session:
-                with get_db(course).connect() as conn:
+                with engine.connect() as conn:
                     conn.execute(
-                        text("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = :nickname "),
-                        {"nickname": session["nickname"]},
+                        text("UPDATE lives SET number = number - 1 WHERE course = :course AND number > 0 AND nickname = :nickname "),
+                        {"course": course, "nickname": session["nickname"]},
                     )
                     conn.commit()
 
@@ -1488,8 +1451,8 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                 if "recover" not in session:
                     with get_db(course).connect() as conn:
                         conn.execute(
-                            text("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = :nickname "),
-                            {"nickname": session["nickname"]},
+                            text("UPDATE lives SET number = number - 1 WHERE course = :course AND number > 0 AND nickname = :nickname "),
+                            {"course": course, "nickname": session["nickname"]},
                         )
                         conn.commit()
             else:
@@ -1817,7 +1780,7 @@ def load_questions(course: str):
             file.save(file_path)
 
             # load questions in database
-            if load_questions_xml(file_path, get_course_config(course)):
+            if load_questions_xml(file_path, course, get_course_config(course)):
                 flash(f"Error loading questions from {file.filename}")
             else:
                 flash(f"Questions loaded successfully from {file.filename}!")
