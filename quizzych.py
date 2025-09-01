@@ -191,7 +191,7 @@ app.config.from_object("config")
 app.config["DEBUG"] = True
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
-
+'''
 def get_db(course):
     """
     return connection to database 'course.sqlite'
@@ -199,6 +199,7 @@ def get_db(course):
     database_name = Path(COURSES_DIR) / Path(course).with_suffix(".sqlite")
     engine = create_engine("sqlite:///" + str(database_name))
     return engine
+'''
 
 
 def create_database(course) -> None:
@@ -270,10 +271,8 @@ def check_login(f):
             flash("You must be logged", "error")
             return redirect(url_for("home"), course=kwargs["course"])
         else:
-            # check if nickname in course
-
+            # check if nickname exists
             with engine.connect() as conn:
-                # with get_db(kwargs["course"]) as db:
                 if (
                     conn.execute(
                         text("SELECT * FROM users WHERE nickname = :nickname"),
@@ -1449,7 +1448,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
                 # remove a life if not recover
                 if "recover" not in session:
-                    with get_db(course).connect() as conn:
+                    with engine.connect() as conn:
                         conn.execute(
                             text("UPDATE lives SET number = number - 1 WHERE course = :course AND number > 0 AND nickname = :nickname "),
                             {"course": course, "nickname": session["nickname"]},
@@ -1471,19 +1470,21 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         flag_recovered = True
 
         # add a new life
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             conn.execute(
-                text(f"UPDATE lives SET number = number + 1 WHERE nickname = :nickname and number < {config['INITIAL_LIFE_NUMBER']}"),
-                {"nickname": session["nickname"]},
+                text(
+                    f"UPDATE lives SET number = number + 1 WHERE course = :course AND nickname = :nickname and number < {config['INITIAL_LIFE_NUMBER']}"
+                ),
+                {"course": course, "nickname": session["nickname"]},
             )
             conn.commit()
 
     # save result
     if "recover" not in session:
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             """conn.execute(
                 text(
-                    "INSERT INTO results (nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"
+                    "INSERT INTO results (course, nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"
                 ),
                 (
                     session["nickname"],
@@ -1496,10 +1497,11 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
             conn.execute(
                 text("""
-        INSERT INTO results (nickname, topic, question_type, question_name, good_answer)
-        VALUES (:nickname, :topic, :question_type, :question_name, :good_answer)
+        INSERT INTO results (course,nickname, topic, question_type, question_name, good_answer)
+        VALUES (:course, :nickname, :topic, :question_type, :question_name, :good_answer)
     """),
                 {
+                    "course": course,
                     "nickname": session["nickname"],
                     "topic": topic,
                     "question_type": question["type"],
@@ -1523,7 +1525,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     # get overall score (for admin)
     if session["nickname"] in ("admin", "manager"):
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             overall = {}
 
             for row in (
@@ -1531,12 +1533,13 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                     text("""
                     SELECT good_answer, count(*) AS n
                     FROM results
-                    WHERE topic = :topic
+                    WHERE course = :course
+                    AND topic = :topic
                     AND question_name = :question_name
                     AND nickname != 'admin'
                     GROUP BY good_answer
                 """),
-                    {"topic": topic, "question_name": question["name"]},
+                    {"course": course, "topic": topic, "question_name": question["name"]},
                 )
                 .mappings()
                 .all()
@@ -1581,10 +1584,12 @@ def results(course: str, mode: str = "mean"):
     display results for all users
     """
 
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         topics = get_visible_topics(course)
 
-        users = conn.execute(text("SELECT * FROM users WHERE nickname != 'admin' ORDER BY LOWER(nickname)")).mappings().all()
+        users = (
+            conn.execute(text("SELECT * FROM users WHERE nickname NOT IN ('admin', 'manager') ORDER BY LOWER(nickname)")).mappings().all()
+        )
         scores: dict = {}
         scores_by_topic: dict = {}
         n_questions: dict = {}
@@ -1595,8 +1600,8 @@ def results(course: str, mode: str = "mean"):
 
             user_topics = (
                 conn.execute(
-                    "SELECT distinct topic FROM results WHERE nickname = :nickname",
-                    {"nickname": user["nickname"]},
+                    "SELECT DISTINCT topic FROM results WHERE course = :course AND nickname = :nickname",
+                    {"course": course, "nickname": user["nickname"]},
                 )
                 .mappings()
                 .all()
@@ -1606,7 +1611,12 @@ def results(course: str, mode: str = "mean"):
 
             if mode == "by_topic":
                 n_questions_topic = (
-                    conn.execute(text("select nickname, topic, count(*) AS n_questions from results group by nickname, topic"))
+                    conn.execute(
+                        text(
+                            "SELECT nickname, topic, count(*) AS n_questions FROM results WHERE course = :course GROUP BY nickname, topic"
+                        ),
+                        {"course": course},
+                    )
                     .mappings()
                     .all()
                 )
@@ -1634,8 +1644,8 @@ def results(course: str, mode: str = "mean"):
 
             n_questions[user["nickname"]] = (
                 conn.execute(
-                    text("SELECT count(*) AS n_questions FROM results WHERE nickname = :nickname"),
-                    {"nickname": user["nickname"]},
+                    text("SELECT count(*) AS n_questions FROM results WHERE course = :course AND nickname = :nickname"),
+                    {"course": course, "nickname": user["nickname"]},
                 )
                 .mappings()
                 .fetchone()["n_questions"]
@@ -1664,26 +1674,41 @@ def course_management(course: str):
 
     config = get_course_config(course)
 
-    with get_db(course).connect() as conn:
-        questions_number = conn.execute("SELECT COUNT(*) AS questions_number FROM questions").mappings().fetchone()["questions_number"]
+    with engine.connect() as conn:
+        questions_number = (
+            conn.execute(text("SELECT COUNT(*) AS questions_number FROM questions WEHRE course = :course"), {"course": course})
+            .mappings()
+            .fetchone()["questions_number"]
+        )
 
+        # TODO: add number of users for current course
         users_number = (
-            conn.execute(text("SELECT COUNT(*) AS users_number FROM users WHERE nickname != 'admin'")).mappings().fetchone()["users_number"]
+            conn.execute(text("SELECT COUNT(*) AS users_number FROM users WHERE nickname NOT IN ('admin', 'manager') "))
+            .mappings()
+            .fetchone()["users_number"]
         )
 
         topics = (
-            conn.execute(text("SELECT topic, type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id"))
+            conn.execute(
+                text("SELECT topic, type, count(*) AS n_questions FROM questions WHERE course = :course GROUP BY topic, type ORDER BY id"),
+                {"course": course},
+            )
             .mappings()
             .all()
         )
 
-        topics_list = conn.execute(text("SELECT distinct topic FROM questions ORDER BY id")).mappings().all()
+        topics_list = (
+            conn.execute(text("SELECT DISTINCT topic FROM questions WHERE course = :course  ORDER BY id"), {"course": course})
+            .mappings()
+            .all()
+        )
 
         n_questions_by_day = (
             conn.execute(
                 text(
-                    "select DATE(timestamp) AS day, count(*) AS n_questions, count(distinct nickname) AS n_users FROM results WHERE nickname != 'admim' GROUP BY day ORDER BY day"
-                )
+                    "select DATE(timestamp) AS day, count(*) AS n_questions, count(distinct nickname) AS n_users FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') GROUP BY day ORDER BY day"
+                ),
+                {"course": course},
             )
             .mappings()
             .all()
@@ -1692,8 +1717,9 @@ def course_management(course: str):
         active_users_last_hour = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_hour FROM results WHERE nickname != 'admin' AND timestamp >= DATETIME('now', '-1 hour')"
-                )
+                    "SELECT count(distinct nickname) AS active_users_last_hour FROM results WHERE course = :course AND  nickname NOT IN ('admin', 'manager') AND timestamp >= DATETIME('now', '-1 hour')"
+                ),
+                {"course": course},
             )
             .mappings()
             .fetchone()["active_users_last_hour"]
@@ -1702,8 +1728,9 @@ def course_management(course: str):
         active_users_last_day = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_day FROM results WHERE nickname != 'admin' AND timestamp >= DATETIME('now', '-1 day')"
-                )
+                    "SELECT count(distinct nickname) AS active_users_last_day FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') AND timestamp >= DATETIME('now', '-1 day')"
+                ),
+                {"course": course},
             )
             .mappings()
             .fetchone()["active_users_last_day"]
@@ -1712,8 +1739,9 @@ def course_management(course: str):
         active_users_last_week = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_week FROM results WHERE nickname != 'admin' AND timestamp >= DATETIME('now', '-7 days')"
-                )
+                    "SELECT count(distinct nickname) AS active_users_last_week FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') AND timestamp >= DATETIME('now', '-7 days')"
+                ),
+                {"course": course},
             )
             .mappings()
             .fetchone()["active_users_last_week"]
@@ -1722,8 +1750,9 @@ def course_management(course: str):
         active_users_last_month = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_month FROM results WHERE nickname != 'admin' AND timestamp >= DATETIME('now', '-30 days')"
-                )
+                    "SELECT count(distinct nickname) AS active_users_last_month FROM results WHERE course = :course AND  nickname NOT IN ('admin', 'manager') AND timestamp >= DATETIME('now', '-30 days')"
+                ),
+                {"course": course},
             )
             .mappings()
             .fetchone()["active_users_last_month"]
@@ -1846,8 +1875,8 @@ def edit_parameters(course: str):
 @check_login
 @is_manager
 def add_lives(course: str):
-    with get_db(course).connect() as conn:
-        conn.execute(text("UPDATE lives SET number = number + 10 WHERE nickname = 'manager'"))
+    with engine.connect() as conn:
+        conn.execute(text("UPDATE lives SET number = number + 10 WHERE course = :course AND nickname = 'manager'"), {"course": course})
         conn.commit()
 
     flash(
@@ -1868,8 +1897,10 @@ def all_questions(course: str):
     """
 
     out: list = []
-    with get_db(course).connect() as conn:
-        for row in conn.execute(text("SELECT * FROM questions ORDER BY id")).mappings().fetchall():
+    with engine.connect() as conn:
+        for row in (
+            conn.execute(text("SELECT * FROM questions WHERE course = :course ORDER BY id"), {"course": course}).mappings().fetchall()
+        ):
             out.append(str(row["id"]))
             out.append(row["topic"])
             out.append(row["name"])
@@ -1892,8 +1923,10 @@ def all_questions_gift(course: str):
     """
 
     out: list = []
-    with get_db(course).connect() as conn:
-        for row in conn.execute(text("SELECT * FROM questions ORDER BY id")).mappings().fetchall():
+    with engine.connect() as conn:
+        for row in (
+            conn.execute(text("SELECT * FROM questions WHERE course = :course ORDER BY id"), {"course": course}).mappings().fetchall()
+        ):
             # out.append(f"::{row['id']}")
             # category / topic
             out.append(f"$CATEGORY: {row['topic']}")
@@ -1962,11 +1995,11 @@ def edit_question(course: str, question_id):
 
     translation = get_translation("it")
 
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         question = (
             conn.execute(
-                text("SELECT * FROM questions WHERE id = :question_id"),
-                {"question_is": question_id},
+                text("SELECT * FROM questions WHERE course = :course AND id = :question_id"),
+                {"course": course, "question_is": question_id},
             )
             .mappings()
             .fetchone()
@@ -2007,10 +2040,10 @@ def edit_question(course: str, question_id):
             content["files"].append(file.filename)
 
         # update db
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             conn.execute(
-                text("UPDATE questions SET content = :content WHERE id = :id"),
-                {"content": json.dumps(content), "id": question_id},
+                text("UPDATE questions SET content = :content WHERE course = :course AND id = :id"),
+                {"course": course, "content": json.dumps(content), "id": question_id},
             )
             conn.commit()
         return redirect(url_for("saved_questions", course=course))
@@ -2027,14 +2060,15 @@ def saved_questions(course: str):
 
     translation = get_translation("it")
 
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         result = conn.execute(
             text("""
                 SELECT questions.id AS id, type, topic, name, content
                 FROM bookmarks, questions
-                WHERE bookmarks.question_id = questions.id
+                WHERE bookmarks.course = questions.course AND bookmarks.question_id = questions.id AND course = :course
                 ORDER BY questions.id
-            """)
+            """),
+            {"course": course},
         )
 
         questions = result.mappings().all()
@@ -2061,8 +2095,8 @@ def reset_saved_questions(course: str):
     reset saved questions
     """
 
-    with get_db(course).connect() as conn:
-        conn.execute(text("DELETE FROM bookmarks"))
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM bookmarks WHERE course = :course"), {"course": course})
         conn.commit()
 
     return redirect(url_for("admin", course=course))
@@ -2091,10 +2125,7 @@ def login(course: str):
         form_data = request.form
         # check if admin login (quizzych administrator)
         if form_data.get("nickname").strip() == "admin":
-            if (
-                hashlib.sha256(form_data.get("password").encode()).hexdigest()
-                != "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
-            ):
+            if hashlib.sha256(form_data.get("password").encode()).hexdigest() != app.config["ADMIN_PASSWORD_SHA256"]:
                 flash(translation["Incorrect login. Retry"], "error")
                 return redirect(url_for("login", course=course))
             session["nickname"] = "admin"
@@ -2102,7 +2133,7 @@ def login(course: str):
             return redirect(url_for("home", course=course))
 
         password_hash = hashlib.sha256(form_data.get("password").encode()).hexdigest()
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             cursor = conn.execute(
                 text("SELECT count(*) AS n_users FROM users WHERE nickname = :nickname AND password_hash = :password_hash"),
                 {
@@ -2202,9 +2233,9 @@ def new_nickname(course: str):
 
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
-        with get_db(course).connect() as conn:
+        with engine.connect() as conn:
             cursor = conn.execute(
-                "SELECT count(*) AS n_users FROM users WHERE nickname = :nickname",
+                "SELECT COUNT(*) AS n_users FROM users WHERE nickname = :nickname",
                 {"nickname": nickname},
             )
             n_users = cursor.mappings().fetchone()
@@ -2219,8 +2250,8 @@ def new_nickname(course: str):
                     {"nickname": nickname, "password_hash": password_hash},
                 )
                 conn.execute(
-                    text("INSERT INTO lives (nickname, number) VALUES (:nickname, :number)"),
-                    {"nickname": nickname, "number": config["INITIAL_LIFE_NUMBER"]},
+                    text("INSERT INTO lives (course, nickname, number) VALUES (:course, :nickname, :number)"),
+                    {"course": course, "nickname": nickname, "number": config["INITIAL_LIFE_NUMBER"]},
                 )
                 conn.commit()
 
@@ -2246,7 +2277,7 @@ def delete(course: str):
     """
     delete nickname and all correlated data
     """
-    with get_db(course).connect() as conn:
+    with engine.connect() as conn:
         conn.execute(
             text("DELETE FROM users WHERE nickname = :nickname"),
             {"nickname": session["nickname"]},
