@@ -5,7 +5,8 @@ Quizzych
 
 from pathlib import Path
 import hashlib
-import sqlite3
+
+# import sqlite3
 import pandas as pd
 import tomllib
 import random
@@ -82,11 +83,10 @@ def get_translation(language: str):
 def load_questions_xml(xml_file: Path, config: dict) -> int:
     try:
         # load questions from xml moodle file
-        question_data = moodle_xml.moodle_xml_to_dict_with_images(
-            xml_file, config["QUESTION_TYPES"], f"images/{xml_file.stem}"
-        )
+        question_data = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{xml_file.stem}")
 
         # load questions in database
+        """
         conn = sqlite3.connect(xml_file.with_suffix(".sqlite"))
         cursor = conn.cursor()
         cursor.execute("DELETE FROM questions")
@@ -106,7 +106,29 @@ def load_questions_xml(xml_file: Path, config: dict) -> int:
                 )
         conn.commit()
         conn.close()
+
+        """
+
+        with get_db(xml_file.stem).connect() as conn:
+            conn.execute(text("DELETE FROM questions"))
+            conn.execute(text("DELETE FROM sqlite_sequence WHERE name = 'questions'"))
+
+            for topic in question_data:
+                for question in question_data[topic]:
+                    conn.execute(
+                        text("INSERT INTO questions (topic, type, name, content) VALUES (:topic, :type, :name, :content)"),
+                        {
+                            "topic": topic,
+                            "type": question["type"],
+                            "name": question["name"],
+                            "content": json.dumps(question),
+                        },
+                    )
+
+            conn.commit()
+
     except Exception as e:
+        raise
         return 1, f"{e}"
     return 0, ""
 
@@ -325,9 +347,7 @@ def check_login(f):
 def course_exists(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not (
-            Path(COURSES_DIR) / Path(kwargs["course"]).with_suffix(".sqlite")
-        ).is_file():
+        if not (Path(COURSES_DIR) / Path(kwargs["course"]).with_suffix(".sqlite")).is_file():
             return "The course does not exists"
         return f(*args, **kwargs)
 
@@ -340,9 +360,7 @@ def is_manager(f):
         # check if admin
         if session["nickname"] not in ("admin", "manager"):
             flash(
-                Markup(
-                    '<div class="notification is-danger">You are not allowed to access this page</div>'
-                ),
+                Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
                 "",
             )
             return redirect(url_for("home", course=kwargs["course"]))
@@ -399,9 +417,7 @@ def main_home():
 
     # get list of courses
     if session.get("nickname", "") == "admin":
-        courses_list = sorted(
-            list([x.stem for x in Path(COURSES_DIR).glob("*.sqlite")])
-        )
+        courses_list = sorted(list([x.stem for x in Path(COURSES_DIR).glob("*.sqlite")]))
     else:
         courses_list = None
     return render_template(
@@ -412,6 +428,9 @@ def main_home():
 
 
 def clear_session():
+    """
+    clear some elements from session
+    """
     if "recover" in session:
         del session["recover"]
     if "check" in session:
@@ -437,7 +456,8 @@ def home(course: str = ""):
     translation = get_translation("it")
 
     lives = None
-    if "nickname" in session and session["nickname"] not in ("admin", "manager"):
+    """if "nickname" in session and session["nickname"] not in ("admin", "manager"):"""
+    if session.get("nickname", "") not in ("", "admin", "manager"):
         lives = get_lives_number(course, session["nickname"])
         # check if nickname in course
         with get_db(course).connect() as conn:
@@ -452,7 +472,9 @@ def home(course: str = ""):
 
     # check if brush-up available
     brushup_availability: bool = False
-    if "nickname" in session and session["nickname"] != "admin":
+
+    """if "nickname" in session and session["nickname"] != "admin":"""
+    if session.get("nickname", "") not in ("", "admin"):
         questions_df = get_questions_dataframe(course, session["nickname"])
         for idx, level in enumerate(config["BRUSH_UP_LEVELS"]):
             if (
@@ -540,9 +562,7 @@ def get_visible_topics(course):
     with get_db(course).connect() as conn:
         topics: list = [
             row["topic"]
-            for row in conn.execute(text("SELECT DISTINCT topic FROM questions"))
-            .mappings()
-            .fetchall()
+            for row in conn.execute(text("SELECT DISTINCT topic FROM questions")).mappings().fetchall()
             if row["topic"] not in config["TOPICS_TO_HIDE"]
         ]
     return topics
@@ -564,9 +584,7 @@ def position(course: str):
     with get_db(course).connect() as conn:
         users = (
             conn.execute(
-                text(
-                    "SELECT nickname FROM users WHERE nickname NOT IN ('admin', 'manager') AND nickname != :conn"
-                ),
+                text("SELECT nickname FROM users WHERE nickname NOT IN ('admin', 'manager') AND nickname != :conn"),
                 {"nickname": session["nickname"]},
             )
             .mappings()
@@ -646,48 +664,30 @@ def recover_quiz(course: str):
 
             n_recover_questions = (
                 conn.execute(
-                    text(
-                        f"SELECT COUNT(*) AS n_questions FROM questions WHERE topic IN ({rec_topics})"
-                    ),
+                    text(f"SELECT COUNT(*) AS n_questions FROM questions WHERE topic IN ({rec_topics})"),
                 )
                 .mappings()
                 .fetchone()["n_questions"]
             )
-            session["quiz"] = quiz.get_quiz_recover(
-                questions_df, config["RECOVER_TOPICS"], n_recover_questions
-            )
+            session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], n_recover_questions)
 
         else:  # no recover topic
             # count all questions
-            n_recover_questions = (
-                conn.execute(text("SELECT COUNT(*) AS n_questions FROM questions"))
-                .mappings()
-                .fetchone()["n_questions"]
-            )
+            n_recover_questions = conn.execute(text("SELECT COUNT(*) AS n_questions FROM questions")).mappings().fetchone()["n_questions"]
             topics: list = [
                 row["topic"]
-                for row in conn.execute(text("SELECT DISTINCT topic FROM questions"))
-                .mappings()
-                .fetchall()
+                for row in conn.execute(text("SELECT DISTINCT topic FROM questions")).mappings().fetchall()
                 if row["topic"] not in config["TOPICS_TO_HIDE"]
             ]
-            session["quiz"] = quiz.get_quiz_recover(
-                questions_df, topics, n_recover_questions
-            )
+            session["quiz"] = quiz.get_quiz_recover(questions_df, topics, n_recover_questions)
 
     session["quiz_position"] = 0
     session["recover"] = 0  # count number of good answer
 
-    return redirect(
-        url_for(
-            "question", course=course, topic=translation["Recover lives"], step=1, idx=0
-        )
-    )
+    return redirect(url_for("question", course=course, topic=translation["Recover lives"], step=1, idx=0))
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/all_topic_quiz/<course>/<topic>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/all_topic_quiz/<course>/<topic>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager
@@ -775,9 +775,7 @@ def brush_up_home(course: str):
     )
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/brush_up/<course>/<int:level>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/brush_up/<course>/<int:level>", methods=["GET"])
 @course_exists
 @check_login
 def brush_up(course: str, level: int):
@@ -790,9 +788,7 @@ def brush_up(course: str, level: int):
 
     questions_df = get_questions_dataframe(course, session["nickname"])
 
-    session["quiz"] = quiz.get_quiz_brushup(
-        questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level
-    )
+    session["quiz"] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level)
 
     if session["quiz"] == []:
         del session["quiz"]
@@ -808,9 +804,7 @@ def brush_up(course: str, level: int):
     session["quiz_position"] = 0
     session["brush-up"] = True
 
-    return redirect(
-        url_for("question", course=course, topic=translation["Brush-up"], step=1, idx=0)
-    )
+    return redirect(url_for("question", course=course, topic=translation["Brush-up"], step=1, idx=0))
 
 
 def get_seed(nickname, topic):
@@ -835,9 +829,7 @@ def steps(course: str, topic: str):
     with get_db(course).connect() as conn:
         rows = (
             conn.execute(
-                text(
-                    "SELECT step_index, number FROM steps WHERE nickname = :nickname AND topic = :topic "
-                ),
+                text("SELECT step_index, number FROM steps WHERE nickname = :nickname AND topic = :topic "),
                 {"nickname": session["nickname"], "topic": topic},
             )
             .mappings()
@@ -1101,11 +1093,7 @@ def question(course: str, topic: str, step: int, idx: int):
         with get_db(course).connect() as conn:
             rows = (
                 conn.execute(
-                    (
-                        text(
-                            "SELECT number FROM steps WHERE nickname = :nickname AND topic = :topic and step_index < :step"
-                        )
-                    ),
+                    (text("SELECT number FROM steps WHERE nickname = :nickname AND topic = :topic and step_index < :step")),
                     {"nickname": session["nickname"], "topic": topic, "step": step},
                 )
                 .mappings()
@@ -1115,22 +1103,15 @@ def question(course: str, topic: str, step: int, idx: int):
                 for row in rows:
                     if row["number"] < config["N_QUIZ_BY_STEP"]:
                         flash(
-                            Markup(
-                                '<div class="notification is-danger">You are not allowed to access this page</div>'
-                            ),
+                            Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
                             "",
                         )
                         return redirect(url_for("home", course=course))
 
         # check quiz_position
-        if (
-            session["nickname"] not in ("admin", "manager")
-            and idx != session["quiz_position"]
-        ):
+        if session["nickname"] not in ("admin", "manager") and idx != session["quiz_position"]:
             flash(
-                Markup(
-                    '<div class="notification is-danger">You are not allowed to access this page</div>'
-                ),
+                Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
                 "",
             )
             return redirect(url_for("home", course=course))
@@ -1164,9 +1145,7 @@ def question(course: str, topic: str, step: int, idx: int):
             # normal quiz
             with get_db(course) as conn:
                 result = conn.execute(
-                    text(
-                        "SELECT number FROM steps WHERE nickname = :nickname AND topic = :topic AND step_index = :step_index"
-                    ),
+                    text("SELECT number FROM steps WHERE nickname = :nickname AND topic = :topic AND step_index = :step_index"),
                     {
                         "nickname": session["nickname"],
                         "topic": topic,
@@ -1174,9 +1153,7 @@ def question(course: str, topic: str, step: int, idx: int):
                     },
                 )
 
-                row = (
-                    result.mappings().fetchone()
-                )  # restituisce un dict-like MappingRow o None
+                row = result.mappings().fetchone()  # restituisce un dict-like MappingRow o None
 
                 if row is None:
                     conn.execute(
@@ -1224,9 +1201,7 @@ def question(course: str, topic: str, step: int, idx: int):
         if image.startswith("http"):
             image_list.append(image)
         else:
-            image_list.append(
-                f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}"
-            )
+            image_list.append(f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}")
 
     if question["type"] == "multichoice" or question["type"] == "truefalse":
         answers = random.sample(question["answers"], len(question["answers"]))
@@ -1235,11 +1210,7 @@ def question(course: str, topic: str, step: int, idx: int):
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
         type_ = "number" if question["type"] == "numerical" else "text"
-        placeholder = (
-            translation["Input a number"]
-            if question["type"] == "numerical"
-            else translation["Input a text"]
-        )
+        placeholder = translation["Input a number"] if question["type"] == "numerical" else translation["Input a text"]
 
     if question["questiontext"].count("*") == 2:
         question["questiontext"] = question["questiontext"].replace("*", "<i>", 1)
@@ -1260,12 +1231,8 @@ def question(course: str, topic: str, step: int, idx: int):
         topic=topic,
         step=step,
         idx=idx,
-        total=len(session["quiz"])
-        if "recover" not in session
-        else config["N_QUESTIONS_FOR_RECOVER"],
-        lives=get_lives_number(
-            course, session["nickname"] if "nickname" in session else ""
-        ),
+        total=len(session["quiz"]) if "recover" not in session else config["N_QUESTIONS_FOR_RECOVER"],
+        lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
         recover="recover" in session,
         translation=translation,
     )
@@ -1291,9 +1258,7 @@ def checked_text(text):
     return text_revised
 
 
-def calculate_similarity_score(
-    student_answer, correct_answer, response_thresholds, response_phrases
-):
+def calculate_similarity_score(student_answer, correct_answer, response_thresholds, response_phrases):
     """
     Calculates a similarity score between the student's answer and the correct answer,
     considering both word order and the presence of words.
@@ -1439,21 +1404,15 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         if answer["fraction"] == "100":
             correct_answers.append(answer["text"])
 
-            match, score, reply = calculate_similarity_score(
-                user_answer, answer["text"], [], []
-            )
+            match, score, reply = calculate_similarity_score(user_answer, answer["text"], [], [])
             answers[score] = {
                 "correct_answer": answer["fraction"] == "100",
                 "match": match,
-                "feedback": answer["feedback"]
-                if answer["feedback"] is not None
-                else "",
+                "feedback": answer["feedback"] if answer["feedback"] is not None else "",
                 "reply": reply,
             }
         else:
-            negative_feedback = (
-                answer["feedback"] if answer["feedback"] is not None else ""
-            )
+            negative_feedback = answer["feedback"] if answer["feedback"] is not None else ""
 
     logging.debug(f"good {answers=}")
 
@@ -1475,21 +1434,15 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                 negative_feedback = f'<br>La risposta giustà è "{correct_answers[0]}"'
 
             # response["result"] = Markup(format_correct_answer(f"{sorted(answers)[-1]}<br>" + response["reply"] + " " + negative_feedback))
-            response["result"] = Markup(
-                format_correct_answer(response["reply"] + " " + negative_feedback)
-            )
+            response["result"] = Markup(format_correct_answer(response["reply"] + " " + negative_feedback))
         elif sorted(answers)[-1] < 100:
             # positive_feedback = response["feedback"]
-            response["result"] = Markup(
-                format_correct_answer(response["reply"] + " " + response["feedback"])
-            )
+            response["result"] = Markup(format_correct_answer(response["reply"] + " " + response["feedback"]))
         else:
             positive_feedback = response["feedback"].replace("Esatto!", "")
             positive_feedback = positive_feedback.replace("Esatto", "")
             positive_feedback = positive_feedback.replace("Corretto!", "")
-            response["result"] = Markup(
-                format_correct_answer(response["reply"] + " " + positive_feedback)
-            )
+            response["result"] = Markup(format_correct_answer(response["reply"] + " " + positive_feedback))
 
         response["correct"] = True
         if "recover" in session:
@@ -1500,15 +1453,11 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         answers = {}
         for answer in question["answers"]:
             if answer["fraction"] != "100":
-                match, score, reply = calculate_similarity_score(
-                    user_answer, answer["text"], [], []
-                )
+                match, score, reply = calculate_similarity_score(user_answer, answer["text"], [], [])
                 answers[score] = {
                     "correct_answer": False,
                     "match": match,
-                    "feedback": answer["feedback"]
-                    if answer["feedback"] is not None
-                    else "",
+                    "feedback": answer["feedback"] if answer["feedback"] is not None else "",
                 }
 
         logging.debug(f"wrong {answers=}")
@@ -1521,9 +1470,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             if "recover" not in session:
                 with get_db(course).connect() as conn:
                     conn.execute(
-                        text(
-                            "UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = :nickname "
-                        ),
+                        text("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = :nickname "),
                         {"nickname": session["nickname"]},
                     )
                     conn.commit()
@@ -1534,18 +1481,14 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
                 logging.debug(f"{correct_answers=}")
 
-                response["result"] = Markup(
-                    format_wrong_answer(response["feedback"], correct_answers)
-                )
+                response["result"] = Markup(format_wrong_answer(response["feedback"], correct_answers))
                 response["correct"] = False
 
                 # remove a life if not recover
                 if "recover" not in session:
                     with get_db(course).connect() as conn:
                         conn.execute(
-                            text(
-                                "UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = :nickname "
-                            ),
+                            text("UPDATE lives SET number = number - 1 WHERE number > 0 AND nickname = :nickname "),
                             {"nickname": session["nickname"]},
                         )
                         conn.commit()
@@ -1567,9 +1510,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         # add a new life
         with get_db(course).connect() as conn:
             conn.execute(
-                text(
-                    f"UPDATE lives SET number = number + 1 WHERE nickname = :nickname and number < {config['INITIAL_LIFE_NUMBER']}"
-                ),
+                text(f"UPDATE lives SET number = number + 1 WHERE nickname = :nickname and number < {config['INITIAL_LIFE_NUMBER']}"),
                 {"nickname": session["nickname"]},
             )
             conn.commit()
@@ -1610,9 +1551,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     if flag_recovered:
         popup_text = translation["Congratulations! You've recovered one life!"]
 
-    nlives = get_lives_number(
-        course, session["nickname"] if "nickname" in session else ""
-    )
+    nlives = get_lives_number(course, session["nickname"] if "nickname" in session else "")
 
     if nlives == 0 and "recover" not in session:
         popup_text = Markup(f"{translation["You've lost all your lives..."]}")
@@ -1682,15 +1621,7 @@ def results(course: str, mode: str = "mean"):
     with get_db(course).connect() as conn:
         topics = get_visible_topics(course)
 
-        users = (
-            conn.execute(
-                text(
-                    "SELECT * FROM users WHERE nickname != 'admin' ORDER BY LOWER(nickname)"
-                )
-            )
-            .mappings()
-            .all()
-        )
+        users = conn.execute(text("SELECT * FROM users WHERE nickname != 'admin' ORDER BY LOWER(nickname)")).mappings().all()
         scores: dict = {}
         scores_by_topic: dict = {}
         n_questions: dict = {}
@@ -1712,26 +1643,18 @@ def results(course: str, mode: str = "mean"):
 
             if mode == "by_topic":
                 n_questions_topic = (
-                    conn.execute(
-                        text(
-                            "select nickname, topic, count(*) AS n_questions from results group by nickname, topic"
-                        )
-                    )
+                    conn.execute(text("select nickname, topic, count(*) AS n_questions from results group by nickname, topic"))
                     .mappings()
                     .all()
                 )
                 n_questions_by_topic = {}
                 for row in n_questions_topic:
-                    n_questions_by_topic[(row["nickname"], row["topic"])] = row[
-                        "n_questions"
-                    ]
+                    n_questions_by_topic[(row["nickname"], row["topic"])] = row["n_questions"]
 
             for row in user_topics:
                 score = get_score(course, row["topic"], nickname=user["nickname"])
 
-                logging.debug(
-                    f"user name: {user['nickname']} topic: {row['topic']}  score: {score}"
-                )
+                logging.debug(f"user name: {user['nickname']} topic: {row['topic']}  score: {score}")
 
                 if user["nickname"] not in scores_by_topic:
                     scores_by_topic[user["nickname"]] = {}
@@ -1748,9 +1671,7 @@ def results(course: str, mode: str = "mean"):
 
             n_questions[user["nickname"]] = (
                 conn.execute(
-                    text(
-                        "SELECT count(*) AS n_questions FROM results WHERE nickname = :nickname"
-                    ),
+                    text("SELECT count(*) AS n_questions FROM results WHERE nickname = :nickname"),
                     {"nickname": user["nickname"]},
                 )
                 .mappings()
@@ -1769,9 +1690,7 @@ def results(course: str, mode: str = "mean"):
     )
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/course_management/<course>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/course_management/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager
@@ -1783,37 +1702,19 @@ def course_management(course: str):
     config = get_course_config(course)
 
     with get_db(course).connect() as conn:
-        questions_number = (
-            conn.execute("SELECT COUNT(*) AS questions_number FROM questions")
-            .mappings()
-            .fetchone()["questions_number"]
-        )
+        questions_number = conn.execute("SELECT COUNT(*) AS questions_number FROM questions").mappings().fetchone()["questions_number"]
 
         users_number = (
-            conn.execute(
-                text(
-                    "SELECT COUNT(*) AS users_number FROM users WHERE nickname != 'admin'"
-                )
-            )
-            .mappings()
-            .fetchone()["users_number"]
+            conn.execute(text("SELECT COUNT(*) AS users_number FROM users WHERE nickname != 'admin'")).mappings().fetchone()["users_number"]
         )
 
         topics = (
-            conn.execute(
-                text(
-                    "SELECT topic, type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id"
-                )
-            )
+            conn.execute(text("SELECT topic, type, count(*) AS n_questions FROM questions GROUP BY topic, type ORDER BY id"))
             .mappings()
             .all()
         )
 
-        topics_list = (
-            conn.execute(text("SELECT distinct topic FROM questions ORDER BY id"))
-            .mappings()
-            .all()
-        )
+        topics_list = conn.execute(text("SELECT distinct topic FROM questions ORDER BY id")).mappings().all()
 
         n_questions_by_day = (
             conn.execute(
@@ -1883,9 +1784,7 @@ def course_management(course: str):
     )
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/load_questions/<course>", methods=["GET", "POST"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/load_questions/<course>", methods=["GET", "POST"])
 @course_exists
 @check_login
 @is_manager
@@ -1940,14 +1839,10 @@ def edit_parameters(course: str):
     if request.method == "GET":
         # get parameters from .txt
         if (Path(COURSES_DIR) / Path(course).with_suffix(".txt")).is_file():
-            with open(
-                Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "r"
-            ) as f_in:
+            with open(Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "r") as f_in:
                 parameters = f_in.read()
         else:
-            parameters = (
-                f"File {Path(COURSES_DIR) / Path(course).with_suffix('.txt')} not found"
-            )
+            parameters = f"File {Path(COURSES_DIR) / Path(course).with_suffix('.txt')} not found"
 
         return render_template("parameters.html", course=course, parameters=parameters)
 
@@ -1958,28 +1853,20 @@ def edit_parameters(course: str):
         except Exception as e:
             logging.warning(f"Error loading the parameters {e}")
             flash(
-                Markup(
-                    f'<div class="notification is-danger">The parameters contain the following error:<br>{e}</div>'
-                ),
+                Markup(f'<div class="notification is-danger">The parameters contain the following error:<br>{e}</div>'),
                 "error",
             )
-            return render_template(
-                "parameters.html", course=course, parameters=request.form["parameters"]
-            )
+            return render_template("parameters.html", course=course, parameters=request.form["parameters"])
 
         try:
-            with open(
-                Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "w"
-            ) as f_out:
+            with open(Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "w") as f_out:
                 f_out.write(request.form["parameters"])
 
         except Exception as e:
             logging.warning(f"Error saving the parameters file {e}")
 
             flash(
-                Markup(
-                    '<div class="notification is-danger">Error saving parameters</div>'
-                ),
+                Markup('<div class="notification is-danger">Error saving parameters</div>'),
                 "error",
             )
 
@@ -1997,9 +1884,7 @@ def edit_parameters(course: str):
 @is_manager
 def add_lives(course: str):
     with get_db(course).connect() as conn:
-        conn.execute(
-            text("UPDATE lives SET number = number + 10 WHERE nickname = 'manager'")
-        )
+        conn.execute(text("UPDATE lives SET number = number + 10 WHERE nickname = 'manager'"))
         conn.commit()
 
     flash(
@@ -2021,28 +1906,20 @@ def all_questions(course: str):
 
     out: list = []
     with get_db(course).connect() as conn:
-        for row in (
-            conn.execute(text("SELECT * FROM questions ORDER BY id"))
-            .mappings()
-            .fetchall()
-        ):
+        for row in conn.execute(text("SELECT * FROM questions ORDER BY id")).mappings().fetchall():
             out.append(str(row["id"]))
             out.append(row["topic"])
             out.append(row["name"])
             content = json.loads(row["content"])
             out.append(content["questiontext"])
             for answer in content["answers"]:
-                out.append(
-                    f"""{answer["fraction"]}  {answer["text"]}   <span style="color: gray;">feedback: {answer["feedback"]}</span>"""
-                )
+                out.append(f"""{answer["fraction"]}  {answer["text"]}   <span style="color: gray;">feedback: {answer["feedback"]}</span>""")
             out.append("<hr>")
 
     return "<br>".join(out)
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/all_questions_gift/<course>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/all_questions_gift/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager
@@ -2053,11 +1930,7 @@ def all_questions_gift(course: str):
 
     out: list = []
     with get_db(course).connect() as conn:
-        for row in (
-            conn.execute(text("SELECT * FROM questions ORDER BY id"))
-            .mappings()
-            .fetchall()
-        ):
+        for row in conn.execute(text("SELECT * FROM questions ORDER BY id")).mappings().fetchall():
             # out.append(f"::{row['id']}")
             # category / topic
             out.append(f"$CATEGORY: {row['topic']}")
@@ -2104,9 +1977,7 @@ def all_questions_gift(course: str):
                     if answer["fraction"] == "100":
                         out.append(f"=%100%{answer['text']}#{answer['feedback']}")
                     else:
-                        out.append(
-                            f"=%{answer['fraction']}%{answer['text']}#{answer['feedback']}"
-                        )
+                        out.append(f"=%{answer['fraction']}%{answer['text']}#{answer['feedback']}")
                 if content["generalfeedback"]:
                     out.append(f"####{content['generalfeedback']}")
 
@@ -2140,9 +2011,7 @@ def edit_question(course: str, question_id):
     content = json.loads(question["content"])
 
     if request.method == "GET":
-        content["answers"] = [
-            x | {"id": f"answer{idx + 1}"} for idx, x in enumerate(content["answers"])
-        ]
+        content["answers"] = [x | {"id": f"answer{idx + 1}"} for idx, x in enumerate(content["answers"])]
         return render_template(
             "edit_question.html",
             course=course,
@@ -2153,9 +2022,7 @@ def edit_question(course: str, question_id):
         )
     if request.method == "POST":
         if not request.form["questiontext"]:
-            return redirect(
-                url_for("edit_question", course=course, question_id=question_id)
-            )
+            return redirect(url_for("edit_question", course=course, question_id=question_id))
         content["questiontext"] = request.form["questiontext"]
         answers: list = []
         for x in request.form:
@@ -2186,9 +2053,7 @@ def edit_question(course: str, question_id):
         return redirect(url_for("saved_questions", course=course))
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/saved_questions/<course>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/saved_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager
@@ -2224,9 +2089,7 @@ def saved_questions(course: str):
     )
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/reset_saved_questions/<course>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/reset_saved_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager
@@ -2278,9 +2141,7 @@ def login(course: str):
         password_hash = hashlib.sha256(form_data.get("password").encode()).hexdigest()
         with get_db(course).connect() as conn:
             cursor = conn.execute(
-                text(
-                    "SELECT count(*) AS n_users FROM users WHERE nickname = :nickname AND password_hash = :password_hash"
-                ),
+                text("SELECT count(*) AS n_users FROM users WHERE nickname = :nickname AND password_hash = :password_hash"),
                 {
                     "nickname": form_data.get("nickname"),
                     "password_hash": password_hash,
@@ -2314,14 +2175,21 @@ def admin_login():
         form_data = request.form
         # check if admin login (quizzych administrator)
         if form_data.get("nickname").strip() == "admin":
-            if (
-                hashlib.sha256(form_data.get("password").encode()).hexdigest()
-                != app.config["ADMIN_PASSWORD_SHA256"]
-            ):
+            if hashlib.sha256(form_data.get("password").encode()).hexdigest() != app.config["ADMIN_PASSWORD_SHA256"]:
                 flash(translation["Incorrect login. Retry"], "error")
                 return redirect(url_for("admin_login"))
             session["nickname"] = "admin"
             return redirect(url_for("main_home"))
+
+
+@app.route(f"{app.config['APPLICATION_ROOT']}/admin_logout")
+def admin_logout():
+    """
+    Logout admin
+    """
+
+    del session["nickname"]
+    return redirect(url_for("main_home"))
 
 
 @app.route(f"{app.config['APPLICATION_ROOT']}/new_course", methods=["GET", "POST"])
@@ -2339,9 +2207,7 @@ def new_course():
     return redirect(url_for("main_home"))
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/new_nickname/<course>", methods=["GET", "POST"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/new_nickname/<course>", methods=["GET", "POST"])
 @course_exists
 def new_nickname(course: str):
     """
@@ -2351,9 +2217,7 @@ def new_nickname(course: str):
     translation = get_translation("it")
 
     if request.method == "GET":
-        return render_template(
-            "new_nickname.html", course=course, translation=translation
-        )
+        return render_template("new_nickname.html", course=course, translation=translation)
 
     if request.method == "POST":
         form_data = request.form
@@ -2363,21 +2227,15 @@ def new_nickname(course: str):
 
         if nickname in ("admin", "manager"):
             flash("This nickname is not allowed", "error")
-            return render_template(
-                "new_nickname.html", course=course, translation=translation
-            )
+            return render_template("new_nickname.html", course=course, translation=translation)
 
         if not password1 or not password2:
             flash("A password is missing", "error")
-            return render_template(
-                "new_nickname.html", course=course, translation=translation
-            )
+            return render_template("new_nickname.html", course=course, translation=translation)
 
         if password1 != password2:
             flash("Passwords are not the same", "error")
-            return render_template(
-                "new_nickname.html", course=course, translation=translation
-            )
+            return render_template("new_nickname.html", course=course, translation=translation)
 
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
@@ -2390,38 +2248,28 @@ def new_nickname(course: str):
 
             if n_users[0]:
                 flash("Nickname already taken", "error")
-                return render_template(
-                    "new_nickname.html", course=course, translation=translation
-                )
+                return render_template("new_nickname.html", course=course, translation=translation)
 
             try:
                 conn.execute(
-                    text(
-                        "INSERT INTO users (nickname, password_hash) VALUES (:nickname, :password_hash)"
-                    ),
+                    text("INSERT INTO users (nickname, password_hash) VALUES (:nickname, :password_hash)"),
                     {"nickname": nickname, "password_hash": password_hash},
                 )
                 conn.execute(
-                    text(
-                        "INSERT INTO lives (nickname, number) VALUES (:nickname, :number)"
-                    ),
+                    text("INSERT INTO lives (nickname, number) VALUES (:nickname, :number)"),
                     {"nickname": nickname, "number": config["INITIAL_LIFE_NUMBER"]},
                 )
                 conn.commit()
 
                 flash(
-                    Markup(
-                        f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'
-                    ),
+                    Markup(f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'),
                     "",
                 )
                 return redirect(url_for("home", course=course))
 
             except Exception:
                 flash(
-                    Markup(
-                        '<div class="notification is-danger">Error creating the new nickname</div>'
-                    ),
+                    Markup('<div class="notification is-danger">Error creating the new nickname</div>'),
                     "error",
                 )
 
@@ -2474,9 +2322,7 @@ def logout(course):
     return redirect(url_for("home", course=course))
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/click_image/<course>", methods=["GET", "POST"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/click_image/<course>", methods=["GET", "POST"])
 @course_exists
 @check_login
 def click_image(course: str):
@@ -2485,9 +2331,7 @@ def click_image(course: str):
     translation = get_translation("it")
 
     if request.method == "GET":
-        return render_template(
-            "click_image.html", course=course, translation=translation
-        )
+        return render_template("click_image.html", course=course, translation=translation)
 
 
 @app.route(f"{app.config['APPLICATION_ROOT']}/test_popup", methods=["GET", "POST"])

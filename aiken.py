@@ -1,4 +1,6 @@
-def aiken_to_dict_with_images(xml_file: str, question_types: list, image_files_path: str) -> dict:
+def aiken_to_dict_with_images(
+    xml_file: str, question_types: list, image_files_path: str
+) -> dict:
     """
     Convert questions in aiken format to a dictionary
 
