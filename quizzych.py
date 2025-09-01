@@ -82,7 +82,7 @@ def get_translation(language: str):
         return None
 
 
-def load_questions_xml(xml_file: Path, course_name: str, config: dict) -> int:
+def load_questions_xml(xml_file: Path, course: str, config: dict) -> int:
     try:
         # load questions from xml moodle file
         question_data = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{course_name}")
@@ -112,7 +112,7 @@ def load_questions_xml(xml_file: Path, course_name: str, config: dict) -> int:
         """
 
         with engine.connect() as conn:
-            conn.execute(text("DELETE FROM questions WHERE course = :course_name"), {"course_name": course_name})
+            conn.execute(text("DELETE FROM questions WHERE course = :course_name"), {"course_name": course})
 
             for topic in question_data:
                 for question in question_data[topic]:
@@ -121,7 +121,7 @@ def load_questions_xml(xml_file: Path, course_name: str, config: dict) -> int:
                             "INSERT INTO questions (course, topic, type, name, content) VALUES (:course_name, :topic, :type, :name, :content)"
                         ),
                         {
-                            "course_name": course_name,
+                            "course_name": course,
                             "topic": topic,
                             "type": question["type"],
                             "name": question["name"],
@@ -137,7 +137,7 @@ def load_questions_xml(xml_file: Path, course_name: str, config: dict) -> int:
     return 0, ""
 
 
-def load_questions_gift(gift_file_path: Path, config: dict) -> int:
+def load_questions_gift(gift_file_path: Path, course: str, config: dict) -> int:
     import gift
 
     try:
@@ -160,26 +160,32 @@ def load_questions_gift(gift_file_path: Path, config: dict) -> int:
                     question_data[topic][question["type"]][question["name"]] = question
         """
         # load questions in database
+        """
         conn = sqlite3.connect(gift_file_path.with_suffix(".sqlite"))
         cursor = conn.cursor()
         cursor.execute("DELETE FROM questions")
-        cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'questions'")
+        """
 
-        conn.commit()
-        for topic in question_data:
-            for type_ in question_data[topic]:
-                for question_name in question_data[topic][type_]:
-                    cursor.execute(
-                        "INSERT INTO questions (topic, type, name, content) VALUES (?, ?, ?, ?)",
-                        (
-                            topic,
-                            type_,
-                            question_name,
-                            json.dumps(question_data[topic][type_][question_name]),
-                        ),
-                    )
-        conn.commit()
-        conn.close()
+        with engine.connect() as conn:
+            conn.execute(text("DELETE FROM questions WHERE course = :course_name"), {"course": course})
+
+            for topic in question_data:
+                for type_ in question_data[topic]:
+                    for question_name in question_data[topic][type_]:
+                        conn.execute(
+                            text(
+                                "INSERT INTO questions (course, topic, type, name, content) VALUES (:course_name, :topic, :type, :name, :content)"
+                            ),
+                            {
+                                "course": course,
+                                "topic": topic,
+                                "type": type_,
+                                "name": question_name,
+                                "content": json.dumps(question_data[topic][type_][question_name]),
+                            },
+                        )
+            conn.commit()
+
     except Exception:
         raise
         return 1
@@ -191,24 +197,10 @@ app.config.from_object("config")
 app.config["DEBUG"] = True
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
-'''
-def get_db(course):
-    """
-    return connection to database 'course.sqlite'
-    """
-    database_name = Path(COURSES_DIR) / Path(course).with_suffix(".sqlite")
-    engine = create_engine("sqlite:///" + str(database_name))
-    return engine
-'''
-
 
 def create_database(course) -> None:
     """
     create a new course in database
-    """
-    """database_name = Path(COURSES_DIR) / Path(course).with_suffix(".sqlite")
-    conn = sqlite3.connect(database_name)
-    cursor = conn.cursor()
     """
 
     with engine.connect() as conn:
@@ -235,6 +227,7 @@ def create_database(course) -> None:
         conn.commit()
 
 
+"""
 # load courses from XML files in database
 for xml_file in Path(COURSES_DIR).glob("*.xml"):
     # check if database sqlite file exists
@@ -248,9 +241,10 @@ for xml_file in Path(COURSES_DIR).glob("*.xml"):
     if r:
         logging.critical(f"Error loading the question XML file {xml_file}: {msg}")
         sys.exit()
-
+"""
 
 # load courses from GIFT file in database
+"""
 for gift_file in Path(COURSES_DIR).glob("*.gift"):
     # check if database sqlite file exists
     if not gift_file.with_suffix(".sqlite").exists():
@@ -262,6 +256,7 @@ for gift_file in Path(COURSES_DIR).glob("*.gift"):
     if load_questions_gift(gift_file, get_course_config(gift_file)):
         logging.critical(f"Error loading the questions GIFT file {gift_file}")
         sys.exit()
+"""
 
 
 def check_login(f):
@@ -289,8 +284,12 @@ def check_login(f):
 def course_exists(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not (Path(COURSES_DIR) / Path(kwargs["course"]).with_suffix(".sqlite")).is_file():
-            return "The course does not exists"
+        with engine.connect() as conn:
+            if (
+                conn.execute(text("SELECT name FROM courses WHERE course = :course"), {"course": kwargs["course"]}).mappings().fetchone()
+                is None
+            ):
+                return "The course does not exists"
         return f(*args, **kwargs)
 
     return decorated_function
@@ -359,7 +358,9 @@ def main_home():
 
     # get list of courses
     if session.get("nickname", "") == "admin":
-        courses_list = sorted(list([x.stem for x in Path(COURSES_DIR).glob("*.sqlite")]))
+        with engine.connect() as conn:
+            courses = conn.execute(text("SELECT name FROM courses ORDER BY name")).mappings().all()
+        courses_list = [row["name"] for row in courses]
     else:
         courses_list = None
     return render_template(
