@@ -199,7 +199,7 @@ def get_db(course):
 
 def create_database(course) -> None:
     """
-    create a new database
+    create a new course in database
     """
     database_name = Path(COURSES_DIR) / Path(course).with_suffix(".sqlite")
 
