@@ -873,7 +873,8 @@ def step_testing(course: str, topic: str, step: int):
         get_lives_number(course, session["nickname"]),
     )
     session["quiz_position"] = 0
-    return redirect(url_for("question", course=course, topic=topic, step=step, idx=0))
+
+    return "OK"
 
 
 def get_score(course: str, topic: str, nickname: str = "") -> float:

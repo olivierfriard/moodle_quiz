@@ -27,7 +27,7 @@ def get_quiz_test(
         n_lives (int):  number of lives
     """
 
-    print([question_data["Lezione 10 - Anellidi"]["shortanswer"]["1. Struttura caratteristica nei Sipunculidi - FILL IN THE BLANK"]])
+    # print([question_data["Lezione 10 - Anellidi"]["shortanswer"]["1. Struttura caratteristica nei Sipunculidi - FILL IN THE BLANK"]])
 
     return [question_data["Lezione 10 - Anellidi"]["shortanswer"]["1. Struttura caratteristica nei Sipunculidi - FILL IN THE BLANK"]]
 
@@ -46,7 +46,7 @@ def get_quiz_recover(df_results: pd.DataFrame, recover_topics: list, n_questions
     # 50% domande estratte dal topic 'recover' (approssimato per difetto)
     n_questions_1 = n_questions_recover // 2
 
-    print(f"{n_questions_1=}")
+    # print(f"{n_questions_1=}")
 
     lista_topic = df_results["topic"].unique().tolist()
     # limita la lista ai topics già in parte svolti
@@ -85,7 +85,7 @@ def get_quiz_brushup(df_results, recover_list, n_questions_brushup, livello_diff
 
     tutti_argomenti = df_filtrato["topic"].unique().tolist()
 
-    print(f"{tutti_argomenti=}")
+    # print(f"{tutti_argomenti=}")
 
     if len(tutti_argomenti) < 3:
         domande_selezionate = lista_nan = [float("nan")] * n_questions_brushup
@@ -117,7 +117,7 @@ def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
 
     # Conta il numero totale di domande nel capitolo filtrato
     ndomande = len(df_capitolo)
-    print(f"{ndomande=}")
+    # print(f"{ndomande=}")
 
     # Permuta casualmente gli indici del DataFrame
     rng = np.random.default_rng(seed)
@@ -136,7 +136,7 @@ def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
     for i in range(n_tappe):
         end = start + chunk_size + (1 if i < resto else 0)
         df_tappa = df_capitolo.iloc[shuffled_indices[start:end]]
-        print(f"{i=}   {len(df_tappa)}")
+        # print(f"{i=}   {len(df_tappa)}")
         df_tappe.append(df_tappa)
         start = end
 
@@ -178,37 +178,37 @@ def get_difficulty(score_tipo, ok, no):
 
 
 def get_score_studente(ok, no):
-    print("-" * 50)
+    # print("-" * 50)
 
-    print(f"{ok=}")
-    print(f"{len(ok)=}")
+    # print(f"{ok=}")
+    # print(f"{len(ok)=}")
 
-    print(f"{no=}")
-    print(f"{len(no)=}")
+    # print(f"{no=}")
+    # print(f"{len(no)=}")
 
     # domande già sottoposte
     ntot_domande = np.size(ok)
 
-    print(f"{ntot_domande=}")
+    # print(f"{ntot_domande=}")
 
     domande_con_risposta = np.where(ok + no > 0)
 
-    print(f"{ok[domande_con_risposta]=}")
+    # print(f"{ok[domande_con_risposta]=}")
 
-    print(f"{ok[domande_con_risposta] + no[domande_con_risposta]=}")
+    # print(f"{ok[domande_con_risposta] + no[domande_con_risposta]=}")
 
-    print(f"{ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta])=}")
+    # print(f"{ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta])=}")
 
-    print(f"{np.sum(ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta]))=}")
+    # print(f"{np.sum(ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta]))=}")
 
     somma_scores = np.sum(ok[domande_con_risposta] / (ok[domande_con_risposta] + no[domande_con_risposta]))
     # somma_scores = np.sum(ok[domande_con_risposta]) / sum(ok[domande_con_risposta] + no[domande_con_risposta])
 
     score_studente = somma_scores / ntot_domande
 
-    print(f"{score_studente=}")
+    # print(f"{score_studente=}")
 
-    print()
+    # print()
 
     return score_studente
 
@@ -245,11 +245,11 @@ def get_quiz(topic: str, n_questions: int, results: pd.DataFrame, n_lives: int) 
 
     """
 
-    print("get_quiz")
+    # print("get_quiz")
 
-    print(f"{topic=}")
+    # print(f"{topic=}")
 
-    print(results.info)
+    # print(results.info)
 
     capX = topic
     risultati = results  # pd.DataFrame({"cod_capitolo": cod_capitolo, "cod_tipo": cod_tipo, "cod_domanda": cod_domanda})
@@ -270,16 +270,16 @@ def get_quiz(topic: str, n_questions: int, results: pd.DataFrame, n_lives: int) 
 
     scores_domande = get_difficulty(score_tipo, risposteOK, risposteNO)
 
-    print(f"{risposteOK=}")
-    print(f"{risposteNO=}")
+    # print(f"{risposteOK=}")
+    # print(f"{risposteNO=}")
 
     score_medio_studente = get_score_studente(risposteOK, risposteNO)
 
-    print(f"{score_medio_studente=}")
+    # print(f"{score_medio_studente=}")
 
     questions_score, t = get_random_select(score_medio_studente, scores_domande, f_rnd, f_student_score)
 
-    print(f"{questions_score=}")
+    # print(f"{questions_score=}")
 
     question_id_list = []
     count = 0
