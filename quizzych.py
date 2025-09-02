@@ -30,7 +30,7 @@ from flask import (
 )
 from functools import wraps
 import logging
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, bindparam
 
 import moodle_xml
 import quiz
@@ -50,22 +50,38 @@ engine = create_engine(DATABASE_URL)
 
 def get_course_config(course: str):
     # check config file
-    if (Path(COURSES_DIR) / Path(course).with_suffix(".txt")).is_file():
-        with open(Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "rb") as f:
-            config = tomllib.load(f)
-    else:
-        config = {
-            "QUIZ_NAME": course,
-            "INITIAL_LIFE_NUMBER": 5,
-            "N_QUESTIONS": 10,
-            "QUESTION_TYPES": ["truefalse", "multichoice", "shortanswer", "numerical"],
-            "TOPICS_TO_HIDE": [],
-            "N_STEPS": 3,
-            "N_QUIZ_BY_STEP": 4,
-            "STEP_NAMES": ["STEP #1", "STEP #2", "STEP #3"],
-            "N_QUESTIONS_FOR_RECOVER": 5,
-            "RECOVER_TOPICS": [],
-        }
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT * FROM courses WHERE name = :course"), {"course": course}).mappings().fetchone()
+        if row:
+            config = {}
+            config["QUIZ_NAME"] = row["name"]
+            config["INITIAL_LIFE_NUMBER"] = row["initial_life_number"]
+            config["N_QUESTIONS"] = row["topic_question_number"]
+            config["QUESTION_TYPES"] = row["question_types"]
+            config["TOPICS_TO_HIDE"] = row["topics_to_hide"]
+            config["STEP_NAMES"] = row["steps"]
+            config["N_STEPS"] = len(config["STEP_NAMES"])
+            config["N_QUIZ_BY_STEP"] = row["step_quiz_number"]
+            config["N_QUESTIONS_FOR_RECOVER"] = row["recover_question_number"]
+            config["RECOVER_TOPICS"] = row["recover_topics"]
+            config["BRUSH_UP_LEVELS"] = row["brush_up_levels"]
+            config["N_QUESTIONS_BY_BRUSH_UP"] = row["brush_up_question_number"]
+            config["BRUSH_UP_LEVEL_NAMES"] = row["brush_up_level_names"]
+
+            return config
+
+    config = {
+        "QUIZ_NAME": course,
+        "INITIAL_LIFE_NUMBER": 5,
+        "N_QUESTIONS": 10,
+        "QUESTION_TYPES": ["truefalse", "multichoice", "shortanswer", "numerical"],
+        "TOPICS_TO_HIDE": [],
+        "N_STEPS": 3,
+        "N_QUIZ_BY_STEP": 4,
+        "STEP_NAMES": ["STEP #1", "STEP #2", "STEP #3"],
+        "N_QUESTIONS_FOR_RECOVER": 5,
+        "RECOVER_TOPICS": [],
+    }
     return config
 
 
@@ -85,7 +101,7 @@ def get_translation(language: str):
 def load_questions_xml(xml_file: Path, course: str, config: dict) -> int:
     try:
         # load questions from xml moodle file
-        question_data = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{course_name}")
+        question_data = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{course}")
 
         # load questions in database
         """
@@ -132,7 +148,6 @@ def load_questions_xml(xml_file: Path, course: str, config: dict) -> int:
             conn.commit()
 
     except Exception as e:
-        raise
         return 1, f"{e}"
     return 0, ""
 
@@ -505,7 +520,7 @@ def get_visible_topics(course):
     with engine.connect() as conn:
         topics: list = [
             row["topic"]
-            for row in conn.execute(text("SELECT DISTINCT topic FROM questions WHERE course = :course"), {"course": course})
+            for row in conn.execute(text("SELECT DISTINCT topic FROM questions WHERE course = :course ORDER BY topic"), {"course": course})
             .mappings()
             .fetchall()
             if row["topic"] not in config["TOPICS_TO_HIDE"]
@@ -565,59 +580,17 @@ def recover_quiz(course: str):
     translation = get_translation("it")
 
     # create questions dataframe
+    questions_df = get_questions_dataframe(course, session["nickname"])
+
     with engine.connect() as conn:
-        # Execute the query
-        query = text(
-            """
-                SELECT
-                    q.id AS question_id,
-                    q.topic AS topic,
-                    q.type AS type,
-                    q.name AS question_name,
-                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
-                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
-                FROM questions q LEFT JOIN results r
-                    ON q.course = r.course
-                        AND q.topic=r.topic
-                        AND q.type=r.question_type
-                        AND q.name=r.question_name
-                        AND nickname = :nickname
-                WHERE course = :course
-                GROUP BY
-                    q.topic,
-                    q.type,
-                    q.name
-                """
-        )
-
-        result = conn.execute(query, {"course": course, "nickname": session["nickname"]})
-        columns = result.keys()
-        rows = result.mappings().fetchall()
-        # Fetch all rows
-        # rows = cursor.mappings().fetchall()
-        # Get column names from the cursor description
-
-        # columns = [description[0] for description in cursor.description]
-        # create dataframe
-        questions_df = pd.DataFrame(rows, columns=columns)
-
         # get number of questions in recover topic
         if config["RECOVER_TOPICS"]:
-            """
-            placeholders = ", ".join(
-                ["?"] * len(config["RECOVER_TOPICS"])
-            )  # Creates a placeholder string like "?, ?, ?"
-            """
-
-            rec_topics = '"' + '","'.join(config["RECOVER_TOPICS"]) + '"'
-
-            n_recover_questions = (
-                conn.execute(
-                    text(f"SELECT COUNT(*) AS n_questions FROM questions WHERE topic IN ({rec_topics})"),
-                )
-                .mappings()
-                .fetchone()["n_questions"]
+            stmt = text("SELECT COUNT(*) AS n_questions FROM questions WHERE topic IN :topics").bindparams(
+                bindparam("topics", expanding=True)
             )
+
+            n_recover_questions = conn.execute(stmt, {"topics": config["RECOVER_TOPICS"]}).scalar()
+
             session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], n_recover_questions)
 
         else:  # no recover topic
@@ -666,16 +639,17 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
                     q.topic AS topic,
                     q.type AS type,
                     q.name AS question_name,
-                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
-                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
+                    SUM(CASE WHEN good_answer = TRUE THEN 1 ELSE 0 END) AS n_ok,
+                    SUM(CASE WHEN good_answer = FALSE THEN 1 ELSE 0 END) AS n_no
                 FROM questions q LEFT JOIN results r
                     ON q.course = r.course
                         AND q.topic=r.topic
                         AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = :nickname
-                WHERE course = :course
+                WHERE q.course = :course
                 GROUP BY
+                    q.id,
                     q.topic,
                     q.type,
                     q.name
@@ -685,7 +659,6 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
         columns = result.keys()
         rows = result.mappings().fetchall()
 
-        # columns = [description[0] for description in cursor.description]
         # create dataframe
         return pd.DataFrame(rows, columns=columns)
 
@@ -820,23 +793,23 @@ def step(course: str, topic: str, step: int):
     config = get_course_config(course)
 
     with engine.connect() as conn:
-        # Execute the query
         query = text("""
                 SELECT
                     q.id AS question_id,
                     q.topic AS topic,
                     q.type AS type,
                     q.name AS question_name,
-                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
-                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
+                    SUM(CASE WHEN good_answer = TRUE THEN 1 ELSE 0 END) AS n_ok,
+                    SUM(CASE WHEN good_answer = FALSE THEN 1 ELSE 0 END) AS n_no
                 FROM questions q LEFT JOIN results r
                     ON q.course = r.course
                         AND q.topic=r.topic
                         AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = :nickname
-                WHERE course = :course
+                WHERE q.course = :course
                 GROUP BY
+                    q.id,
                     q.topic,
                     q.type,
                     q.name
@@ -846,10 +819,7 @@ def step(course: str, topic: str, step: int):
         columns = result.keys()
         rows = result.mappings().fetchall()
 
-        # Fetch all rows
-        # Get column names from the cursor description
-        # columns = [description[0] for description in cursor.description]
-        # create dataframe
+        # convert results in dataframe
         questions_df = pd.DataFrame(rows, columns=columns)
 
         steps_df = quiz.crea_tappe(
@@ -886,43 +856,15 @@ def step_testing(course: str, topic: str, step: int):
 
     config = get_course_config(course)
 
-    with engine.connect() as conn:
-        # Execute the query
-        query = text("""
-                SELECT
-                    q.id AS question_id,
-                    q.topic AS topic,
-                    q.type AS type,
-                    q.name AS question_name,
-                    SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS n_ok,
-                    SUM(CASE WHEN good_answer = 0 THEN 1 ELSE 0 END) AS n_no
-                FROM questions q LEFT JOIN results r
-                    ON q.course = r.course
-                        AND q.topic=r.topic
-                        AND q.type=r.question_type
-                        AND q.name=r.question_name
-                        AND nickname = :nickname
-                GROUP BY
-                    q.topic,
-                    q.type,
-                    q.name
-                """)
+    questions_df = get_questions_dataframe(course, session["nickname"])
 
-        result = conn.execute(query, {"course": course, "nickname": session["nickname"]})
-        columns = result.keys()
-
-        # Fetch all rows
-        rows = result.mappings().fetchall()
-        # create dataframe
-        questions_df = pd.DataFrame(rows, columns=columns)
-
-        steps_df = quiz.crea_tappe(
-            questions_df,
-            topic,
-            config["N_STEPS"],
-            config["N_QUESTIONS"],
-            seed=get_seed(session["nickname"], topic),
-        )
+    steps_df = quiz.crea_tappe(
+        questions_df,
+        topic,
+        config["N_STEPS"],
+        config["N_QUESTIONS"],
+        seed=get_seed(session["nickname"], topic),
+    )
 
     session["quiz"] = quiz.get_quiz(
         topic,
@@ -1500,7 +1442,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
             conn.execute(
                 text("""
-        INSERT INTO results (course,nickname, topic, question_type, question_name, good_answer)
+        INSERT INTO results (course, nickname, topic, question_type, question_name, good_answer)
         VALUES (:course, :nickname, :topic, :question_type, :question_name, :good_answer)
     """),
                 {
@@ -1677,8 +1619,6 @@ def course_management(course: str):
 
     config = get_course_config(course)
 
-    print("config")
-
     with engine.connect() as conn:
         questions_number = (
             conn.execute(text("SELECT COUNT(*) AS questions_number FROM questions WHERE course = :course"), {"course": course})
@@ -1801,8 +1741,8 @@ def load_questions(course: str):
             return redirect(request.url)
 
         # check file name
-        if file.filename not in (f"{course}.xml", f"{course}.gift"):
-            flash("The file name must be COURSE_NAME.xml or COURSE_NAME.gift")
+        if Path(file.filename).suffix not in (".xml", ".gift"):
+            flash("The file name must end in .xml or .gift")
             return redirect(request.url)
 
         if file:
@@ -1810,12 +1750,13 @@ def load_questions(course: str):
             file.save(file_path)
 
             # load questions in database
-            if load_questions_xml(file_path, course, get_course_config(course)):
-                flash(f"Error loading questions from {file.filename}")
+            r, msg = load_questions_xml(file_path, course, get_course_config(course))
+            if r:
+                flash(f"Error loading questions from {file.filename}: {msg}")
             else:
                 flash(f"Questions loaded successfully from {file.filename}!")
 
-            return redirect(url_for("admin", course=course))
+            return redirect(url_for("home", course=course))
 
 
 @app.route(
