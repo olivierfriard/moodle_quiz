@@ -266,16 +266,17 @@ def check_login(f):
             flash("You must be logged", "error")
             return redirect(url_for("home"), course=kwargs["course"])
         else:
-            # check if nickname exists
-            with engine.connect() as conn:
-                if (
-                    conn.execute(
-                        text("SELECT * FROM users WHERE nickname = :nickname"),
-                        {"nickname": session["nickname"]},
-                    ).fetchone()
-                    is None
-                ):
-                    return redirect(url_for("logout", course=kwargs["course"]))
+            if session["nickname"] not in ("admin", "manager"):
+                # check if nickname exists
+                with engine.connect() as conn:
+                    if (
+                        conn.execute(
+                            text("SELECT * FROM users WHERE nickname = :nickname"),
+                            {"nickname": session["nickname"]},
+                        ).fetchone()
+                        is None
+                    ):
+                        return redirect(url_for("logout", course=kwargs["course"]))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -286,16 +287,17 @@ def course_exists(f):
     def decorated_function(*args, **kwargs):
         with engine.connect() as conn:
             if (
-                conn.execute(text("SELECT name FROM courses WHERE course = :course"), {"course": kwargs["course"]}).mappings().fetchone()
+                conn.execute(text("SELECT name FROM courses WHERE name = :course"), {"course": kwargs["course"]}).mappings().fetchone()
                 is None
             ):
+                print("The course does not exists")
                 return "The course does not exists"
         return f(*args, **kwargs)
 
     return decorated_function
 
 
-def is_manager(f):
+def is_manager_or_admin(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # check if admin
@@ -637,7 +639,7 @@ def recover_quiz(course: str):
 @app.route(f"{app.config['APPLICATION_ROOT']}/all_topic_quiz/<course>/<topic>", methods=["GET"])
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def all_topic_quiz(course: str, topic: str):
     """
     create a quiz with all questions of a topic
@@ -1579,7 +1581,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 @app.route(f"{app.config['APPLICATION_ROOT']}/results/<course>/<mode>", methods=["GET"])
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def results(course: str, mode: str = "mean"):
     """
     display results for all users
@@ -1667,7 +1669,7 @@ def results(course: str, mode: str = "mean"):
 @app.route(f"{app.config['APPLICATION_ROOT']}/course_management/<course>", methods=["GET"])
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def course_management(course: str):
     """
     course management page
@@ -1675,9 +1677,11 @@ def course_management(course: str):
 
     config = get_course_config(course)
 
+    print("config")
+
     with engine.connect() as conn:
         questions_number = (
-            conn.execute(text("SELECT COUNT(*) AS questions_number FROM questions WEHRE course = :course"), {"course": course})
+            conn.execute(text("SELECT COUNT(*) AS questions_number FROM questions WHERE course = :course"), {"course": course})
             .mappings()
             .fetchone()["questions_number"]
         )
@@ -1691,18 +1695,14 @@ def course_management(course: str):
 
         topics = (
             conn.execute(
-                text("SELECT topic, type, count(*) AS n_questions FROM questions WHERE course = :course GROUP BY topic, type ORDER BY id"),
+                text("SELECT topic, type, count(*) AS n_questions FROM questions WHERE course = :course GROUP BY topic, type"),
                 {"course": course},
             )
             .mappings()
             .all()
         )
 
-        topics_list = (
-            conn.execute(text("SELECT DISTINCT topic FROM questions WHERE course = :course  ORDER BY id"), {"course": course})
-            .mappings()
-            .all()
-        )
+        topics_list = conn.execute(text("SELECT DISTINCT topic FROM questions WHERE course = :course"), {"course": course}).mappings().all()
 
         n_questions_by_day = (
             conn.execute(
@@ -1718,7 +1718,7 @@ def course_management(course: str):
         active_users_last_hour = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_hour FROM results WHERE course = :course AND  nickname NOT IN ('admin', 'manager') AND timestamp >= DATETIME('now', '-1 hour')"
+                    "SELECT count(distinct nickname) AS active_users_last_hour FROM results WHERE course = :course AND  nickname NOT IN ('admin', 'manager') AND timestamp >= NOW() - INTERVAL '1 hour'"
                 ),
                 {"course": course},
             )
@@ -1729,7 +1729,7 @@ def course_management(course: str):
         active_users_last_day = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_day FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') AND timestamp >= DATETIME('now', '-1 day')"
+                    "SELECT count(distinct nickname) AS active_users_last_day FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') AND timestamp >= NOW() - INTERVAL '1 day'"
                 ),
                 {"course": course},
             )
@@ -1740,7 +1740,7 @@ def course_management(course: str):
         active_users_last_week = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_week FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') AND timestamp >= DATETIME('now', '-7 days')"
+                    "SELECT count(distinct nickname) AS active_users_last_week FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') AND timestamp >= NOW() - INTERVAL '7 days'"
                 ),
                 {"course": course},
             )
@@ -1751,7 +1751,7 @@ def course_management(course: str):
         active_users_last_month = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_month FROM results WHERE course = :course AND  nickname NOT IN ('admin', 'manager') AND timestamp >= DATETIME('now', '-30 days')"
+                    "SELECT count(distinct nickname) AS active_users_last_month FROM results WHERE course = :course AND  nickname NOT IN ('admin', 'manager') AND timestamp >= NOW() - INTERVAL '30 days'"
                 ),
                 {"course": course},
             )
@@ -1780,7 +1780,7 @@ def course_management(course: str):
 @app.route(f"{app.config['APPLICATION_ROOT']}/load_questions/<course>", methods=["GET", "POST"])
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def load_questions(course: str):
     """
     load questions
@@ -1824,7 +1824,7 @@ def load_questions(course: str):
 )
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def edit_parameters(course: str):
     """
     edit course parameters
@@ -1874,7 +1874,7 @@ def edit_parameters(course: str):
 @app.route(f"{app.config['APPLICATION_ROOT']}/add_lives/<course>", methods=["GET"])
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def add_lives(course: str):
     with engine.connect() as conn:
         conn.execute(text("UPDATE lives SET number = number + 10 WHERE course = :course AND nickname = 'manager'"), {"course": course})
@@ -1891,7 +1891,7 @@ def add_lives(course: str):
 @app.route(f"{app.config['APPLICATION_ROOT']}/all_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def all_questions(course: str):
     """
     display all questions
@@ -1917,7 +1917,7 @@ def all_questions(course: str):
 @app.route(f"{app.config['APPLICATION_ROOT']}/all_questions_gift/<course>", methods=["GET"])
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def all_questions_gift(course: str):
     """
     display all questions in gift format
@@ -2053,7 +2053,7 @@ def edit_question(course: str, question_id):
 @app.route(f"{app.config['APPLICATION_ROOT']}/saved_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def saved_questions(course: str):
     """
     display saved questions
@@ -2090,7 +2090,7 @@ def saved_questions(course: str):
 @app.route(f"{app.config['APPLICATION_ROOT']}/reset_saved_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
-@is_manager
+@is_manager_or_admin
 def reset_saved_questions(course: str):
     """
     reset saved questions
@@ -2188,6 +2188,7 @@ def admin_logout():
 
 
 @app.route(f"{app.config['APPLICATION_ROOT']}/new_course", methods=["GET", "POST"])
+@is_manager_or_admin
 def new_course():
     """
     new_course

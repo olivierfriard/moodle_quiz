@@ -1,6 +1,7 @@
 CREATE TABLE courses (
    id SERIAL PRIMARY KEY,
    name TEXT NOT NULL,
+   managers TEXT[],
    question_types TEXT[],
    initial_life_number  INTEGER,
    topics_to_hide TEXT[],

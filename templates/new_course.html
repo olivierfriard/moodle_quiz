@@ -19,20 +19,70 @@
 {% if session['nickname'] == 'admin' %}
 
 <form action="{{ url_for('new_course') }}" method="POST">
-    <div class="field">
-      <label class="label">New course name</label>
-      <div class="control">
-<input name="course_name" class="input" type="text">        
+
+<div class="field">
+<label class="label">New course name</label>
+<div class="control">
+<input name="course_name" class="input" type="text" required>        
 </div>
 </div>
 
-    <div class="field">
-      <div class="control">
-        <button type="submit" class="button is-primary">Create course</button>
-        <a href="{{ url_for('main_home') }}" class="button is-primary">Cancel</a>
-      </div>
-    </div>
-  </form>
+
+<div class="field">
+<label class="label">Managers</label>
+<div class="control">
+<input name="managers" class="input" type="text">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Question types</label>
+<div class="control">
+<input name="question_types" class="input" type="text" value="truefalse,multichoice,shortanswer,numerical">
+</div>
+</div>
+
+<div class="field">
+<label class="label">Initial life number</label>
+<div class="control">
+<input name="life_number" class="input"  step="1" type="number" required value="5">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Topics to hide</label>
+<div class="control">
+<input name="hidden_topics" class="input" type="text">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Number of questions by topic</label>
+<div class="control">
+<input name="topic_question_number" class="input"  step="1" type="number" required value="10">        
+</div>
+</div>
+
+
+<div class="field">
+<label class="label">Steps</label>
+<div class="control">
+<input name="steps" class="input" type="text">        
+</div>
+</div>
+
+
+
+<div class="field">
+<div class="control">
+<button type="submit" class="button is-primary">Create course</button>
+<a href="{{ url_for('main_home') }}" class="button is-primary">Cancel</a>
+</div>
+</div>
+
+
+
+</form>
 
 
 {% else %}
