@@ -1,0 +1,116 @@
+olivier@opti9010:~ $ ab -n 1000 -c 50 "http://127.0.0.1:5001/quizzych/step_testing/Quizzoo/10%20-%20Molluschi/1"
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 127.0.0.1 (be patient)
+Completed 100 requests
+Completed 200 requests
+Completed 300 requests
+Completed 400 requests
+Completed 500 requests
+Completed 600 requests
+Completed 700 requests
+Completed 800 requests
+Completed 900 requests
+Completed 1000 requests
+Finished 1000 requests
+
+
+Server Software:        Werkzeug/3.0.6
+Server Hostname:        127.0.0.1
+Server Port:            5001
+
+Document Path:          /quizzych/step_testing/Quizzoo/10%20-%20Molluschi/1
+Document Length:        2 bytes
+
+Concurrency Level:      50
+Time taken for tests:   52.066 seconds
+Complete requests:      1000
+Failed requests:        0
+Total transferred:      391779 bytes
+HTML transferred:       2000 bytes
+Requests per second:    19.21 [#/sec] (mean)
+Time per request:       2603.316 [ms] (mean)
+Time per request:       52.066 [ms] (mean, across all concurrent requests)
+Transfer rate:          7.35 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.5      0       4
+Processing:    60 2592 464.7   2608    4704
+Waiting:       46 2570 463.3   2586    4676
+Total:         60 2593 464.9   2608    4705
+
+Percentage of the requests served within a certain time (ms)
+  50%   2608
+  66%   2708
+  75%   2772
+  80%   2820
+  90%   3002
+  95%   3259
+  98%   3733
+  99%   4276
+ 100%   4705 (longest request)
+olivier@opti9010:~ $ 
+olivier@opti9010:~ $ 
+olivier@opti9010:~ $ 
+olivier@opti9010:~ $ 
+olivier@opti9010:~ $ 
+olivier@opti9010:~ $ 
+olivier@opti9010:~ $ 
+olivier@opti9010:~ $ ab -n 1000 -c 50 "http://127.0.0.1:5001/quizzych/step_testing/quizzoo/10%20-%20Molluschi/1"
+This is ApacheBench, Version 2.3 <$Revision: 1903618 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 127.0.0.1 (be patient)
+Completed 100 requests
+Completed 200 requests
+Completed 300 requests
+Completed 400 requests
+Completed 500 requests
+Completed 600 requests
+Completed 700 requests
+Completed 800 requests
+Completed 900 requests
+Completed 1000 requests
+Finished 1000 requests
+
+
+Server Software:        Werkzeug/3.0.6
+Server Hostname:        127.0.0.1
+Server Port:            5001
+
+Document Path:          /quizzych/step_testing/quizzoo/10%20-%20Molluschi/1
+Document Length:        285 bytes
+
+Concurrency Level:      50
+Time taken for tests:   627.070 seconds
+Complete requests:      1000
+Failed requests:        0
+Non-2xx responses:      1000
+Total transferred:      740880 bytes
+HTML transferred:       285000 bytes
+Requests per second:    1.59 [#/sec] (mean)
+Time per request:       31353.506 [ms] (mean)
+Time per request:       627.070 [ms] (mean, across all concurrent requests)
+Transfer rate:          1.15 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.4      0       5
+Processing:  2810 30951 3407.5  31056   44904
+Waiting:     2796 30929 3406.5  31045   44835
+Total:       2810 30952 3407.6  31056   44904
+
+Percentage of the requests served within a certain time (ms)
+  50%  31056
+  66%  31829
+  75%  32435
+  80%  32893
+  90%  34478
+  95%  35568
+  98%  38539
+  99%  39787
+ 100%  44904 (longest request)
