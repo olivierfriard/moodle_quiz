@@ -8,11 +8,9 @@ dependencies = [
     "flask>=3.0.3",
     "gunicorn>=23.0.0",
     "hypercorn>=0.17.3",
-    "kivy>=2.3.0",
     "pandas>=2.2.3",
     "psycopg2>=2.9.10",
     "pygiftparserrgmf>=0.0.5",
-    "quart>=0.19.6",
     "rapidfuzz>=3.11.0",
     "sqlalchemy>=2.0.41",
 ]
