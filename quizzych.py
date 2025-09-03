@@ -31,6 +31,9 @@ from flask import (
 from functools import wraps
 import logging
 from sqlalchemy import create_engine, text, bindparam
+from shapely.geometry import Point, shape
+import geojson
+
 
 import moodle_xml
 import quiz
@@ -61,6 +64,7 @@ def get_course_config(course: str):
         if row:
             config = {}
             config["QUIZ_NAME"] = row["name"]
+            config["managers"] = row["managers"]
             config["INITIAL_LIFE_NUMBER"] = row["initial_life_number"]
             config["N_QUESTIONS"] = row["topic_question_number"]
             config["QUESTION_TYPES"] = row["question_types"]
@@ -236,25 +240,9 @@ def create_database(course) -> None:
 
     with engine.connect() as conn:
         conn.execute(
-            text(
-                "INSERT INTO courses (name, question_types, initial_life_number, topics_to_hide, topic_question_number, steps, step_quiz_number, recover_question_number, recover_topics, brush_up_question_number, brush_up_level_names, brush_up_levels) VALUES ("
-                ":course_name,"
-                """'{"truefalse","multichoice", "shortanswer", "numerical"}',"""
-                "5,"
-                """'{"Ripasso e recupero vite"}',"""
-                "10,"
-                """'{"Esploratore", "Ricercatore", "Maestro"}',"""
-                "4,"
-                "5,"
-                """'{"Ripasso e recupero vite"}',"""
-                "10,"
-                """'{"Easy", "Hard", "Very hard"}',"""
-                "'{1, 2, 4}'"
-                ")"
-            ),
+            text("INSERT INTO courses (name) VALUES (:course_name)"),
             {"course_name": course},
         )
-
         conn.commit()
 
 
@@ -297,7 +285,7 @@ def check_login(f):
             flash("You must be logged", "error")
             return redirect(url_for("home"), course=kwargs["course"])
         else:
-            if session["nickname"] not in ("admin", "manager"):
+            if session["nickname"] != "admin":
                 # check if nickname exists
                 with engine.connect() as conn:
                     if (
@@ -337,7 +325,7 @@ def is_manager_or_admin(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # check if admin
-        if session["nickname"] not in ("admin", "manager"):
+        if session["nickname"] != "admin" and not session["manager"]:
             flash(
                 Markup(
                     '<div class="notification is-danger">You are not allowed to access this page</div>'
@@ -445,7 +433,7 @@ def home(course: str = ""):
     translation = get_translation("it")
 
     lives = None
-    if session.get("nickname", "") not in ("", "admin", "manager"):
+    if session.get("nickname", "") != "admin":
         lives = get_lives_number(course, session["nickname"])
         # check if nickname in course
         with engine.connect() as conn:
@@ -1095,10 +1083,7 @@ def question(course: str, topic: str, step: int, idx: int):
                         return redirect(url_for("home", course=course))
 
         # check quiz_position
-        if (
-            session["nickname"] not in ("admin", "manager")
-            and idx != session["quiz_position"]
-        ):
+        if session["nickname"] not in ("admin") and idx != session["quiz_position"]:
             flash(
                 Markup(
                     '<div class="notification is-danger">You are not allowed to access this page</div>'
@@ -1139,7 +1124,8 @@ def question(course: str, topic: str, step: int, idx: int):
             with engine as conn:
                 result = conn.execute(
                     text(
-                        "SELECT number FROM steps WHERE course= :course AND nickname = :nickname AND topic = :topic AND step_index = :step_index"
+                        "SELECT number FROM steps "
+                        "WHERE course= :course AND nickname = :nickname AND topic = :topic AND step_index = :step_index"
                     ),
                     {
                         "course": course,
@@ -1149,16 +1135,14 @@ def question(course: str, topic: str, step: int, idx: int):
                     },
                 )
 
-                row = (
-                    result.mappings().fetchone()
-                )  # restituisce un dict-like MappingRow o None
+                row = result.mappings().fetchone()
 
                 if row is None:
                     conn.execute(
-                        text("""
-                            INSERT INTO steps (course, nickname, topic, step_index, number)
-                            VALUES (:course, :nickname, :topic, :step_index, :number)
-                        """),
+                        text(
+                            "INSERT INTO steps (course, nickname, topic, step_index, number) "
+                            "VALUES (:course, :nickname, :topic, :step_index, :number)"
+                        ),
                         {
                             "course": course,
                             "nickname": session["nickname"],
@@ -1167,16 +1151,14 @@ def question(course: str, topic: str, step: int, idx: int):
                             "number": 1,
                         },
                     )
-
                     conn.commit()
-
                 else:
                     conn.execute(
-                        text("""
-            UPDATE steps
-            SET number = number + 1
-            WHERE course = :course AND nickname = :nickname AND topic = :topic AND step_index = :step_index
-        """),
+                        text(
+                            "UPDATE steps "
+                            "SET number = number + 1"
+                            "WHERE course = :course AND nickname = :nickname AND topic = :topic AND step_index = :step_index"
+                        ),
                         {
                             "course": course,
                             "nickname": session["nickname"],
@@ -1196,6 +1178,7 @@ def question(course: str, topic: str, step: int, idx: int):
 
             return redirect(url_for("steps", course=course, topic=topic))
 
+    # check presence of images
     image_list: list = []
     for image in question.get("files", []):
         if image.startswith("http"):
@@ -1204,8 +1187,12 @@ def question(course: str, topic: str, step: int, idx: int):
             image_list.append(
                 f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}"
             )
+    # check if geojson file is present (areas definition) if one image
+    image_area = (len(image_list) == 1) and (
+        Path("images") / Path(course) / Path(image_list[0]).with_suffix(".geojson")
+    ).is_file()
 
-    if question["type"] == "multichoice" or question["type"] == "truefalse":
+    if question["type"] in ("multichoice", "truefalse"):
         answers = random.sample(question["answers"], len(question["answers"]))
         placeholder = translation["Input a text"]
         type_ = "text"
@@ -1230,6 +1217,7 @@ def question(course: str, topic: str, step: int, idx: int):
         question=question,
         question_id=question_id,
         image_list=image_list,
+        image_area=image_area,
         answers=answers,
         type_=type_,
         placeholder=placeholder,
@@ -1600,7 +1588,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     session["quiz_position"] += 1
 
     # get overall score (for admin)
-    if session["nickname"] in ("admin", "manager"):
+    if session["nickname"] == "admin" or session["manager"]:
         with engine.connect() as conn:
             overall = {}
 
@@ -1940,18 +1928,9 @@ def edit_parameters(course: str):
     edit course parameters
     """
     if request.method == "GET":
-        # get parameters from .txt
-        if (Path(COURSES_DIR) / Path(course).with_suffix(".txt")).is_file():
-            with open(
-                Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "r"
-            ) as f_in:
-                parameters = f_in.read()
-        else:
-            parameters = (
-                f"File {Path(COURSES_DIR) / Path(course).with_suffix('.txt')} not found"
-            )
+        config = get_course_config(course)
 
-        return render_template("parameters.html", course=course, parameters=parameters)
+        return render_template("new_course.html", course=course, config=config)
 
     if request.method == "POST":
         # test if file is valid toml
@@ -2012,7 +1991,7 @@ def add_lives(course: str):
         "error",
     )
 
-    return redirect(url_for("admin", course=course))
+    return redirect(url_for("course_management", course=course))
 
 
 @app.route(f"{app.config['APPLICATION_ROOT']}/all_questions/<course>", methods=["GET"])
@@ -2290,7 +2269,6 @@ def login(course: str):
                 flash(translation["Incorrect login. Retry"], "error")
                 return redirect(url_for("login", course=course))
             session["nickname"] = "admin"
-            print(f"{session["nickname"]=}")
             return redirect(url_for("home", course=course))
 
         password_hash = hashlib.sha256(form_data.get("password").encode()).hexdigest()
@@ -2305,13 +2283,22 @@ def login(course: str):
                 },
             )
             row = cursor.mappings().fetchone()
-            if not row["n_users"]:
+            if row["n_users"]:
+                session["nickname"] = form_data.get("nickname")
+                # check if manager
+                with engine.connect() as conn:
+                    flag_manager = conn.execute(
+                        text(
+                            "SELECT COUNT(*) FROM courses WHERE name = :course AND :nickname = ANY(managers)"
+                        ),
+                        {"course": course, "nickname": session["nickname"]},
+                    ).scalar()
+                    session["manager"] = flag_manager != 0
+
+                return redirect(url_for("home", course=course))
+            else:
                 flash(translation["Incorrect login. Retry"], "error")
                 return redirect(url_for("login", course=course))
-
-            else:
-                session["nickname"] = form_data.get("nickname")
-                return redirect(url_for("home", course=course))
 
 
 @app.route(f"{app.config['APPLICATION_ROOT']}/admin_login", methods=["GET", "POST"])
@@ -2364,8 +2351,56 @@ def new_course():
     if request.method == "POST":
         if not request.form["course_name"]:
             return render_template("new_course.html")
-    create_database(request.form["course_name"])
-    return redirect(url_for("main_home"))
+    # check if course exists
+    with engine.connect() as conn:
+        n_courses = conn.execute(
+            text("SELECT count(*) FROM courses WHERE name = :course"),
+            {
+                "course": request.form["course_name"],
+            },
+        ).scalar()
+    if n_courses == 0:
+        create_database(request.form["course_name"])
+    else:
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "UPDATE courses SET "
+                    "managers = :managers,"
+                    "question_types = :question_types,"
+                    "initial_life_number = :initial_life_number,"
+                    "topics_to_hide = :topics_to_hide,"
+                    "topic_question_number = :topic_question_number,"
+                    "steps = :steps,"
+                    "step_quiz_number = :step_quiz_number,"
+                    "recover_question_number = :recover_question_number,"
+                    "recover_topics = :recover_topics,"
+                    "brush_up_question_number = :brush_up_question_number,"
+                    "brush_up_level_names = :brush_up_level_names,"
+                    "brush_up_levels = :brush_up_levels "
+                    "WHERE name = :course"
+                ),
+                {
+                    "course": request.form["course_name"],
+                    "managers": eval(request.form["managers"]),
+                    "question_types": eval(request.form["question_types"]),
+                    "initial_life_number": request.form["life_number"],
+                    "topics_to_hide": eval(request.form["hidden_topics"]),
+                    "topic_question_number": request.form["topic_question_number"],
+                    "steps": eval(request.form["steps"]),
+                    "step_quiz_number": request.form["step_quiz_number"],
+                    "recover_question_number": request.form["recover_question_number"],
+                    "recover_topics": eval(request.form["recover_topics"]),
+                    "brush_up_question_number": request.form[
+                        "brush_up_question_number"
+                    ],
+                    "brush_up_level_names": eval(request.form["brush_up_level_names"]),
+                    "brush_up_levels": eval(request.form["brush_up_levels"]),
+                },
+            )
+            conn.commit()
+
+    return redirect(url_for("course_management", course=request.form["course_name"]))
 
 
 @app.route(
@@ -2390,7 +2425,7 @@ def new_nickname(course: str):
         password1 = form_data.get("password1")
         password2 = form_data.get("password2")
 
-        if nickname in ("admin", "manager"):
+        if nickname == "admin":
             flash("This nickname is not allowed", "error")
             return render_template(
                 "new_nickname.html", course=course, translation=translation
@@ -2411,13 +2446,14 @@ def new_nickname(course: str):
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
         with engine.connect() as conn:
-            cursor = conn.execute(
-                "SELECT COUNT(*) AS n_users FROM users WHERE nickname = :nickname",
+            n_users = conn.execute(
+                text(
+                    "SELECT COUNT(*) AS n_users FROM users WHERE nickname = :nickname"
+                ),
                 {"nickname": nickname},
-            )
-            n_users = cursor.mappings().fetchone()
+            ).scalar()
 
-            if n_users[0]:
+            if n_users:
                 flash("Nickname already taken", "error")
                 return render_template(
                     "new_nickname.html", course=course, translation=translation
@@ -2522,7 +2558,6 @@ def click_image(course: str):
         Ritorna il nome della feature che contiene il punto (x, y).
         Se nessuna feature contiene il punto, ritorna None.
         """
-        from shapely.geometry import Point, shape
 
         point = Point(x, y)
 
@@ -2546,19 +2581,11 @@ def click_image(course: str):
         if not (Path("images") / Path(course) / Path("sez_trasversale.json")).is_file():
             return "geojson not found"
         else:
-            import geojson
-
             with open(
                 Path("images") / Path(course) / Path("sez_trasversale.json"), "r"
             ) as f:
                 data = geojson.load(f)
 
-            # print(data)
-            """
-            for feature in data["features"]:
-                name = feature["properties"]["name"]
-                coordinates = feature["geometry"]["coordinates"]
-            """
             x, y = [float(x) for x in request.form.get("normalized_coord").split(",")]
             area = find_feature_name(data, x, y)
 

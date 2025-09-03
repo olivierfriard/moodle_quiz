@@ -21,9 +21,9 @@
 {{ translation['Welcome'] }} <strong>{{ session['nickname'] }}</strong>!
 
 
-{% if session['nickname'] in ('admin','manager') %}<a href="{{ url_for('course_management', course=course) }}">
+{% if session['nickname'] == 'admin' or session['manager'] %}<a href="{{ url_for('course_management', course=course) }}">
 Manage course
- </a> {% endif %} 
+</a> {% endif %} 
 
 </p>
 </div>
