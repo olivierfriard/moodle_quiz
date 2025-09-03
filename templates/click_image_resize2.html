@@ -45,12 +45,24 @@
 
   <div id="coords">Click on the image to give your answer</div>
 
-  <form action="{{ url_for('click_image', course=course) }}" method="POST">
+  <form id="clickForm" action="{{ url_for('click_image', course=course) }}" method="POST">
     <input type="text" id="normalized_coord" name="normalized_coord" value="">
   <button type="submit">Invia</button>
 </form>
 
   <script>
+
+const form = document.getElementById('clickForm');
+  const coordInput = document.getElementById('normalized_coord');
+
+  form.addEventListener('submit', function(event) {
+    if (!coordInput.value.trim()) {
+      event.preventDefault(); // Blocca invio
+      alert("Seleziona un punto sull'immagine prima di inviare!");
+    }
+  });
+
+
     const container = document.getElementById('imgContainer');
     const img = document.getElementById('myImage');
     const circle = document.getElementById('clickCircle');

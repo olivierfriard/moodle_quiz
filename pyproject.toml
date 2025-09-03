@@ -13,5 +13,6 @@ dependencies = [
     "psycopg2>=2.9.10",
     "pygiftparserrgmf>=0.0.5",
     "rapidfuzz>=3.11.0",
+    "shapely>=2.1.1",
     "sqlalchemy>=2.0.41",
 ]
