@@ -14,26 +14,33 @@
 <a href="{{ url_for('course_management', course=course) }}" class="button is-link">Course management</a>
 </div>
         
+<h1 class="title is-4">Bookmarks</h1>
 
-
+{% if questions %}
 {% for question in questions %}
-
-{{ question.name }}<br>
-{{ question.type }}<br>
+<div class="box">
+<span class="tag is-info">{{ question.type }}</span>
+<b>{{ question.name }}</b><br>
+<br>
 {{ question['questiontext'] }}<br>
 
-<a class="button is-link is-small" href="{{ url_for('edit_question', course=course, question_id=question['id']) }}">
+<br>
+<div class="buttons">
+<a class="button  is-small" href="{{ url_for('edit_question', course=course, question_id=question['id']) }}">
 {{ translation['Edit question'] }}</a>
 
-<a class="button is-link is-small" href="{{ url_for('delete_bookmark', course=course, question_id=question['id']) }}">
+<a class="button  is-small" href="{{ url_for('delete_bookmark', course=course, question_id=question['id']) }}">
     {{ translation['Remove from saved questions'] }}</a>
-    
-
-<hr>
+</div>
+</div>
 
 
 {% endfor %}
 
+{%else%}
+<h1 class="title is-5">No questions in bookmarks</h1>
+
+{%endif%}
 
 </div>
 </div>

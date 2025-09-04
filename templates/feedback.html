@@ -14,7 +14,7 @@
 </head>
 <body>
 
-{%  include "popup.html" %}
+{% include "popup.html" %}
 
 <section class="section">
 <div class="container">
@@ -22,14 +22,14 @@
 <div class="column is-half">
 
                 
-{%  include "display_lives.html" %}
+{% include "display_lives.html" %}
 
 
 <div class="is-flex is-align-items-center">
-  <figure class="image is-48x48">
-    <img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="50em">
-  </figure>
-  <p class="ml-3 is-size-4">{{ topic }}</p>
+<figure class="image is-48x48">
+<img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="50em">
+</figure>
+<p class="ml-3 is-size-4">{{ topic }}</p>
 </div>
 
 <br>
@@ -94,12 +94,15 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 #}
 
 
-{% if session['nickname'] == 'manager' %}
-<label>
-<input type="checkbox"  id="myCheckbox" onclick="sendCheckboxStatus()">
-{{ translation['Save the question'] }}
-</label>
+{% if session['nickname'] == 'admin' or session['manager'] %}
+<div class="block">
+
+<input type="checkbox"  id="bookmark_checkbox" onclick="sendCheckboxStatus()" {% if bookmarked %}CHECKED{% endif %}>
+{{ translation['Add the question to bookmarks'] }}
+</div>
+<div class="block">
 <br>Overall results: {{ overall_str }}
+</div>
 {% endif %}
 
 
@@ -107,15 +110,14 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 </div>
 </div>
 </section>
-
-{% if session['nickname'] == 'manager' %}
+{% if session['nickname'] == 'admin' or session['manager'] %}
 <script>
   function sendCheckboxStatus() {
-    var checkbox = document.getElementById('myCheckbox');
+    var checkbox = document.getElementById('bookmark_checkbox');
     var isChecked = checkbox.checked;
 
     // Send checkbox status via AJAX (using fetch)
-    fetch("{{ url_for('toggle_checkbox', course=course, question_id=question_id)}}", {
+    fetch("{{ url_for('bookmark_checkbox', question_id=question_id)}}", {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json', // Send JSON data
@@ -128,6 +130,7 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
     })
     .catch(error => {
       console.error('Error:', error);
+      alert('error');
     });
   }
 </script>

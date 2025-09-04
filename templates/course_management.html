@@ -36,19 +36,25 @@
 {% endif %}
 {% endwith %}
 
-<br>
-<a href="{{ url_for('load_questions', course=course) }}" class="button is-small">Load questions</a><br>
-<br>
-<a href="{{ url_for('edit_parameters', course=course) }}" class="button is-small">Edit parameters</a><br>
-<br>
-<a href="{{ url_for('add_lives', course=course) }}" class="button is-small">Add lives to manager</a>
-<br>
+<div class="box">
 
+<p class="title is-4">Course</p>
 
-<br>
-<strong>Questions</strong>
-<br>
+<div class="block">
+<a href="{{ url_for('edit_parameters', course=course) }}" class="button">Edit parameters</a>
 
+<a href="{{ url_for('add_lives', course=course) }}" class="button">Add lives to manager</a>
+</div>
+
+</div>
+
+<div class="box">
+
+<p class="title is-4">Questions</p>
+
+<div class="block">
+<a href="{{ url_for('load_questions', course=course) }}" class="button">Load questions</a>
+</div>
 Number of questions in course: {{ questions_number }}<br>
 
 
@@ -57,11 +63,18 @@ Number of questions in course: {{ questions_number }}<br>
 <a href="{{ url_for('all_questions', course=course) }}">Display questions</a><br>
 <a href="{{ url_for('all_questions_gift', course=course) }}">Display questions (GIFT)</a><br>
 <br>
-<a href="{{ url_for('saved_questions', course=course) }}">Display saved questions</a><br>
-<a href="{{ url_for('reset_saved_questions', course=course) }}">Reset saved questions</a><br>
-<br>
-<strong>Users</strong>
-<br>
+<a href="{{ url_for('bookmarked_questions', course=course) }}">Display bookmarks</a><br>
+<a href="{{ url_for('reset_bookmarked_questions', course=course) }}">Reset bookmarks</a><br>
+
+</div>
+
+
+
+<div class="box">
+
+<p class="title is-4">Users</p>
+
+
 Number of registrered users: {{ users_number }}<br>
 
 Number of active users in last hour: {{ active_users_last_hour }}<br>
@@ -86,9 +99,13 @@ Number of answers by day<br>
 
 <a href="{{ url_for('results', course=course, mode='by_topic') }}">User results (by topic)</a><br>
 <br>
+</div>
 
 
-<strong>Topics</strong>
+<div class="box">
+
+<p class="title is-4">Topics</p>
+
 <br>
 {% for topic in topics %}
 
@@ -98,7 +115,14 @@ Number of answers by day<br>
 {% endfor %}
 
 <br>
-<strong>Quiz with all questions</strong>
+
+</div>
+
+
+<div class="box">
+
+<p class="title is-4">Quiz with all questions</p>
+
 <br>
 {% for topic in topics_list %}
 
@@ -106,7 +130,7 @@ Number of answers by day<br>
 <br>
 
 {% endfor %}
-
+</div>
 
 
 </div></div></div>
