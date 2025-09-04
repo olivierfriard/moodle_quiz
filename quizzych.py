@@ -12,7 +12,6 @@ import tomllib
 import random
 import re
 import json
-import sys
 import unicodedata
 import numpy as np
 from rapidfuzz import fuzz
@@ -33,7 +32,8 @@ import logging
 from sqlalchemy import create_engine, text, bindparam
 from shapely.geometry import Point, shape
 import geojson
-
+from PIL import Image
+import matplotlib.pyplot as plt
 
 import moodle_xml
 import quiz
@@ -1118,7 +1118,9 @@ def question(course: str, topic: str, step: int, idx: int):
         else:
             image_list.append(f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}")
     # check if geojson file is present (areas definition) if one image
-    image_area = (len(image_list) == 1) and (Path("images") / Path(course) / Path(image_list[0]).with_suffix(".geojson")).is_file()
+    image_area = (len(image_list) == 1) and (
+        Path("images") / Path(course) / Path(Path(image_list[0]).name).with_suffix(Path(image_list[0]).suffix + ".json")
+    ).is_file()
 
     if question["type"] in ("multichoice", "truefalse"):
         answers = random.sample(question["answers"], len(question["answers"]))
@@ -1152,6 +1154,145 @@ def question(course: str, topic: str, step: int, idx: int):
         total=len(session["quiz"]) if "recover" not in session else config["N_QUESTIONS_FOR_RECOVER"],
         lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
         recover="recover" in session,
+        translation=translation,
+    )
+
+
+@app.route(
+    f"{app.config['APPLICATION_ROOT']}/view_question_id/<course>/<int:question_id>",
+    methods=["GET"],
+)
+@course_exists
+@check_login
+@is_manager_or_admin
+def view_question_id(course: str = "", question_id: int = 0):
+    """
+    display question by id
+    useful to check an arbitrary question
+    """
+
+    def plot_geojson_on_image(image_path: str, geojson_path: str, output_path: str):
+        """
+        Plotta elementi di un file GeoJSON su un'immagine e salva il risultato.
+        Le coordinate GeoJSON sono normalizzate (x e y tra 0 e 1).
+
+        :param image_path: Path all'immagine di sfondo
+        :param geojson_path: Path al file GeoJSON
+        :param output_path: Path del file di output (es. 'output.png')
+        """
+        # Carica immagine
+        img = Image.open(image_path)
+        img_width, img_height = img.size
+
+        # Carica GeoJSON
+        with open(geojson_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Prepara la figura con dimensioni originali in pixel
+        dpi = 100
+        fig, ax = plt.subplots(figsize=(img_width / dpi, img_height / dpi), dpi=dpi)
+        ax.imshow(img)
+
+        # Cicla sugli elementi GeoJSON
+        for feature in data["features"]:
+            geom = shape(feature["geometry"])
+
+            # Disegna in base al tipo
+            if geom.geom_type == "Point":
+                x, y = geom.x * img_width, (1 - geom.y) * img_width
+                ax.plot(x, y, "ro", markersize=5)
+
+            elif geom.geom_type == "LineString":
+                xs = [p[0] * img_width for p in geom.coords]
+                ys = [(1 - p[1]) * img_width for p in geom.coords]
+                ax.plot(xs, ys, "b-", linewidth=2)
+
+            elif geom.geom_type == "Polygon":
+                xs = [p[0] * img_width for p in geom.exterior.coords]
+                ys = [(1 - p[1]) * img_width for p in geom.exterior.coords]
+                ax.plot(xs, ys, "g-", linewidth=2)
+
+            elif geom.geom_type == "MultiPolygon":
+                for polygon in geom.geoms:
+                    xs = [p[0] * img_width for p in polygon.exterior.coords]
+                    ys = [(p[1]) * img_width for p in polygon.exterior.coords]
+                    ax.plot(xs, ys, "m-", linewidth=2)
+
+        # Imposta assi per avere esattamente la stessa dimensione dell'immagine
+        ax.set_xlim([0, img_width])
+        ax.set_ylim([img_height, 0])
+        ax.axis("off")
+
+        plt.savefig(output_path, bbox_inches="tight", pad_inches=0)
+        plt.close(fig)
+        print(f"Immagine salvata in: {output_path}")
+
+    translation = get_translation("it")
+    config = get_course_config(course)
+
+    # get question content
+    with engine.connect() as conn:
+        question = json.loads(
+            conn.execute(
+                text("SELECT content FROM questions WHERE course= :course AND id = :question_id"),
+                {"course": course, "question_id": question_id},
+            )
+            .mappings()
+            .fetchone()["content"]
+        )
+
+    # check presence of images
+    image_list: list = []
+
+    for image in question.get("files", []):
+        if image.startswith("http"):
+            image_list.append(image)
+        else:
+            image_list.append(f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}")
+    # check if json file is present (areas definition) if one image
+    image_area = (len(image_list) == 1) and (
+        Path("images") / Path(course) / Path(Path(image_list[0]).name).with_suffix(Path(image_list[0]).suffix + ".json")
+    ).is_file()
+
+    if image_area:
+        plot_geojson_on_image(
+            Path("images") / Path(course) / Path(image_list[0]).name,
+            Path("images") / Path(course) / Path(Path(image_list[0]).stem).with_suffix(Path(image_list[0]).suffix + ".json"),
+            Path("/tmp") / Path(image_list[0]).name,
+        )
+
+    if question["type"] in ("multichoice", "truefalse"):
+        answers = random.sample(question["answers"], len(question["answers"]))
+        placeholder = translation["Input a text"]
+        type_ = "text"
+    elif question["type"] in ("shortanswer", "numerical"):
+        answers = ""
+        type_ = "number" if question["type"] == "numerical" else "text"
+        placeholder = translation["Input a number"] if question["type"] == "numerical" else translation["Input a text"]
+
+    if question["questiontext"].count("*") == 2:
+        question["questiontext"] = question["questiontext"].replace("*", "<i>", 1)
+        question["questiontext"] = question["questiontext"].replace("*", "</i>", 1)
+        question["questiontext"] = Markup(question["questiontext"])
+
+    return render_template(
+        "question.html",
+        course_name=config["QUIZ_NAME"],
+        config=config,
+        question=question,
+        question_id=question_id,
+        image_list=image_list,
+        image_area=image_area,
+        answers=answers,
+        type_=type_,
+        placeholder=placeholder,
+        course=course,
+        topic="TEST_QUESTION",
+        step=0,
+        idx=0,
+        total=0,
+        lives=1,
+        recover=False,
         translation=translation,
     )
 
@@ -1282,6 +1423,25 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         # out.append(correct_answer)
         return "<br>".join(out)
 
+    def find_feature_name(data, x, y):
+        """
+        Ritorna il nome della feature che contiene il punto (x, y).
+        Se nessuna feature contiene il punto, ritorna None.
+        """
+
+        point = Point(x, y)
+
+        for feature in data.get("features", []):
+            geom = feature.get("geometry")
+            if not geom:
+                continue
+
+            polygon = shape(geom)  # Converte MultiPolygon/Polygon in geometria shapely
+            if polygon.contains(point):
+                return feature["properties"]["name"]
+
+        return None
+
     question_id = session["quiz"][idx]
     # get question content
     with engine.connect() as conn:
@@ -1302,7 +1462,29 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             logging.error(f"Question type error: {question['type']}")
 
     if request.method == "POST":
-        user_answer = request.form.get("user_answer")
+        # check if image area
+        if request.form.get("image_area") is not None:
+            if not (
+                Path("images")
+                / Path(course)
+                / Path(Path(request.form.get("image_path")).name).with_suffix(Path(request.form.get("image_path")).suffix + ".json")
+            ).is_file():
+                return "geojson not found"
+            else:
+                with open(
+                    Path("images")
+                    / Path(course)
+                    / Path(Path(request.form.get("image_path")).name).with_suffix(Path(request.form.get("image_path")).suffix + ".json"),
+                    "r",
+                ) as f:
+                    data = geojson.load(f)
+
+                x, y = [float(x) for x in request.form.get("normalized_coord").split(",")]
+                area = find_feature_name(data, x, y)
+
+                user_answer = area if area is not None else ""
+        else:
+            user_answer = request.form.get("user_answer")
 
     logging.debug(f"{user_answer=}")
 
@@ -1882,12 +2064,14 @@ def all_questions(course: str):
             .fetchall()
         ):
             out.append(str(row["id"]))
+            out.append(row["type"])
             out.append(row["topic"])
             out.append(row["name"])
             content = json.loads(row["content"])
             out.append(content["questiontext"])
             for answer in content["answers"]:
                 out.append(f"""{answer["fraction"]}  {answer["text"]}   <span style="color: gray;">feedback: {answer["feedback"]}</span>""")
+            out.append(f'<a href="{app.config["APPLICATION_ROOT"]}/view_question_id/{course}/{row["id"]}">view</a>')
             out.append("<hr>")
 
     return "<br>".join(out)

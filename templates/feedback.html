@@ -24,14 +24,14 @@
                 
 {% include "display_lives.html" %}
 
-
+{% if step %}
 <div class="is-flex is-align-items-center">
 <figure class="image is-48x48">
 <img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="50em">
 </figure>
 <p class="ml-3 is-size-4">{{ topic }}</p>
 </div>
-
+{% endif %}
 <br>
 
 <p class="is-size-4 mb-2">{{ feedback.questiontext }}</p>

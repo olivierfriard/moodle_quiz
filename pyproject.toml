@@ -9,6 +9,7 @@ dependencies = [
     "geojson>=3.2.0",
     "gunicorn>=23.0.0",
     "hypercorn>=0.17.3",
+    "matplotlib>=3.10.6",
     "pandas>=2.2.3",
     "psycopg2>=2.9.10",
     "pygiftparserrgmf>=0.0.5",
