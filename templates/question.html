@@ -72,7 +72,8 @@
 {% if image_area %}
 
 <div class="image-container" id="imgContainer">
-    <img id="myImage" src="{{ image_list[0] }}" alt="image with areas">
+   <!-- <img id="myImage" src="{{ image_list[0] }}" alt="image with areas">-->
+        <img id="myImage" src="{{ url_for('map_image', course=course, image=image_list[0].split('/')[-1] ) }}" alt="image with areas">
     <div id="clickCircle" class="circle" style="display: none;"></div>
   </div>
  <div id="coords" class="is-size-4">Click on the image to give your answer</div>

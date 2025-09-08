@@ -26,6 +26,10 @@
 
 <br>
 <div class="buttons">
+
+<a class="button  is-small" href="{{ url_for('view_question_id', course=course, question_id=question['id']) }}">
+{{ translation['View'] }}</a>
+
 <a class="button  is-small" href="{{ url_for('edit_question', course=course, question_id=question['id']) }}">
 {{ translation['Edit question'] }}</a>
 

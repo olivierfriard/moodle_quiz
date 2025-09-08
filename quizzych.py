@@ -16,17 +16,8 @@ import unicodedata
 import numpy as np
 from rapidfuzz import fuzz
 from markupsafe import Markup
-from flask import (
-    Flask,
-    render_template,
-    session,
-    redirect,
-    request,
-    flash,
-    url_for,
-    send_from_directory,
-    jsonify,
-)
+from flask import Flask, render_template, session, redirect, request, flash, url_for, send_from_directory, jsonify, send_file
+import io
 from functools import wraps
 import logging
 from sqlalchemy import create_engine, text, bindparam
@@ -34,6 +25,7 @@ from shapely.geometry import Point, shape
 import geojson
 from PIL import Image
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 import moodle_xml
 import quiz
@@ -1158,6 +1150,74 @@ def question(course: str, topic: str, step: int, idx: int):
     )
 
 
+@app.route(f"{app.config['APPLICATION_ROOT']}/map_image/<course>/<image>")
+def map_image(course: str, image: str):
+    """
+    Plotta elementi di un file GeoJSON su un'immagine e salva il risultato.
+    Le coordinate GeoJSON sono normalizzate (x e y tra 0 e 1).
+
+    :param image_path: Path all'immagine di sfondo
+    :param geojson_path: Path al file GeoJSON
+    :param output_path: Path del file di output (es. 'output.png')
+    """
+
+    image_path = Path("images") / Path(course) / Path(image).name
+    geojson_path = Path(image_path).with_suffix(Path(image_path).suffix + ".json")
+
+    # Carica immagine
+    img = Image.open(image_path)
+    img_width, img_height = img.size
+
+    # Carica GeoJSON
+    with open(geojson_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Prepara figura
+    dpi = 100
+    fig, ax = plt.subplots(figsize=(img_width / dpi, img_height / dpi), dpi=dpi)
+    ax.imshow(img)
+
+    # Colormap vivace
+    cmap = cm.get_cmap("tab20", len(data["features"]))
+
+    # Disegna features
+    for i, feature in enumerate(data["features"]):
+        geom = shape(feature["geometry"])
+        name = feature.get("properties", {}).get("name", "Senza Nome")
+        color = cmap(i)
+
+        if geom.geom_type == "MultiPolygon":
+            for polygon in geom.geoms:
+                xs = [p[0] * img_width for p in polygon.exterior.coords]
+                ys = [p[1] * img_height for p in polygon.exterior.coords]
+                ax.plot(xs, ys, color=color, linewidth=2)
+
+                # Etichetta al centro
+                centroid = polygon.centroid
+                ax.text(
+                    centroid.x * img_width,
+                    centroid.y * img_height,
+                    name,
+                    fontsize=12,
+                    color="black",
+                    ha="center",
+                    va="center",
+                    bbox=dict(facecolor="white", alpha=0.9, edgecolor="none", pad=1),
+                )
+
+    ax.set_xlim([0, img_width])
+    ax.set_ylim([img_height, 0])
+    ax.axis("off")
+
+    # Salva in memoria (buffer)
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
+    buf.seek(0)
+
+    return send_file(buf, mimetype="image/png")
+
+
 @app.route(
     f"{app.config['APPLICATION_ROOT']}/view_question_id/<course>/<int:question_id>",
     methods=["GET"],
@@ -1170,62 +1230,6 @@ def view_question_id(course: str = "", question_id: int = 0):
     display question by id
     useful to check an arbitrary question
     """
-
-    def plot_geojson_on_image(image_path: str, geojson_path: str, output_path: str):
-        """
-        Plotta elementi di un file GeoJSON su un'immagine e salva il risultato.
-        Le coordinate GeoJSON sono normalizzate (x e y tra 0 e 1).
-
-        :param image_path: Path all'immagine di sfondo
-        :param geojson_path: Path al file GeoJSON
-        :param output_path: Path del file di output (es. 'output.png')
-        """
-        # Carica immagine
-        img = Image.open(image_path)
-        img_width, img_height = img.size
-
-        # Carica GeoJSON
-        with open(geojson_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        # Prepara la figura con dimensioni originali in pixel
-        dpi = 100
-        fig, ax = plt.subplots(figsize=(img_width / dpi, img_height / dpi), dpi=dpi)
-        ax.imshow(img)
-
-        # Cicla sugli elementi GeoJSON
-        for feature in data["features"]:
-            geom = shape(feature["geometry"])
-
-            # Disegna in base al tipo
-            if geom.geom_type == "Point":
-                x, y = geom.x * img_width, (1 - geom.y) * img_width
-                ax.plot(x, y, "ro", markersize=5)
-
-            elif geom.geom_type == "LineString":
-                xs = [p[0] * img_width for p in geom.coords]
-                ys = [(1 - p[1]) * img_width for p in geom.coords]
-                ax.plot(xs, ys, "b-", linewidth=2)
-
-            elif geom.geom_type == "Polygon":
-                xs = [p[0] * img_width for p in geom.exterior.coords]
-                ys = [(1 - p[1]) * img_width for p in geom.exterior.coords]
-                ax.plot(xs, ys, "g-", linewidth=2)
-
-            elif geom.geom_type == "MultiPolygon":
-                for polygon in geom.geoms:
-                    xs = [p[0] * img_width for p in polygon.exterior.coords]
-                    ys = [(p[1]) * img_width for p in polygon.exterior.coords]
-                    ax.plot(xs, ys, "m-", linewidth=2)
-
-        # Imposta assi per avere esattamente la stessa dimensione dell'immagine
-        ax.set_xlim([0, img_width])
-        ax.set_ylim([img_height, 0])
-        ax.axis("off")
-
-        plt.savefig(output_path, bbox_inches="tight", pad_inches=0)
-        plt.close(fig)
-        print(f"Immagine salvata in: {output_path}")
 
     translation = get_translation("it")
     config = get_course_config(course)
@@ -1253,13 +1257,6 @@ def view_question_id(course: str = "", question_id: int = 0):
     image_area = (len(image_list) == 1) and (
         Path("images") / Path(course) / Path(Path(image_list[0]).name).with_suffix(Path(image_list[0]).suffix + ".json")
     ).is_file()
-
-    if image_area:
-        plot_geojson_on_image(
-            Path("images") / Path(course) / Path(image_list[0]).name,
-            Path("images") / Path(course) / Path(Path(image_list[0]).stem).with_suffix(Path(image_list[0]).suffix + ".json"),
-            Path("/tmp") / Path(image_list[0]).name,
-        )
 
     if question["type"] in ("multichoice", "truefalse"):
         answers = random.sample(question["answers"], len(question["answers"]))
@@ -1423,11 +1420,13 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         # out.append(correct_answer)
         return "<br>".join(out)
 
-    def find_feature_name(data, x, y):
+    def find_feature_name(data: dict, x: float, y: float) -> list | None:
         """
         Ritorna il nome della feature che contiene il punto (x, y).
         Se nessuna feature contiene il punto, ritorna None.
         """
+
+        aree: list = []
 
         point = Point(x, y)
 
@@ -1438,9 +1437,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
             polygon = shape(geom)  # Converte MultiPolygon/Polygon in geometria shapely
             if polygon.contains(point):
-                return feature["properties"]["name"]
+                aree.append(feature["properties"]["name"])
 
-        return None
+        return aree if aree else None
 
     question_id = session["quiz"][idx]
     # get question content
@@ -1492,6 +1491,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
     response = {"questiontext": question["questiontext"]}
 
+    # convert *word* to italic
     if response["questiontext"].count("*") == 2:
         response["questiontext"] = response["questiontext"].replace("*", "<i>", 1)
         response["questiontext"] = response["questiontext"].replace("*", "</i>", 1)
@@ -1533,10 +1533,8 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             if not negative_feedback:
                 negative_feedback = f'<br>La risposta giustà è "{correct_answers[0]}"'
 
-            # response["result"] = Markup(format_correct_answer(f"{sorted(answers)[-1]}<br>" + response["reply"] + " " + negative_feedback))
             response["result"] = Markup(format_correct_answer(response["reply"] + " " + negative_feedback))
         elif sorted(answers)[-1] < 100:
-            # positive_feedback = response["feedback"]
             response["result"] = Markup(format_correct_answer(response["reply"] + " " + response["feedback"]))
         else:
             positive_feedback = response["feedback"].replace("Esatto!", "")
@@ -1620,24 +1618,11 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     # save result
     if "recover" not in session:
         with engine.connect() as conn:
-            """conn.execute(
-                text(
-                    "INSERT INTO results (course, nickname, topic, question_type, question_name, good_answer) VALUES (?, ?, ?, ?, ?)"
-                ),
-                (
-                    session["nickname"],
-                    topic,
-                    question["type"],
-                    question["name"],
-                    response["correct"],
-                ),
-            )"""
-
             conn.execute(
-                text("""
-        INSERT INTO results (course, nickname, topic, question_type, question_name, good_answer)
-        VALUES (:course, :nickname, :topic, :question_type, :question_name, :good_answer)
-    """),
+                text(
+                    "INSERT INTO results (course, nickname, topic, question_type, question_name, good_answer) "
+                    "VALUES (:course, :nickname, :topic, :question_type, :question_name, :good_answer)"
+                ),
                 {
                     "course": course,
                     "nickname": session["nickname"],
