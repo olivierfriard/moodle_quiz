@@ -1,0 +1,43 @@
+{% include "header.html" %}
+<body>
+<section class="section">
+<div class="container">
+
+{% for q in questions %}
+
+<span class="tag is-info">{{ q.type }}</span><br>
+id: {{ q.id }}<br>
+{{ q.topic }}<br>
+{{ q.name }}<br>
+{{ content[q.id]['questiontext'] }}<br>
+
+<ul>
+{% for ans in content[q.id]['answers'] %}
+<li>
+
+{% if ans.fraction == "100" %} <span style="color: white">{% endif %}
+
+{{ ans.fraction }} {{ ans.text }} <span style="color: gray;">feedback: {{ ans["feedback"] }}</span>
+
+{% if ans.fraction == "100" %} </span>{% endif %}
+
+</li>
+{% endfor %}
+</ul>
+Images: {{ content[q.id]['files'] }}<br>
+<br>
+<a class="button is-link is-small" href="{{ url_for('view_question_id', course=course, question_id=q.id) }}">view</a>
+<a class="button is-warning is-small"  href="{{ url_for('edit_question', course=course, question_id=q.id) }}">edit</a>
+{# <a  class="button is-danger is-small" href="{{ url_for('delete_question', course=course, question_id=q.id) }}">delete</a> #}
+
+
+<hr>
+
+{% endfor %}
+
+</div>
+
+
+</section>
+</body>
+</html>
