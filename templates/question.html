@@ -42,9 +42,9 @@
 <div class="columns is-centered">
 <div class="column is-half">
 
+{% if step %}
 {%  include "display_lives.html" %}
 
-{% if step %}
 <div class="is-flex is-align-items-center">
   <figure class="image is-48x48">
     <img src="{{ url_for('send_static', filename='step' + step|string  +'.svg') }}" width="50em">
@@ -60,7 +60,7 @@
 {% if lives == 0 and not recover %}
 
 <a  class="button is-danger is-fullwidth is-large wrap-text-button" href="{{ url_for('recover_lives', course=course) }}">
-<strong>You've lost all your lives...<br>Click to recover them.</strong>
+<strong>{{ translation["You've lost all your lives..."] }}<br>{{ translation['Click to recover them!'] }}</strong>
 </a>
 
 {% else %}
@@ -72,13 +72,17 @@
 {% if image_area %}
 
 <div class="image-container" id="imgContainer">
-   <!-- <img id="myImage" src="{{ image_list[0] }}" alt="image with areas">-->
-        <img id="myImage" src="{{ url_for('map_image', course=course, image=image_list[0].split('/')[-1] ) }}" alt="image with areas">
-    <div id="clickCircle" class="circle" style="display: none;"></div>
-  </div>
- <div id="coords" class="is-size-4">Click on the image to give your answer</div>
+{% if not step %}
+<img id="image_with_areas" src="{{ url_for('map_image', course=course, image=image_list[0].split('/')[-1] ) }}" alt="image with areas">
+{% else %}
+<img id="image_with_areas" src="{{ image_list[0] }}" alt="image with areas">
+{% endif %}
 
- <form id="image_area_form" action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx) }}" method="POST">
+<div id="clickCircle" class="circle" style="display: none;"></div>
+</div>
+ <div id="coords" class="is-size-4">{{ translation['Click on the image to give your answer'] }}</div>
+
+ <form id="image_area_form" action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=question_id) }}" method="POST">
   
 <input type="text" id="normalized_coord" name="normalized_coord" value="">
   
@@ -94,6 +98,10 @@
   
 </form>
 
+
+
+
+
 <script>
 
 const form = document.getElementById('image_area_form');
@@ -108,7 +116,7 @@ const coordInput = document.getElementById('normalized_coord');
 
 
     const container = document.getElementById('imgContainer');
-    const img = document.getElementById('myImage');
+    const img = document.getElementById('image_with_areas');
     const circle = document.getElementById('clickCircle');
     const normalized_coord = document.getElementById('normalized_coord');
     const coordsDiv = document.getElementById('coords');
@@ -120,11 +128,10 @@ const coordInput = document.getElementById('normalized_coord');
 
       const width = img.clientWidth;
       const height = img.clientHeight;
-      const longerBorder = Math.max(width, height);
 
       // Normalize using the longer border
-      const normX = (x / longerBorder).toFixed(4);
-      const normY = (y / longerBorder).toFixed(4);
+      const normX = (x / width).toFixed(4);
+      const normY = (y / height).toFixed(4);
 
       normalized_coord.value = `${normX},${normY}`;
       /*coordsDiv.textContent = `Clicked at: (${normX}, ${normY})`;*/
@@ -138,9 +145,9 @@ const coordInput = document.getElementById('normalized_coord');
 
   {% else %}
 {# no image area #}
-{% for image in image_list %}
+    {% for image in image_list %}
 <img src="{{ image }}" alt="{{ image }}">
-{% endfor %}
+    {% endfor %}
 {% endif %}
 
 
@@ -153,11 +160,11 @@ const coordInput = document.getElementById('normalized_coord');
 
 <div class="columns">
 
-<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='true') }}" class="button  is-info is-medium">
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx if step else question_id, user_answer='true') }}" class="button  is-info is-medium">
 <strong>{{ translation['TRUE'] }}</strong></a>
 </div>
 
-<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='false') }}" class="button  is-info is-medium">
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx if step else question_id, user_answer='false') }}" class="button  is-info is-medium">
 <strong>{{ translation['FALSE'] }}</strong></a>
 </div>
 
@@ -204,6 +211,10 @@ const coordInput = document.getElementById('normalized_coord');
 
 
 
+{% if not step %}
+<br><br>
+<a class="button is-warning" href="{{ url_for('edit_question', course=course, question_id=question_id) }}">{{ translation['Edit question'] }}</a>
+{% endif %}
 
 </div>
 </div>

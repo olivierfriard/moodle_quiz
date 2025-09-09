@@ -52,15 +52,50 @@
 
 <p class="title is-4">Questions</p>
 
+<div class="block">Number of questions in course: {{ questions_number }}</div>
+
+<div class="block">
+
+
+<div class="dropdown is-hoverable">
+        <div class="dropdown-trigger">
+          <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
+            <span>New question</span>
+            <span class="icon is-small">
+              <i class="fas fa-angle-down" aria-hidden="true"></i>
+            </span>
+          </button>
+        </div>
+        <div class="dropdown-menu" id="dropdown-menu" role="menu">
+          <div class="dropdown-content">
+            <a href="{{ url_for('edit_question', course=course, question_id=-1) }}" class="dropdown-item">True / False</a>
+            <a href="{{ url_for('edit_question', course=course, question_id=-2) }}" class="dropdown-item">Multichoice</a>
+            <a href="{{ url_for('edit_question', course=course, question_id=-3) }}" class="dropdown-item">Short Answer</a>
+          </div>
+        </div>
+      </div>
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
 <div class="block">
 <a href="{{ url_for('load_questions', course=course) }}" class="button">Load questions</a>
 </div>
-Number of questions in course: {{ questions_number }}<br>
 
 
+<div class="block">
+<a  class="button" href="{{ url_for('all_questions', course=course) }}">Display all questions</a><br>
+</div>
 
-<br>
-<a href="{{ url_for('all_questions', course=course) }}">Display questions</a><br>
 <a href="{{ url_for('all_questions_gift', course=course) }}">Display questions (GIFT)</a><br>
 <br>
 <a href="{{ url_for('bookmarked_questions', course=course) }}">Display bookmarks</a><br>

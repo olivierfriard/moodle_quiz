@@ -45,3 +45,9 @@
 "Edit question" = "Modifica domanda"
 
 "Remove from saved questions" = "Rimuovi dai bookmarks"
+
+"Click on the image to give your answer" = "Cliccare sull'imagine per dare la risposta"
+
+"View question" = "Visualizza domanda"
+
+"Next question" = "Domanda seguente"

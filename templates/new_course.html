@@ -50,7 +50,7 @@ Create a new course
 <div class="field">
 <label class="label">Question types</label>
 <div class="control">
-<input name="question_types" class="input" type="text" value="{%if config %}{{ config.QUESTION_TYPES }}{%else%}truefalse,multichoice,shortanswer,numerical{%endif%}">
+<input name="question_types" class="input" type="text" value="{%if config %}{{ config.QUESTION_TYPES }}{%else%}['truefalse','multichoice','shortanswer','numerical']{%endif%}">
 </div>
 </div>
 
