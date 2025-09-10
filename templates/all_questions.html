@@ -1,7 +1,22 @@
 {% include "header.html" %}
+
+
+<title>{{ course_name }} - All questions</title>
+
 <body>
 <section class="section">
 <div class="container">
+
+<p class="title is-4">{{ course }}</p>
+<p class="block">
+<a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
+Manage quizz
+</a>
+</p>
+<p class="title is-size-5">All questions</p>
+
+
+{% if questions %}
 
 {% for q in questions %}
 
@@ -34,6 +49,15 @@ Images: {{ content[q.id]['files'] }}<br>
 <hr>
 
 {% endfor %}
+
+{% else %}
+
+No questions...<br>
+<br>
+<a href="{{ url_for('course_management', course=course)}}">Go to course management</a>
+
+
+{% endif %}
 
 </div>
 

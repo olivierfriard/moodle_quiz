@@ -21,8 +21,9 @@
 {{ translation['Welcome'] }} <strong>{{ session['nickname'] }}</strong>!
 
 
-{% if session['nickname'] == 'admin' or session['manager'] %}<a href="{{ url_for('course_management', course=course) }}">
-Manage course
+{% if session['nickname'] == 'admin' or session['manager'] %}
+<a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
+Manage quizz
 </a> {% endif %} 
 
 </p>

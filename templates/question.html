@@ -80,9 +80,9 @@
 
 <div id="clickCircle" class="circle" style="display: none;"></div>
 </div>
- <div id="coords" class="is-size-4">{{ translation['Click on the image to give your answer'] }}</div>
+<div id="coords" class="is-size-4">{{ translation['Click on the image to give your answer'] }}</div>
 
- <form id="image_area_form" action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=question_id) }}" method="POST">
+<form id="image_area_form" action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=question_id) }}" method="POST">
   
 <input type="text" id="normalized_coord" name="normalized_coord" value="">
   
@@ -188,7 +188,7 @@ const coordInput = document.getElementById('normalized_coord');
 {% else %}
 {# shortanswer or numerical #}
 {% if not image_area %}
-<form action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx) }}" method="post">
+<form action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx if step else question_id ) }}" method="post">
 <br>
 <div class="field">
 <label class="label">{{ translation['Your answer'] }}</label>
