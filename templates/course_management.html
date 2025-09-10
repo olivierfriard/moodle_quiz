@@ -25,7 +25,7 @@
 <p class="title is-size-5">Quizz management</p>
 <br>
 <div class="block">
-<a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Go to quizz</a>
+<a href="{{ url_for('home', course=course) }}" class="button is-link">Go to quizz</a>
 </div>
 
 
@@ -50,6 +50,31 @@
 
 </div>
 
+
+<div class="box">
+
+    <p class="title is-4">Topics</p>
+    
+    <div class="block">
+    <a href="{{ url_for('new_topic', course=course) }}" class="button">Create a new topic</a>
+    </div>
+
+    <br>
+    {% for topic in topics %}
+    
+    {{ topic.topic}} - {{ topic.type}}: <strong>{{ topic.n_questions }}</strong> questions. 
+    
+    <br>
+    {% endfor %}
+    
+    <br>
+    
+    </div>
+
+
+
+
+
 <div class="box">
 
 <p class="title is-4">Questions</p>
@@ -62,7 +87,7 @@
 <div class="dropdown is-hoverable">
         <div class="dropdown-trigger">
           <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
-            <span>New question</span>
+            <span>Create a new question</span>
             <span class="icon is-small">
               <i class="fas fa-angle-down" aria-hidden="true"></i>
             </span>
@@ -87,21 +112,33 @@
 
 
 
-
-
 <div class="block">
-<a href="{{ url_for('load_questions', course=course) }}" class="button">Load questions</a>
+<a href="{{ url_for('load_questions', course=course) }}" class="button">Load questions from file</a>
 </div>
 
 
 <div class="block">
-<a  class="button" href="{{ url_for('all_questions', course=course) }}">Display all questions</a><br>
+<a class="button" href="{{ url_for('all_questions', course=course) }}">Display all questions</a><br>
+</div>
+
+<div class="block">
+<a  class="button" href="{{ url_for('all_images', course=course) }}">Display all images</a><br>
 </div>
 
 <a href="{{ url_for('all_questions_gift', course=course) }}">Display questions (GIFT)</a><br>
-<br>
-<a href="{{ url_for('bookmarked_questions', course=course) }}">Display bookmarks</a><br>
-<a href="{{ url_for('reset_bookmarked_questions', course=course) }}">Reset bookmarks</a><br>
+
+</div>
+
+
+
+<div class="box">
+
+<p class="title is-4">Bookmarks</p>
+
+<a  class="button" href="{{ url_for('bookmarked_questions', course=course) }}">Display bookmarks</a><br>
+<a  class="button is-danger" href="{{ url_for('reset_bookmarked_questions', course=course) }}">Reset bookmarks</a><br>
+
+
 
 </div>
 
@@ -139,21 +176,7 @@ Number of answers by day<br>
 </div>
 
 
-<div class="box">
 
-<p class="title is-4">Topics</p>
-
-<br>
-{% for topic in topics %}
-
-{{ topic.topic}} - {{ topic.type}}: <strong>{{ topic.n_questions }}</strong> questions. 
-
-<br>
-{% endfor %}
-
-<br>
-
-</div>
 
 
 <div class="box">

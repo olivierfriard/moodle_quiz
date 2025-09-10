@@ -12,6 +12,7 @@ Manage quizz
 </a>
 
 {% if question_id > 0 %}
+<br>
 {{ content }}
 {% endif %}
 <br>
@@ -29,16 +30,23 @@ Manage quizz
 <br>
 
 
-
-
 {% if image_area %}
 <div class="image-container" id="imgContainer">
 <img id="image_with_areas" src="{{ url_for('map_image', course=course, image=image_list[0].split('/')[-1] ) }}" alt="image with areas">
-{% endif %}
+{% elif image_list %}
 
-{% if image_list[0] %}Image with areas: {{ image_area }}<br>{% endif %}
+{% for img in image_list %}
+<img src="{{ img }}">
+<a class="button is-danger is-small confirm-link" href="{{ url_for('delete_image', course=course, question_id=question_id, image_name=img.split('/')[-1]) }}">delete image</a>
+<br>
+{% endfor %}
 
 
+{%  endif %}
+
+{# {% if image_list[0] %}Image with areas: {{ image_area }}<br>{% endif %} #}
+
+<br>
 
 <form action="{{ url_for('edit_question', course=course, question_id=question_id) }}" method="post" enctype="multipart/form-data">
 
@@ -119,9 +127,9 @@ Manage quizz
 
 
 
+{# edit question #}
 
-
-{% if question_id > 0 %} {# edit question #}
+{% if question_id > 0 %} 
 {% for answer in content.answers %}
 
 <div class="columns">
@@ -155,10 +163,47 @@ Manage quizz
         </div>
 
 </div>
+</div>
+
+{% endfor %}
+
+{# add empty fields #}
+
+{% for id in range(content.answers|length + 1, content.answers|length + 4)%}
+<div class="columns">
+
+  <div class="column">
+    <div class="field">
+    <label class="label">answer{{ id }}</label>
+    <div class="control">
+    <input name="answer{{ id }}" class="input" type="text" autocomplete="off" value="">
+    </div>
+    </div>
+</div>
+
+<div class="column">
+    <div class="field">
+        <label class="label">Score answer{{ id }}</label>
+        <div class="control">
+        <input name="score_answer{{ id }}" class="input" type="number" autocomplete="off"  min="0" max="100" value="0">
+        </div>
+        </div>
+</div>
+
+<div class="column">
+    <div class="field">
+        <label class="label">Feedback answer{{ id }}</label>
+        <div class="control">
+        <input name="feedback_answer{{ id }}" class="input" type="text" autocomplete="off" value="">
+        </div>
+        </div>
+</div>
 
 </div>
 
 {% endfor %}
+
+
 {% endif %}
 
 <br><br>
@@ -217,6 +262,21 @@ Manage quizz
 </div>
 
 </section>
+
+
+
+<script>
+  document.querySelectorAll('.confirm-link').forEach(link => {
+    link.addEventListener('click', function(event) {
+      const conferma = confirm("Please confirm deletion of the image");
+      if (!conferma) {
+        event.preventDefault();
+      }
+    });
+  });
+</script>
+
+
 </body>
 
 </html>

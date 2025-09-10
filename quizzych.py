@@ -1503,7 +1503,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         # view question id
         question_id = idx
 
-    print(f"{question_id=}")
+    # print(f"{question_id=}")
 
     # get question content
     with engine.connect() as conn:
@@ -1554,7 +1554,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
                 user_answer_list = area if area is not None else []
 
-                print(f"{user_answer_list=}")
+                # print(f"{user_answer_list=}")
 
         else:
             user_answer = request.form.get("user_answer")
@@ -1583,12 +1583,17 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                     )
 
         if "correct_answer" not in response:
-            response["result"] = Markup(format_wrong_answer("", correct_answers))
             response["correct"] = False
         else:
             response["correct"] = response["correct_answer"]
+        if response["correct"]:
+            response["result"] = Markup(format_correct_answer(response["feedback"]))
+        else:
+            response["result"] = Markup(
+                format_wrong_answer(response["feedback"], correct_answers)
+            )
 
-        print(f"{response=}")
+        # print(f"{response=}")
 
         user_answer = ", ".join(user_answer_list)
 
@@ -2078,6 +2083,57 @@ def course_management(course: str):
 
 
 @app.route(
+    f"{app.config['APPLICATION_ROOT']}/delete_image/<course>/<image_name>/<question_id>",
+    methods=["GET"],
+)
+@course_exists
+@check_login
+@is_manager_or_admin
+def delete_image(course: str, image_name: str, question_id: int):
+    if (Path("images") / Path(course) / Path(image_name).name).is_file():
+        (Path("images") / Path(course) / Path(image_name).name).unlink()
+
+        # check for json file (image areas) to delete
+        if (
+            Path("images")
+            / Path(course)
+            / Path(Path(image_name).name).with_suffix(Path(image_name).suffix + ".json")
+        ).is_file():
+            (
+                Path("images")
+                / Path(course)
+                / Path(Path(image_name).name).with_suffix(
+                    Path(image_name).suffix + ".json"
+                )
+            ).unlink()
+
+        with engine.connect() as conn:
+            question = (
+                conn.execute(
+                    text(
+                        "SELECT * FROM questions WHERE course = :course AND id = :question_id"
+                    ),
+                    {"course": course, "question_id": question_id},
+                )
+                .mappings()
+                .fetchone()
+            )
+            content = json.loads(question["content"])
+            # delete all references to image in question
+            while image_name in content["files"]:
+                content["files"].remove(image_name)
+
+            conn.execute(
+                text("UPDATE questions SET content = :content WHERE id = :question_id"),
+                {"content": json.dumps(content), "question_id": question_id},
+            )
+
+            conn.commit()
+
+    return redirect(url_for("edit_question", course=course, question_id=question_id))
+
+
+@app.route(
     f"{app.config['APPLICATION_ROOT']}/load_questions/<course>", methods=["GET", "POST"]
 )
 @course_exists
@@ -2181,7 +2237,7 @@ def edit_parameters(course: str):
             "error",
         )
 
-        return redirect(url_for("admin", course=course))
+        return redirect(url_for("course_management", course=course))
 
 
 @app.route(f"{app.config['APPLICATION_ROOT']}/add_lives/<course>", methods=["GET"])
@@ -2231,6 +2287,63 @@ def all_questions(course: str):
 
     return render_template(
         "all_questions.html", course=course, questions=questions, content=content
+    )
+
+
+@app.route(
+    f"{app.config['APPLICATION_ROOT']}/new_topic/<course>", methods=["GET", "POST"]
+)
+@course_exists
+@check_login
+@is_manager_or_admin
+def new_topic(course: str):
+    """
+    new_topic
+    """
+    pass
+
+
+@app.route(f"{app.config['APPLICATION_ROOT']}/all_images/<course>", methods=["GET"])
+@course_exists
+@check_login
+@is_manager_or_admin
+def all_images(course: str):
+    """
+    display all images
+    """
+    with engine.connect() as conn:
+        questions = (
+            conn.execute(
+                text("SELECT * FROM questions WHERE course = :course ORDER BY id"),
+                {"course": course},
+            )
+            .mappings()
+            .fetchall()
+        )
+
+        content: dict = {}
+        for row in questions:
+            content[row["id"]] = json.loads(row["content"])
+            image_list = []
+            for image in content[row["id"]].get("files", []):
+                if image.startswith("http"):
+                    image_list.append(image)
+                else:
+                    image_list.append(
+                        f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}"
+                    )
+            content[row["id"]]["image_list"] = image_list
+            # check if json file is present (areas definition) if one image
+            image_area = (len(image_list) == 1) and (
+                Path("images")
+                / Path(course)
+                / Path(Path(image_list[0]).name).with_suffix(
+                    Path(image_list[0]).suffix + ".json"
+                )
+            ).is_file()
+
+    return render_template(
+        "all_images.html", course=course, questions=questions, content=content
     )
 
 
@@ -2383,7 +2496,7 @@ def edit_question(course: str, question_id: int):
         )
 
     if request.method == "POST":
-        if int(question_id) > 0:
+        if int(question_id) > 0:  # edit question
             with engine.connect() as conn:
                 question = (
                     conn.execute(
@@ -2406,6 +2519,8 @@ def edit_question(course: str, question_id: int):
             answers: list = []
             for x in request.form:
                 if x.startswith("answer"):
+                    if not request.form[x]:
+                        continue
                     answers.append(
                         {
                             "text": request.form[x],
@@ -2488,22 +2603,27 @@ def edit_question(course: str, question_id: int):
 
         # check for files
         # image
-        file = request.files["file"]
-        print(file)
-        if file:
-            file_path = Path("images") / Path(course) / Path(file.filename)
-            file.save(file_path)
+        img_file = request.files["file"]
+        if img_file:
+            file_path = Path("images") / Path(course) / Path(img_file.filename)
+            img_file.save(file_path)
             # add image
             if "files" not in content:
                 content["files"] = []
-            content["files"].append(file.filename)
+            content["files"].append(img_file.filename)
 
-        # json
-        file = request.files["json_file"]
-        if file:
-            file_path = Path("images") / Path(course) / Path(file.filename)
-            file.save(file_path)
-            # content["files"].append(file.filename)
+            # json
+            json_file = request.files["json_file"]
+            if json_file:
+                # save json file with image file name with .json
+                file_path = (
+                    Path("images")
+                    / Path(course)
+                    / Path(img_file.filename).with_suffix(
+                        Path(img_file.filename).suffix + ".json"
+                    )
+                )
+                json_file.save(file_path)
 
         # save to db
         with engine.connect() as conn:
