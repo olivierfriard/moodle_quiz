@@ -51,6 +51,13 @@
   </figure>
   <p class="ml-3 is-size-4">{{ topic }}</p>
 </div>
+{% else %}
+<p class="block">
+  <a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
+  Manage quizz
+  </a>
+  </p>
+
 {% endif %}
 {#  {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %} #}
 
@@ -211,7 +218,7 @@ const coordInput = document.getElementById('normalized_coord');
 
 
 
-{% if not step %}
+{% if not step or session['nickname'] == 'admin' %}
 <br><br>
 <a class="button is-warning" href="{{ url_for('edit_question', course=course, question_id=question_id) }}">{{ translation['Edit question'] }}</a>
 {% endif %}

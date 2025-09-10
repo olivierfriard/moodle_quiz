@@ -2669,6 +2669,16 @@ def edit_question(course: str, question_id: int):
                 )
             conn.commit()
 
+        print(request.form["referrer"])
+
+        if (
+            "check_answer" in request.form["referrer"]
+            and "TEST_QUESTION" in request.form["referrer"]
+        ):
+            return redirect(
+                url_for("view_question_id", course=course, question_id=question_id)
+            )
+
         return redirect(request.form["referrer"])
 
         # return redirect(url_for("all_questions", course=course))
