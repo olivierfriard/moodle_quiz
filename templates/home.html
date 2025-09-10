@@ -13,7 +13,17 @@
 
 <div class="box">
 
-  {%  include "course_name.html" %}
+{%  include "course_name.html" %}
+
+
+{% if session['nickname'] == 'admin' or session['manager'] %}
+<div class="block">
+<a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
+Manage quizz
+</a>
+</div>
+{% endif %} 
+
 
 <div class="block">
 <p class="subtitle">
@@ -21,10 +31,6 @@
 {{ translation['Welcome'] }} <strong>{{ session['nickname'] }}</strong>!
 
 
-{% if session['nickname'] == 'admin' or session['manager'] %}
-<a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
-Manage quizz
-</a> {% endif %} 
 
 </p>
 </div>

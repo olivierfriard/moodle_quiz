@@ -54,10 +54,12 @@
 <div class="box">
 
     <p class="title is-4">Topics</p>
-    
+
+    {#
     <div class="block">
     <a href="{{ url_for('new_topic', course=course) }}" class="button">Create a new topic</a>
     </div>
+    #}
 
     <br>
     {% for topic in topics %}

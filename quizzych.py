@@ -1497,7 +1497,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
         return aree if aree else None
 
-    if "quiz" in session:
+    if step:
         question_id = session["quiz"][idx]
     else:
         # view question id
@@ -2442,6 +2442,20 @@ def edit_question(course: str, question_id: int):
     translation = get_translation("it")
 
     if request.method == "GET":
+        # get topics
+        with engine.connect() as conn:
+            topics = [
+                row["topic"]
+                for row in conn.execute(
+                    text(
+                        "SELECT topic FROM questions WHERE course = :course GROUP BY topic ORDER BY topic"
+                    ),
+                    {"course": course},
+                )
+                .mappings()
+                .all()
+            ]
+
         if int(question_id) > 0:
             with engine.connect() as conn:
                 question = (
@@ -2487,12 +2501,14 @@ def edit_question(course: str, question_id: int):
         return render_template(
             "edit_question.html",
             course=course,
+            topics=topics,
             question_id=int(question_id),
             question=question,
             content=content,
             translation=translation,
             image_area=image_area,
             image_list=image_list,
+            referrer=request.referrer,
         )
 
     if request.method == "POST":
@@ -2653,7 +2669,9 @@ def edit_question(course: str, question_id: int):
                 )
             conn.commit()
 
-        return redirect(url_for("all_questions", course=course))
+        return redirect(request.form["referrer"])
+
+        # return redirect(url_for("all_questions", course=course))
 
 
 @app.route(

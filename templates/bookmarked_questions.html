@@ -9,12 +9,18 @@
 <div class="columns is-centered">
 <div class="column is-half">
 
+    {{ request.url }}
 
-<div class="block">
-<a href="{{ url_for('course_management', course=course) }}" class="button is-link">Course management</a>
-</div>
-        
-<h1 class="title is-4">Bookmarks</h1>
+<p class="title is-4">{{ course }}</p>
+
+<p class="block">
+    <a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
+    Manage quizz
+    </a>
+    </p>
+
+
+<h1 class="title is-5">Bookmarks</h1>
 
 {% if questions %}
 {% for question in questions %}
