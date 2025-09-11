@@ -114,30 +114,6 @@ def load_questions_xml(xml_file: Path, course: str, config: dict) -> int:
         # load questions from xml moodle file
         question_data = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{course}")
 
-        # load questions in database
-        """
-        conn = sqlite3.connect(xml_file.with_suffix(".sqlite"))
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM questions")
-        cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'questions'")
-        conn.commit()
-
-        for topic in question_data:
-            for question in question_data[topic]:
-                cursor.execute(
-                    "INSERT INTO questions (topic, type, name, content) VALUES (?, ?, ?, ?)",
-                    (
-                        topic,
-                        question["type"],
-                        question["name"],
-                        json.dumps(question),
-                    ),
-                )
-        conn.commit()
-        conn.close()
-
-        """
-
         with engine.connect() as conn:
             conn.execute(
                 text("DELETE FROM questions WHERE course = :course_name"),
@@ -419,19 +395,6 @@ def home(course: str = ""):
     if "nickname" in session and session["nickname"] != "admin":
         lives = get_lives_number(course, session["nickname"])
 
-        # check if nickname exists
-        """
-        with engine.connect() as conn:
-            if (
-                conn.execute(
-                    text("SELECT * FROM users WHERE nickname = :nickname"),
-                    {"nickname": session["nickname"]},
-                ).fetchone()
-                is None
-            ):
-                return redirect(url_for("logout", course=course))
-        """
-
     # check if brush-up available
     brushup_availability: bool = False
 
@@ -525,7 +488,7 @@ def get_visible_topics(course):
         topics: list = [
             row["topic"]
             for row in conn.execute(
-                text("SELECT DISTINCT topic FROM questions WHERE course = :course ORDER BY topic"),
+                text("SELECT DISTINCT topic FROM questions WHERE course = :course AND deleted IS NULL ORDER BY topic"),
                 {"course": course},
             )
             .mappings()
@@ -592,7 +555,7 @@ def recover_quiz(course: str):
     with engine.connect() as conn:
         # get number of questions in recover topic
         if config["RECOVER_TOPICS"]:
-            stmt = text("SELECT COUNT(*) AS n_questions FROM questions WHERE topic IN :topics").bindparams(
+            stmt = text("SELECT COUNT(*) AS n_questions FROM questions WHERE deleted IS NULL AND topic IN :topics").bindparams(
                 bindparam("topics", expanding=True)
             )
 
@@ -602,10 +565,14 @@ def recover_quiz(course: str):
 
         else:  # no recover topic
             # count all questions
-            n_recover_questions = conn.execute(text("SELECT COUNT(*) AS n_questions FROM questions")).mappings().fetchone()["n_questions"]
+            n_recover_questions = (
+                conn.execute(text("SELECT COUNT(*) AS n_questions FROM questions WHERE deleted IS NULL"))
+                .mappings()
+                .fetchone()["n_questions"]
+            )
             topics: list = [
                 row["topic"]
-                for row in conn.execute(text("SELECT DISTINCT topic FROM questions")).mappings().fetchall()
+                for row in conn.execute(text("SELECT DISTINCT topic FROM questions WHERE deleted IS NULL")).mappings().fetchall()
                 if row["topic"] not in config["TOPICS_TO_HIDE"]
             ]
             session["quiz"] = quiz.get_quiz_recover(questions_df, topics, n_recover_questions)
@@ -625,7 +592,7 @@ def all_topic_quiz(course: str, topic: str):
     create a quiz with all questions of a topic
     """
     with engine.connect() as conn:
-        query = text("SELECT id from questions WHERE course = :course AND topic = :topic")
+        query = text("SELECT id FROM questions WHERE deleted IS NULL AND course = :course AND topic = :topic")
         rows = conn.execute(query, {"course": course, "topic": topic}).mappings().fetchall()
 
     session["quiz"] = [row["id"] for row in rows]
@@ -654,7 +621,7 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
                         AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = :nickname
-                WHERE q.course = :course
+                WHERE q.course = :course AND q.deleted IS NULL
                 GROUP BY
                     q.id,
                     q.topic,
@@ -814,6 +781,7 @@ def step(course: str, topic: str, step: int):
                         AND q.type=r.question_type
                         AND q.name=r.question_name
                         AND nickname = :nickname
+                        AND q.deleted IS NULL
                 WHERE q.course = :course
                 GROUP BY
                     q.id,
@@ -890,21 +858,6 @@ def get_score(course: str, topic: str, nickname: str = "") -> float:
     if nickname is empty get score of current user
     """
 
-    """
-        SELECT (SUM(percentage_ok) / (SELECT COUNT(*) FROM questions WHERE topic = :topic)) AS score
-    FROM      (
-    SELECT
-        CAST(SUM(CASE WHEN good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF((SELECT COUNT(*) 
-             FROM results WHERE question_name = r.question_name AND nickname = :nickname), 0) AS percentage_ok
-    FROM
-        results r
-
-    WHERE topic = :topic AND nickname = :nickname
-
-    GROUP BY question_name
-    ) AS subquery;
-    """
-
     with engine.connect() as conn:
         query = text("""
 SELECT
@@ -919,7 +872,7 @@ FROM (
         ON q.course = r.course
         AND q.name = r.question_name
         AND r.nickname = :nickname
-    WHERE q.course = r.course AND q.topic = :topic
+    WHERE q.course = r.course AND q.topic = :topic AND q.deleted IS NULL
     GROUP BY q.name
 ) AS subquery
 """)
@@ -1038,7 +991,7 @@ def question(course: str, topic: str, step: int, idx: int):
         with engine.connect() as conn:
             question = json.loads(
                 conn.execute(
-                    text("SELECT content FROM questions WHERE course= :course AND id = :question_id"),
+                    text("SELECT content FROM questions WHERE course= :course AND deleted IS NULL AND id = :question_id"),
                     {"course": course, "question_id": question_id},
                 )
                 .mappings()
@@ -1242,6 +1195,7 @@ def view_question_id(course: str = "", question_id: int = 0):
     """
     display question by id
     useful to check an arbitrary question
+    Can view deleted question
     """
 
     translation = get_translation("it")
@@ -1868,7 +1822,7 @@ def course_management(course: str):
     with engine.connect() as conn:
         questions_number = (
             conn.execute(
-                text("SELECT COUNT(*) AS questions_number FROM questions WHERE course = :course"),
+                text("SELECT COUNT(*) AS questions_number FROM questions WHERE deleted IS NULL AND course = :course"),
                 {"course": course},
             )
             .mappings()
@@ -1884,7 +1838,10 @@ def course_management(course: str):
 
         topics = (
             conn.execute(
-                text("SELECT topic, type, count(*) AS n_questions FROM questions WHERE course = :course GROUP BY topic, type"),
+                text(
+                    "SELECT topic, type, count(*) AS n_questions FROM questions "
+                    "WHERE deleted IS NULL AND course = :course GROUP BY topic, type"
+                ),
                 {"course": course},
             )
             .mappings()
@@ -1893,7 +1850,7 @@ def course_management(course: str):
 
         topics_list = (
             conn.execute(
-                text("SELECT DISTINCT topic FROM questions WHERE course = :course"),
+                text("SELECT DISTINCT topic FROM questions WHERE deleted IS NULL AND course = :course"),
                 {"course": course},
             )
             .mappings()
@@ -1903,7 +1860,8 @@ def course_management(course: str):
         n_questions_by_day = (
             conn.execute(
                 text(
-                    "select DATE(timestamp) AS day, count(*) AS n_questions, count(distinct nickname) AS n_users FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') GROUP BY day ORDER BY day"
+                    "SELECT DATE(timestamp) AS day, count(*) AS n_questions, count(distinct nickname) AS n_users FROM results "
+                    "WHERE course = :course AND nickname NOT IN ('admin') GROUP BY day ORDER BY day"
                 ),
                 {"course": course},
             )
@@ -1914,7 +1872,8 @@ def course_management(course: str):
         active_users_last_hour = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_hour FROM results WHERE course = :course AND  nickname NOT IN ('admin', 'manager') AND timestamp >= NOW() - INTERVAL '1 hour'"
+                    "SELECT count(distinct nickname) AS active_users_last_hour FROM results "
+                    "WHERE course = :course AND  nickname NOT IN ('admin') AND timestamp >= NOW() - INTERVAL '1 hour'"
                 ),
                 {"course": course},
             )
@@ -1925,7 +1884,8 @@ def course_management(course: str):
         active_users_last_day = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_day FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') AND timestamp >= NOW() - INTERVAL '1 day'"
+                    "SELECT count(distinct nickname) AS active_users_last_day FROM results "
+                    "WHERE course = :course AND nickname NOT IN ('admin') AND timestamp >= NOW() - INTERVAL '1 day'"
                 ),
                 {"course": course},
             )
@@ -1936,7 +1896,8 @@ def course_management(course: str):
         active_users_last_week = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_week FROM results WHERE course = :course AND nickname NOT IN ('admin', 'manager') AND timestamp >= NOW() - INTERVAL '7 days'"
+                    "SELECT count(distinct nickname) AS active_users_last_week FROM results "
+                    "WHERE course = :course AND nickname NOT IN ('admin') AND timestamp >= NOW() - INTERVAL '7 days'"
                 ),
                 {"course": course},
             )
@@ -1947,7 +1908,8 @@ def course_management(course: str):
         active_users_last_month = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_month FROM results WHERE course = :course AND  nickname NOT IN ('admin', 'manager') AND timestamp >= NOW() - INTERVAL '30 days'"
+                    "SELECT count(distinct nickname) AS active_users_last_month FROM results "
+                    "WHERE course = :course AND nickname NOT IN ('admin') AND timestamp >= NOW() - INTERVAL '30 days'"
                 ),
                 {"course": course},
             )
@@ -1981,6 +1943,9 @@ def course_management(course: str):
 @check_login
 @is_manager_or_admin
 def delete_image(course: str, image_name: str, question_id: int):
+    """
+    delete images and json (if any) from a question
+    """
     if (Path("images") / Path(course) / Path(image_name).name).is_file():
         (Path("images") / Path(course) / Path(image_name).name).unlink()
 
@@ -2137,7 +2102,7 @@ def all_questions(course: str):
     with engine.connect() as conn:
         questions = (
             conn.execute(
-                text("SELECT * FROM questions WHERE course = :course ORDER BY id"),
+                text("SELECT * FROM questions WHERE course = :course AND deleted IS NULL ORDER BY id"),
                 {"course": course},
             )
             .mappings()
@@ -2148,7 +2113,33 @@ def all_questions(course: str):
         for row in questions:
             content[row["id"]] = json.loads(row["content"])
 
-    return render_template("all_questions.html", course=course, questions=questions, content=content)
+    return render_template("all_questions.html", course=course, questions=questions, content=content, title="All questions")
+
+
+@app.route(f"{app.config['APPLICATION_ROOT']}/deleted_questions/<course>", methods=["GET"])
+@course_exists
+@check_login
+@is_manager_or_admin
+def deleted_questions(course: str):
+    """
+    display deleted questions
+    """
+
+    with engine.connect() as conn:
+        questions = (
+            conn.execute(
+                text("SELECT * FROM questions WHERE course = :course AND deleted IS NOT NULL ORDER BY id"),
+                {"course": course},
+            )
+            .mappings()
+            .fetchall()
+        )
+
+        content: dict = {}
+        for row in questions:
+            content[row["id"]] = json.loads(row["content"])
+
+    return render_template("all_questions.html", course=course, questions=questions, content=content, title="Deleted questions")
 
 
 @app.route(f"{app.config['APPLICATION_ROOT']}/new_topic/<course>", methods=["GET", "POST"])
@@ -2173,7 +2164,7 @@ def all_images(course: str):
     with engine.connect() as conn:
         questions = (
             conn.execute(
-                text("SELECT * FROM questions WHERE course = :course ORDER BY id"),
+                text("SELECT * FROM questions WHERE deleted IS NULL AND course = :course ORDER BY id"),
                 {"course": course},
             )
             .mappings()
@@ -2211,7 +2202,7 @@ def all_questions_gift(course: str):
     with engine.connect() as conn:
         for row in (
             conn.execute(
-                text("SELECT * FROM questions WHERE course = :course ORDER BY id"),
+                text("SELECT * FROM questions WHERE deleted IS NULL AND course = :course ORDER BY id"),
                 {"course": course},
             )
             .mappings()
@@ -2494,6 +2485,46 @@ def edit_question(course: str, question_id: int):
         # return redirect(url_for("all_questions", course=course))
 
 
+@app.route(
+    f"{app.config['APPLICATION_ROOT']}/delete_question/<course>/<question_id>",
+    methods=["GET"],
+)
+@course_exists
+@check_login
+@is_manager_or_admin
+def delete_question(course: str, question_id: int):
+    """
+    set question as deleted
+    """
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE questions SET deleted = NOW() WHERE id = :question_id "),
+            {"question_id": question_id},
+        )
+        conn.commit()
+    return redirect(request.referrer)
+
+
+@app.route(
+    f"{app.config['APPLICATION_ROOT']}/undelete_question/<course>/<question_id>",
+    methods=["GET"],
+)
+@course_exists
+@check_login
+@is_manager_or_admin
+def undelete_question(course: str, question_id: int):
+    """
+    set question as not deleted
+    """
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE questions SET deleted = NULL WHERE id = :question_id "),
+            {"question_id": question_id},
+        )
+        conn.commit()
+    return redirect(request.referrer)
+
+
 @app.route(f"{app.config['APPLICATION_ROOT']}/bookmarked_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
@@ -2512,6 +2543,7 @@ def bookmarked_questions(course: str):
                 "FROM bookmarks, questions "
                 "WHERE bookmarks.question_id = questions.id "
                 "AND nickname = :nickname "
+                "AND questions.deleted IS NULL "
                 "ORDER BY questions.id "
             ),
             {"nickname": session["nickname"]},
