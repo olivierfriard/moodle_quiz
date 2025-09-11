@@ -91,7 +91,7 @@ def get_course_config(course: str):
         "STEP_NAMES": ["STEP #1", "STEP #2", "STEP #3"],
         "N_QUESTIONS_FOR_RECOVER": 5,
         "RECOVER_TOPICS": [],
-        "mode": "free",
+        "login_mode": "free",
     }
     return config
 
@@ -241,14 +241,12 @@ def check_login(f):
             if session["nickname"] != "admin":
                 # check if nickname exists
                 with engine.connect() as conn:
-                    if (
-                        conn.execute(
-                            text("SELECT * FROM users WHERE nickname = :nickname"),
-                            {"nickname": session["nickname"]},
-                        ).fetchone()
-                        is None
-                    ):
-                        return redirect(url_for("logout", course=kwargs["course"]))
+                    if not conn.execute(
+                        text("SELECT count(*) FROM users WHERE nickname = :nickname OR email = :email"),
+                        {"nickname": session["nickname"], "email": session.get("email", "x")},
+                    ).scalar():
+                        return redirect(url_for("google_auth.logout", course=kwargs["course"]))
+
         return f(*args, **kwargs)
 
     return decorated_function
@@ -278,17 +276,21 @@ def is_manager_or_admin(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # check if admin
-        if session["nickname"] != "admin":
+        flag_admin = session.get("nickname", "") == "admin"
+
+        # check if manager
+        config = get_course_config(kwargs["course"])
+        if config["login_mode"] == "google_auth":
+            flag_manager = session.get("email", "") in config["managers"]
+        else:
+            flag_manager = session.get("nickname", "") in config["managers"]
+
+        if not flag_admin and not flag_manager:
             flash(
                 Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
                 "",
             )
             return redirect(url_for("home", course=kwargs["course"]))
-
-        if session.get("nickname", ""):
-            config = get_course_config(kwargs["course"])
-            if session["nickname"] not in config["managers"]:
-                return redirect(url_for("home", course=kwargs["course"]))
 
         return f(*args, **kwargs)
 
@@ -406,9 +408,12 @@ def home(course: str = ""):
     config = get_course_config(course)
     translation = get_translation("it")
 
-    print(config)
-
-    session["manager"] = session.get("nickname", "") and (session["nickname"] in config["managers"])
+    if config["login_mode"] == "google_auth":
+        session["manager"] = session.get("email", "") and (session["email"] in config["managers"])
+    elif "nickname" in session:
+        session["manager"] = session.get("nickname", "") and (session["nickname"] in config["managers"])
+    else:
+        session["manager"] = False
 
     lives = None
     if "nickname" in session and session["nickname"] != "admin":

@@ -87,6 +87,7 @@ def callback():
         return redirect(url_for("main_home"))
 
     session["nickname"] = userinfo["name"]
+    session["name"] = userinfo["name"]
     session["email"] = userinfo["email"]
 
     # check if admin
