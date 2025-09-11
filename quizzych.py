@@ -278,12 +278,18 @@ def is_manager_or_admin(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # check if admin
-        if session["nickname"] != "admin" and not session["manager"]:
+        if session["nickname"] != "admin":
             flash(
                 Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
                 "",
             )
             return redirect(url_for("home", course=kwargs["course"]))
+
+        if session.get("nickname", ""):
+            config = get_course_config(kwargs["course"])
+            if session["nickname"] not in config["managers"]:
+                return redirect(url_for("home", course=kwargs["course"]))
+
         return f(*args, **kwargs)
 
     return decorated_function
@@ -399,6 +405,10 @@ def home(course: str = ""):
 
     config = get_course_config(course)
     translation = get_translation("it")
+
+    print(config)
+
+    session["manager"] = session.get("nickname", "") and (session["nickname"] in config["managers"])
 
     lives = None
     if "nickname" in session and session["nickname"] != "admin":
