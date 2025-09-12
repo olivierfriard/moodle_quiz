@@ -264,6 +264,18 @@ def course_exists(f):
     return decorated_function
 
 
+def is_admin(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # check if admin
+        if session.get("nickname", "") != "admin":
+            return redirect(url_for("main_home"))
+
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 def is_manager_or_admin(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -2967,16 +2979,28 @@ def admin_logout():
 
 
 @app.route(f"{app.config['APPLICATION_ROOT']}/new_course", methods=["GET", "POST"])
-@is_manager_or_admin
+@check_login
 def new_course():
     """
     new_course
     """
 
     if request.method == "GET":
+        # check if admin
+        if session.get("nickname", "") != "admin":
+            flash(
+                Markup(
+                    '<div class="notification is-danger">You must be administrator to create a new quizz</div>'
+                ),
+                "",
+            )
+            return redirect(url_for("main_home"))
+
         return render_template("new_course.html", course="", config={})
 
     if request.method == "POST":
+        print(request.form)
+
         if not request.form["course_name"]:
             return render_template("new_course.html")
 
@@ -2990,8 +3014,40 @@ def new_course():
                 },
             ).scalar()
         if n_courses == 0:
+            # check if admin
+            if session.get("nickname", "") != "admin":
+                flash(
+                    Markup(
+                        '<div class="notification is-danger">You must be administrator to create a new quizz</div>'
+                    ),
+                    "",
+                )
+                return redirect(url_for("main_home"))
+
             create_database(request.form["course_name"])
+
         else:
+            # check if admin or manager
+
+            # check if admin
+            flag_admin = session.get("nickname", "") == "admin"
+
+            # check if manager
+            config = get_course_config(request.form["course_name"])
+            if config["login_mode"] == "google_auth":
+                flag_manager = session.get("email", "") in config["managers"]
+            else:
+                flag_manager = session.get("nickname", "") in config["managers"]
+
+            if not flag_admin and not flag_manager:
+                flash(
+                    Markup(
+                        '<div class="notification is-danger">You must be administrator or manager to modify quizz</div>'
+                    ),
+                    "",
+                )
+                return redirect(url_for("main_home"))
+
             with engine.connect() as conn:
                 conn.execute(
                     text(
