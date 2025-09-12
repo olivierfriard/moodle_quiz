@@ -1,0 +1,70 @@
+{% include "header.html" %}
+
+
+<title>{{ course }} - {{ title }}</title>
+
+<body>
+<section class="section">
+<div class="container">
+
+<p class="title is-4">{{ course }}</p>
+<p class="block">
+<a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
+Manage quizz
+</a>
+</p>
+<p class="title is-size-5">{{ title }}</p>
+
+
+{% if questions %}
+
+{% for q in questions %}
+
+<span class="tag is-info">{{ q.type }}</span><br>
+id: {{ q.id }}<br>
+{{ q.topic }}<br>
+{{ q.name }}<br>
+<p class="title is-size-6">{{ content[q.id]['questiontext'] }}</p>
+
+<ul>
+{% for ans in content[q.id]['answers'] %}
+<li>
+
+{% if ans.fraction == "100" %} <span style="color: white">{% endif %}
+
+{{ ans.fraction }} {{ ans.text }} <span style="color: gray;">feedback: {{ ans["feedback"] }}</span>
+
+{% if ans.fraction == "100" %} </span>{% endif %}
+
+</li>
+{% endfor %}
+</ul>
+{% if content[q.id]['files'] %}
+Images: {{ content[q.id]['files'] }}<br>
+{% endif %}
+<br>
+<a class="button is-link is-small" href="{{ url_for('view_question_id', course=course, question_id=q.id) }}">view</a>
+<a class="button is-warning is-small"  href="{{ url_for('edit_question', course=course, question_id=q.id) }}">edit</a>
+{% if q.deleted %}
+<a class="button is-danger is-small" href="{{ url_for('undelete_question', course=course, question_id=q.id) }}">undelete</a>
+{% else %}
+<a class="button is-danger is-small" href="{{ url_for('delete_question', course=course, question_id=q.id) }}">delete</a>
+{% endif %}
+
+<hr>
+
+{% endfor %}
+
+{% else %}
+
+No questions...<br>
+
+
+{% endif %}
+
+</div>
+
+
+</section>
+</body>
+</html>

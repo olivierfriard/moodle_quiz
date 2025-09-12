@@ -6,45 +6,217 @@
 <body>
 <section class="section">
 <div class="container">
+
+<a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
+Manage quizz
+</a>
+
+{% if question_id > 0 %}
+<br>
 {{ content }}
+{% endif %}
 <br>
 
-Question type: <b>{{ content.type }}</b><br>
+{% if question_id > 0 %}  {# edit question #}
+<span class="tag is-info">{{ question.type }}</span><br>
+{% elif question_id == -1 %}
+<span class="tag is-info">True / False</span><br>
+{% elif question_id == -2 %}
+<span class="tag is-info">Multichoice</span><br>
+{% elif question_id == -3 %}
+<span class="tag is-info">Short answer</span><br>
+{% endif %}
+
 <br>
+
+
+{% if image_area %}
+<div class="image-container" id="imgContainer">
+<img id="image_with_areas" src="{{ url_for('map_image', course=course, image=image_list[0].split('/')[-1] ) }}" alt="image with areas">
+{% elif image_list %}
+
+{% for img in image_list %}
+<img src="{{ img }}">
+<a class="button is-danger is-small confirm-link" href="{{ url_for('delete_image', course=course, question_id=question_id, image_name=img.split('/')[-1]) }}">delete image</a>
+<br>
+{% endfor %}
+
+
+{%  endif %}
+
+{# {% if image_list[0] %}Image with areas: {{ image_area }}<br>{% endif %} #}
+
+<br>
+
 <form action="{{ url_for('edit_question', course=course, question_id=question_id) }}" method="post" enctype="multipart/form-data">
+
+
+<div class="field">
+  <label class="label">Topic</label>
+  <div class="control">
+    <div class="select is-fullwidth">
+      <select name="topic" required>
+        <option value="" disabled selected>Seleziona un topic</option>
+        {% for topic in topics %}
+          <option value="{{ topic }}" {% if topic == question['topic'] %}selected{% endif %}>
+            {{ topic }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+</div>
+
+  {% if question_id < 0 %} {# new question #}
+
+<div class="field">
+<label class="label">Question name</label>
+<div class="control">
+<input name="name" class="input" type="text" autocomplete="off" value="" required>
+</div>
+</div>
+
+{% endif %}
 
 <div class="field">
 <label class="label">Question text</label>
 <div class="control">
-<input name="questiontext" class="input" type="text" autocomplete="off" value="{{ content['questiontext'] }}">
+<input name="questiontext" class="input" type="text" autocomplete="off" value="{{ content['questiontext'] }}" required>
 </div>
 </div>
 
+
+{% if question_id == -1 %}
+<label>
+      <input type="radio" name="TF1" value="TRUE"> Vero
+    </label>
+    <label>
+      <input type="radio" name="TF1" value="FALSE"> Falso
+    </label>
+{% endif %}
+
+{% if question_id in (-2, -3) %}
+
+{% for id in range(1, 6) %}
+<div class="columns">
+
+  <div class="column">
+    <div class="field">
+    <label class="label">Answer {{ id }}</label>
+    <div class="control">
+    <input name="answer_{{ id }}" class="input" type="text" autocomplete="off" value="">
+    </div>
+    </div>
+</div>
+
+<div class="column">
+    <div class="field">
+        <label class="label">Score {{ id }}</label>
+        <div class="control">
+        <input name="score_{{ id }}" class="input" type="number" autocomplete="off"  min="0" max="100" value="{{ '100' if id == 1 else '0' }}">
+        </div>
+        </div>
+</div>
+
+<div class="column">
+    <div class="field">
+        <label class="label">Feedback {{ id }}</label>
+        <div class="control">
+        <input name="feedback_{{ id }}" class="input" type="text" autocomplete="off" value="">
+        </div>
+        </div>
+</div>
+
+</div>
+
+{% endfor %}
+
+{% endif %}
+
+
+
+
+
+{# edit question #}
+
+{% if question_id > 0 %} 
 {% for answer in content.answers %}
+
+<div class="columns">
+
+<div class="column">
     <div class="field">
     <label class="label">{{ answer.id }}</label>
     <div class="control">
     <input name="{{ answer.id }}" class="input" type="text" autocomplete="off" value="{{ answer.text }}">
     </div>
     </div>
+</div>
+
+<div class="column">
 
     <div class="field">
         <label class="label">Score {{ answer.id }}</label>
         <div class="control">
-        <input name="score_{{ answer.id }}" class="input" type="text" autocomplete="off" value="{{ answer.fraction }}">
+        <input name="score_{{ answer.id }}" class="input" type="number" autocomplete="off" value="{{ answer.fraction }}">
         </div>
         </div>
+</div>
 
+<div class="column">
 
     <div class="field">
         <label class="label">Feedback {{ answer.id }}</label>
         <div class="control">
-        <input name="feedback_{{ answer.id }}" class="input" type="text" autocomplete="off" value="{{ answer.feedback }}">
+        <input name="feedback_{{ answer.id }}" class="input" type="text" autocomplete="off" value="{{ answer.feedback if answer.feedback is not none else '' }}">
         </div>
         </div>
-    
+
+</div>
+</div>
+
 {% endfor %}
 
+{# add empty fields #}
+
+{% for id in range(content.answers|length + 1, content.answers|length + 4)%}
+<div class="columns">
+
+  <div class="column">
+    <div class="field">
+    <label class="label">answer{{ id }}</label>
+    <div class="control">
+    <input name="answer{{ id }}" class="input" type="text" autocomplete="off" value="">
+    </div>
+    </div>
+</div>
+
+<div class="column">
+    <div class="field">
+        <label class="label">Score answer{{ id }}</label>
+        <div class="control">
+        <input name="score_answer{{ id }}" class="input" type="number" autocomplete="off"  min="0" max="100" value="0">
+        </div>
+        </div>
+</div>
+
+<div class="column">
+    <div class="field">
+        <label class="label">Feedback answer{{ id }}</label>
+        <div class="control">
+        <input name="feedback_answer{{ id }}" class="input" type="text" autocomplete="off" value="">
+        </div>
+        </div>
+</div>
+
+</div>
+
+{% endfor %}
+
+
+{% endif %}
+
+<br><br>
 
 <div class="file has-name is-primary">
     <label class="file-label">
@@ -59,9 +231,30 @@ Question type: <b>{{ content.type }}</b><br>
     </label>
   </div>
 
-<button class="button is-link" href="url_for('saved_questions', course=course)">Cancel</button>
+<div class="file has-name is-primary">
+    <label class="file-label">
+      <input class="file-input" type="file" name="json_file" id="fileInput_json" accept=".json">
+      <span class="file-cta">
+        <span class="icon">
+          <i class="fas fa-upload"></i>
+        </span>
+        <span class="file-label">Add a JSON file with areas</span>
+      </span>
+      <span class="file-name" id="fileName_json">No file selected</span>
+    </label>
+   </div>
 
-<button class="button is-link" type="submit">Save</button>
+<!-- Commento visibile -->
+<p class="help is-info">The JSON file will be loaded only if an image file is selected</p>
+
+<br>
+<button class="button is-link" href="url_for('bookmarked_questions', course=course)">Cancel</button>
+
+<button class="button is-danger" type="submit">Save</button>
+
+
+<input type="hidden" name="referrer" value="{{ referrer }}">
+
 
 </form>
 
@@ -72,12 +265,36 @@ Question type: <b>{{ content.type }}</b><br>
     fileInput.addEventListener('change', () => {
       fileName.textContent = fileInput.files.length > 0 ? fileInput.files[0].name : 'No file selected';
     });
-  </script>
+
+    const fileInput_json = document.getElementById('fileInput_json');
+    const fileName_json = document.getElementById('fileName_json');
+
+    fileInput_json.addEventListener('change', () => {
+      fileName_json.textContent = fileInput_json.files.length > 0 ? fileInput_json.files[0].name : 'No file selected';
+    });
+
+
+</script>
 
 
 </div>
 
 </section>
+
+
+
+<script>
+  document.querySelectorAll('.confirm-link').forEach(link => {
+    link.addEventListener('click', function(event) {
+      const conferma = confirm("Please confirm deletion of the image");
+      if (!conferma) {
+        event.preventDefault();
+      }
+    });
+  });
+</script>
+
+
 </body>
 
 </html>

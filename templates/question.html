@@ -1,6 +1,34 @@
 {% include "header.html" %}
 
 <title>{{ course_name }} - Question</title>
+{% if image_area %}
+  <style>
+    
+    #coords, #dimensions {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    .image-container {
+      position: relative;
+      display: inline-block;
+      cursor: crosshair;
+    }
+    img {
+      max-width: 90%;
+      height: auto;
+      display: block;
+    }
+    .circle {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: red;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+{% endif %}
 </head>
 <body>
 <style>
@@ -14,6 +42,7 @@
 <div class="columns is-centered">
 <div class="column is-half">
 
+{% if step %}
 {%  include "display_lives.html" %}
 
 <div class="is-flex is-align-items-center">
@@ -22,8 +51,15 @@
   </figure>
   <p class="ml-3 is-size-4">{{ topic }}</p>
 </div>
+{% else %}
+<p class="block">
+  <a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
+  Manage quizz
+  </a>
+  </p>
 
-{#   {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %} #}
+{% endif %}
+{#  {% if 'recover' not in session %} - {{ config.STEP_NAMES[step - 1] }} {% endif %} #}
 
 <br>
 
@@ -31,73 +67,161 @@
 {% if lives == 0 and not recover %}
 
 <a  class="button is-danger is-fullwidth is-large wrap-text-button" href="{{ url_for('recover_lives', course=course) }}">
-  <strong>You've lost all your lives...<br>Click to recover them.</strong>
-  </a>
+<strong>{{ translation["You've lost all your lives..."] }}<br>{{ translation['Click to recover them!'] }}</strong>
+</a>
 
 {% else %}
 
+<div class="block">
 <p class="is-size-4"><strong>{{ question.questiontext }}</strong></p>
+</div>
 
-{% if image_list %}
-{% for image in image_list %}
-<img src="{{ image }}" alt="{{ image }}">
-{% endfor %}
+{% if image_area %}
+
+<div class="image-container" id="imgContainer">
+{% if not step %}
+<img id="image_with_areas" src="{{ url_for('map_image', course=course, image=image_list[0].split('/')[-1] ) }}" alt="image with areas">
+{% else %}
+<img id="image_with_areas" src="{{ image_list[0] }}" alt="image with areas">
 {% endif %}
+
+<div id="clickCircle" class="circle" style="display: none;"></div>
+</div>
+<div id="coords" class="is-size-4">{{ translation['Click on the image to give your answer'] }}</div>
+
+<form id="image_area_form" action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=question_id) }}" method="POST">
+  
+<input type="text" id="normalized_coord" name="normalized_coord" value="">
+  
+<input type="hidden" name="image_area" value="image_area">
+<input type="hidden" name="image_path" value="{{ image_list[0] }}">
+
+
+<div class="field">
+<div class="control">
+<button class="button is-link">{{ translation['Submit the answer'] }}</button>
+</div>
+</div>
+  
+</form>
+
+
+
+
+
+<script>
+
+const form = document.getElementById('image_area_form');
+const coordInput = document.getElementById('normalized_coord');
+
+  form.addEventListener('submit', function(event) {
+    if (!coordInput.value.trim()) {
+      event.preventDefault(); // Blocca invio
+      alert("Seleziona un punto sull'immagine prima di inviare!");
+    }
+  });
+
+
+    const container = document.getElementById('imgContainer');
+    const img = document.getElementById('image_with_areas');
+    const circle = document.getElementById('clickCircle');
+    const normalized_coord = document.getElementById('normalized_coord');
+    const coordsDiv = document.getElementById('coords');
+
+    img.addEventListener('click', function(event) {
+      const rect = container.getBoundingClientRect(); // <-- USO IL CONTAINER
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      const width = img.clientWidth;
+      const height = img.clientHeight;
+
+      // Normalize using the longer border
+      const normX = (x / width).toFixed(4);
+      const normY = (y / height).toFixed(4);
+
+      normalized_coord.value = `${normX},${normY}`;
+      /*coordsDiv.textContent = `Clicked at: (${normX}, ${normY})`;*/
+
+      // Move and show the circle
+      circle.style.left = `${x}px`;
+      circle.style.top = `${y}px`;
+      circle.style.display = 'block';
+    });
+  </script>
+
+  {% else %}
+{# no image area #}
+    {% for image in image_list %}
+<img src="{{ image }}" alt="{{ image }}">
+    {% endfor %}
+{% endif %}
+
+
 
 
 {%if answers %}
 <div class="block">
 <br>
-{% if question.type == 'truefalse' %}
+    {% if question.type == 'truefalse' %}
+
 <div class="columns">
 
-<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='true') }}" class="button  is-info is-medium">
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx if step else question_id, user_answer='true') }}" class="button  is-info is-medium">
 <strong>{{ translation['TRUE'] }}</strong></a>
 </div>
 
-<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer='false') }}" class="button  is-info is-medium">
+<div class="column"><a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx if step else question_id, user_answer='false') }}" class="button  is-info is-medium">
 <strong>{{ translation['FALSE'] }}</strong></a>
 </div>
 
 </div>
 
-{%  else %}
+    {%  else %}
+
 {# multichoice #}
-{% for answer in answers %}
+        {% for answer in answers %}
 <div class="columns">
 <div class="column is-full">
 <a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer=answer.text) }}" class="button is-info is-medium is-fullwidth wrap-text-button"><strong>{{ answer.text }}</strong></a><br>
 </div>
 </div>
-{%endfor%}
+        {%endfor%}
 
-{% endif %}
+    {% endif %}
 
 </div>
 
-{%else%}
+{% else %}
 {# shortanswer or numerical #}
-<form action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx) }}" method="post">
-  <br>
+{% if not image_area %}
+<form action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx if step else question_id ) }}" method="post">
+<br>
 <div class="field">
-    <label class="label">{{ translation['Your answer'] }}</label>
-    <div class="control">
-      <input name="user_answer" class="input" step="0.00001" type="{{ type_ }}" placeholder="{{ placeholder }}">
-    </div>
+<label class="label">{{ translation['Your answer'] }}</label>
+<div class="control">
+<input name="user_answer" class="input" step="0.00001" type="{{ type_ }}" placeholder="{{ placeholder }}">
+</div>
 </div>
 
+
 <div class="field">
-    <div class="control">
-      <button class="button is-link">{{ translation['Submit the answer'] }}</button>
-    </div>
+<div class="control">
+<button class="button is-link">{{ translation['Submit the answer'] }}</button>
+</div>
 </div>
 </form>
+{% endif %}
 {%endif%}
 
 {% endif %}{# lives == 0 #}
 
 
 
+{% if not step or session['nickname'] == 'admin' %}
+<br><br>
+<a class="button is-warning" href="{{ url_for('edit_question', course=course, question_id=question_id) }}">{{ translation['Edit question'] }}</a>
+{% endif %}
 
 </div>
 </div>

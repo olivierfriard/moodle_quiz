@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draw Circle and Get Coordinates</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #coords, #dimensions {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    .image-container {
+      position: relative;
+      display: inline-block;
+      cursor: crosshair;
+    }
+    img {
+      max-width: 90%;
+      height: auto;
+      display: block;
+    }
+    .circle {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: red;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <h1>Click on the Image</h1>
+
+  <div class="image-container" id="imgContainer">
+    <img id="myImage" src="{{ url_for('images', course=course, filename='sez_trasversale.jpg') }}" alt="Test Image">
+    <div id="clickCircle" class="circle" style="display: none;"></div>
+  </div>
+
+  <div id="coords">Click on the image to give your answer</div>
+
+  <form id="clickForm" action="{{ url_for('click_image', course=course) }}" method="POST">
+    <input type="text" id="normalized_coord" name="normalized_coord" value="">
+  <button type="submit">Invia</button>
+</form>
+
+  <script>
+
+const form = document.getElementById('clickForm');
+  const coordInput = document.getElementById('normalized_coord');
+
+  form.addEventListener('submit', function(event) {
+    if (!coordInput.value.trim()) {
+      event.preventDefault(); // Blocca invio
+      alert("Seleziona un punto sull'immagine prima di inviare!");
+    }
+  });
+
+
+    const container = document.getElementById('imgContainer');
+    const img = document.getElementById('myImage');
+    const circle = document.getElementById('clickCircle');
+    const normalized_coord = document.getElementById('normalized_coord');
+    const coordsDiv = document.getElementById('coords');
+
+    img.addEventListener('click', function(event) {
+      const rect = container.getBoundingClientRect(); // <-- USO IL CONTAINER
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      const width = img.clientWidth;
+      const height = img.clientHeight;
+      const longerBorder = Math.max(width, height);
+
+      // Normalize using the longer border
+      const normX = (x / longerBorder).toFixed(4);
+      const normY = (y / longerBorder).toFixed(4);
+
+      normalized_coord.value = `${normX},${normY}`;
+      /*coordsDiv.textContent = `Clicked at: (${normX}, ${normY})`;*/
+
+      // Move and show the circle
+      circle.style.left = `${x}px`;
+      circle.style.top = `${y}px`;
+      circle.style.display = 'block';
+    });
+  </script>
+</body>
+</html>

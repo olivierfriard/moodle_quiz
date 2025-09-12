@@ -14,25 +14,141 @@
 
 <p class="title">Quizzych</p>
 
-New course<br>
+<h1 class="title is-4">
+{% if config %}
+Update parameters
+{%else%}
+Create a new course
+{%endif%}
+</h1>
 
-{% if session['nickname'] == 'admin' %}
+{% if session['nickname'] == 'admin' or session['manager'] %}
 
 <form action="{{ url_for('new_course') }}" method="POST">
-    <div class="field">
-      <label class="label">New course name</label>
-      <div class="control">
-<input name="course_name" class="input" type="text">        
+
+<div class="field">
+<label class="label">
+    {% if config %}
+    Course name
+    {%else%}
+    New course name
+    {%endif%}
+    </label>
+<div class="control">
+<input name="course_name" class="input" type="text" required value="{{ config.QUIZ_NAME }}" {%if config%}readonly{%endif%}>
 </div>
 </div>
 
-    <div class="field">
-      <div class="control">
-        <button type="submit" class="button is-primary">Create course</button>
-        <a href="{{ url_for('main_home') }}" class="button is-primary">Cancel</a>
-      </div>
-    </div>
-  </form>
+
+<div class="field">
+<label class="label">Managers</label>
+<div class="control">
+<input name="managers" class="input" type="text" required value="{{ config.managers }}">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Question types</label>
+<div class="control">
+<input name="question_types" class="input" type="text" value="{%if config %}{{ config.QUESTION_TYPES }}{%else%}['truefalse','multichoice','shortanswer','numerical']{%endif%}">
+</div>
+</div>
+
+<div class="field">
+<label class="label">Initial life number</label>
+<div class="control">
+<input name="life_number" class="input"  step="1" type="number" required value="{%if config %}{{ config.INITIAL_LIFE_NUMBER }}{%else%}5{%endif%}">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Topics to hide</label>
+<div class="control">
+<input name="hidden_topics" class="input" type="text" value="{{ config.TOPICS_TO_HIDE }}">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Number of questions by topic</label>
+<div class="control">
+<input name="topic_question_number" class="input"  step="1" type="number" required value="{%if config %}{{ config.N_QUESTIONS }}{%else%}10{%endif%}">        
+</div>
+</div>
+
+
+<div class="field">
+<label class="label">Steps</label>
+<div class="control">
+<input name="steps" class="input" type="text" value="{{ config.STEP_NAMES }}">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Number of quiz by step</label>
+<div class="control">
+<input name="step_quiz_number" class="input"  step="1" type="number" required value="{%if config %}{{ config.N_QUIZ_BY_STEP }}{%else%}4{%endif%}">        
+</div>
+</div>
+
+<h1 class="title is-5">Recover</h1>
+
+<div class="field">
+<label class="label">recover_question_number</label>
+<div class="control">
+<input name="recover_question_number" class="input"  step="1" type="number" required value="{%if config %}{{ config.N_QUESTIONS_FOR_RECOVER }}{%else%}4{%endif%}">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Recover topics</label>
+<div class="control">
+<input name="recover_topics" class="input" type="text" value="{{ config.RECOVER_TOPICS }}">        
+</div>
+</div>
+
+<h1 class="title is-5">Brush-up</h1>
+
+<div class="field">
+<label class="label">Brush-up level names</label>
+<div class="control">
+<input name="brush_up_level_names" class="input"  type="text" value="{%if config %}{{ config.BRUSH_UP_LEVEL_NAMES }}{%else%}['Easy', 'Hard', 'Very hard']{%endif%}">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Brush-up question number</label>
+<div class="control">
+<input name="brush_up_question_number" class="input"  step="1" type="number" required value="{%if config %}{{ config.N_QUESTIONS_BY_BRUSH_UP }}{%else%}10{%endif%}">        
+</div>
+</div>
+
+<div class="field">
+<label class="label">Brush-up level names</label>
+<div class="control">
+<input name="brush_up_levels" class="input"  type="text" value="{%if config %}{{ config.BRUSH_UP_LEVELS }}{%else%}[1, 2, 4]{%endif%}">        
+</div>
+</div>
+
+
+
+<div class="field">
+<div class="control">
+    <a href="{{ url_for('course_management', course=course) }}" class="button is-primary">Cancel</a>
+<button type="submit" class="button is-danger">
+    {% if config %}
+    Update parameters
+    {%else%}
+    Create course
+    {%endif%}
+    
+</button>
+
+</div>
+</div>
+
+
+
+</form>
 
 
 {% else %}

@@ -24,7 +24,7 @@
 
 "Input a text" = 'Immetti una parola'
 "Input a number" = 'Immetti un numero'
-"Save the question" = "Salva la domanda"
+"Add the question to bookmarks" = "Aggiungi la domanda ai bookmarks"
 
 "Easy" = "Regolare"
 "Hard" = "Impegnativo"
@@ -44,4 +44,12 @@
 "New course" = "Crea nuovo corso"
 "Edit question" = "Modifica domanda"
 
-"Remove from saved questions" = "Rimuovi da domande salvate"
+"Remove from saved questions" = "Rimuovi dai bookmarks"
+
+"Click on the image to give your answer" = "Cliccare sull'imagine per dare la risposta"
+
+"View question" = "Visualizza domanda"
+
+"Next question" = "Domanda seguente"
+
+"Available quizz" = "Quizz disponibili"

@@ -13,18 +13,24 @@
 
 <div class="box">
 
-  {%  include "course_name.html" %}
+{%  include "course_name.html" %}
+
+
+{% if session['nickname'] == 'admin' or session['manager'] %}
+<div class="block">
+<a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
+Manage quizz
+</a>
+</div>
+{% endif %} 
+
 
 <div class="block">
 <p class="subtitle">
 
-{{ translation['Welcome'] }}
+{{ translation['Welcome'] }} <strong>{{ session['nickname'] }}</strong>!
 
-{% if session['nickname'] == 'manager' %}<a href="{{ url_for('course_management', course=course) }}">{% endif %} 
 
-<strong>{{ session['nickname'] }}</strong>!
-
- {% if session['nickname'] == 'manager' %}</a> {% endif %} 
 
 </p>
 </div>
@@ -111,17 +117,27 @@ disabled
 
 {% else %}
 
-<a class="button is-link" href="{{ url_for('login', course=course) }}">Login</a>
+
+    {% if login_mode == 'google_auth' %}
+<a class="button is-link" href="{{ url_for('google_auth.login') }}">Login con Google</a>
+    {% else %}
+<a class="button is-link" href="{{ url_for('local_login', course=course) }}">Login</a>
 
 <a class="button is-link" href="{{ url_for('new_nickname',course=course) }}">{{ translation['New nickname'] }}</a>
+
+    {% endif %}
 
 {% endif %}
 
 </div>
 
 {% if session['nickname'] %}
-<a href="{{ url_for('logout', course=course) }}" class="button is-danger is-pulled-right" onclick="return confirm_()">{{ translation['Logout'] }}</a><br><br>
+<a href="{{ url_for('google_auth.logout', course=course) }}" class="button is-danger is-pulled-right" onclick="return confirm_()">{{ translation['Logout'] }}</a><br><br>
+
+{% if session['nickname'] != 'admin' %}
 <a href="{{ url_for('delete', course=course) }}" class="button is-small is-danger is-pulled-right" onclick="return confirm_()">{{ translation['Delete nickname'] }}</a>
+{%endif%}
+
 {%endif%}
 
 </div>
@@ -132,13 +148,11 @@ disabled
 </section>
 </body>
 <script>
-function confirm_() {
-    return confirm("Are you sure?");
-}
 
-function navigateToPage(url) {
-      window.location.href = url;
-    }
+function confirm_() { return confirm("Are you sure?"); }
+
+function navigateToPage(url) { window.location.href = url; }
+
 </script>
 
 </html>

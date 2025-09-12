@@ -26,10 +26,11 @@ List of courses:<br><br>
 
 <a class="button is-link" href="{{ url_for('new_course') }}">{{ translation['New course'] }}</a>
 
+<a class="button is-danger" href="{{ url_for('admin_logout') }}">Logout administrator</a>
 
 {% else %}
 
-<a class="button is-link" href="{{ url_for('admin_login') }}">Login</a>
+<a class="button is-link" href="{{ url_for('admin_login') }}">Login for administrator</a>
 
 {% endif %}
 

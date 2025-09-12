@@ -112,7 +112,7 @@ def crea_tappe(df_domande, topic, n_tappe, n_domande_x_quiz, seed):
     # IDEA: Quando lo studente si logga per la prima volta, gli si potrebbe assegnare un array di N numeri, che saranno
     # utilizzati come seeds in differenti funzioni, se si vuole replicare la sequenza estratta
 
-    # Filtra il DataFrame per ottenere solo le domande relative a "Capitolo 1"
+    # Filtra il DataFrame per ottenere solo le domande relative al topic"
     df_capitolo = df_domande[df_domande["topic"] == topic].reset_index(drop=True)
 
     # Conta il numero totale di domande nel capitolo filtrato
