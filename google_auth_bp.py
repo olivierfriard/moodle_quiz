@@ -8,9 +8,7 @@ import config as cfg
 
 bp = Blueprint("google_auth", __name__)
 
-
-DATABASE_URL = "postgresql://quizzych_user@localhost:5432/quizzych"
-engine = create_engine(DATABASE_URL)
+engine = create_engine(cfg.DATABASE_URL)
 
 # Carico le credenziali dal JSON
 try:
@@ -52,8 +50,12 @@ def callback():
     """
     Callback dopo il login Google
     """
-    google = OAuth2Session(client_id, state=session["oauth_state"], redirect_uri=redirect_uri)
-    token = google.fetch_token(token_url, client_secret=client_secret, authorization_response=request.url)
+    google = OAuth2Session(
+        client_id, state=session["oauth_state"], redirect_uri=redirect_uri
+    )
+    token = google.fetch_token(
+        token_url, client_secret=client_secret, authorization_response=request.url
+    )
 
     session["oauth_token"] = token
 
