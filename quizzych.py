@@ -49,10 +49,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-# engine = create_engine("sqlite:///")
-DATABASE_URL = "postgresql://quizzych_user@localhost:5432/quizzych"
-engine = create_engine(DATABASE_URL)
-
 
 def get_course_config(course: str):
     # check config file
@@ -217,6 +213,9 @@ app = Flask(__name__)
 app.config.from_object("config")
 app.config["DEBUG"] = True
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
+
+DATABASE_URL = app.config["DATABASE_URL"]
+engine = create_engine(DATABASE_URL)
 
 
 def create_database(course) -> None:
