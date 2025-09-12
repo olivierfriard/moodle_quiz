@@ -3,6 +3,7 @@ from requests_oauthlib import OAuth2Session
 import json
 import os
 from sqlalchemy import create_engine, text
+from pathlib import Path
 
 import config as cfg
 
@@ -11,27 +12,28 @@ bp = Blueprint("google_auth", __name__)
 engine = create_engine(cfg.DATABASE_URL)
 
 # Carico le credenziali dal JSON
-try:
-    with open("client_secret.json") as f:
-        config = json.load(f)["web"]
+if Path("client_secret.json").is_file():
+    try:
+        with open("client_secret.json") as f:
+            config = json.load(f)["web"]
 
-    client_id = config["client_id"]
-    client_secret = config["client_secret"]
-    authorization_base_url = config["auth_uri"]
-    token_url = config["token_uri"]
-    redirect_uri = config["redirect_uris"][0]
+        client_id = config["client_id"]
+        client_secret = config["client_secret"]
+        authorization_base_url = config["auth_uri"]
+        token_url = config["token_uri"]
+        redirect_uri = config["redirect_uris"][0]
 
-    scope = [
-        "https://www.googleapis.com/auth/userinfo.profile",
-        "https://www.googleapis.com/auth/userinfo.email",
-    ]
+        scope = [
+            "https://www.googleapis.com/auth/userinfo.profile",
+            "https://www.googleapis.com/auth/userinfo.email",
+        ]
 
-    # solo per DEV
-    if "127.0.0.1" in redirect_uri:
-        os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+        # solo per DEV
+        if "127.0.0.1" in redirect_uri:
+            os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-except Exception:
-    raise
+    except Exception:
+        raise
 
 
 @bp.route(f"{cfg.APPLICATION_ROOT}/login")
