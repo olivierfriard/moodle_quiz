@@ -1,3 +1,11 @@
+# TO DO:
+
+## improve message when google user not authorized
+
+
+
+
+
 
 2025-09-04: add table for image areas
 

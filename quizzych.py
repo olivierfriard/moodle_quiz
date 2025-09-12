@@ -3185,57 +3185,6 @@ def logout(course):
 '''
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/click_image/<course>", methods=["GET", "POST"]
-)
-@course_exists
-@check_login
-def click_image(course: str):
-    """ """
-    # config = get_course_config(course)
-    translation = get_translation("it")
-
-    def find_feature_name(data, x, y):
-        """
-        Ritorna il nome della feature che contiene il punto (x, y).
-        Se nessuna feature contiene il punto, ritorna None.
-        """
-
-        point = Point(x, y)
-
-        for feature in data.get("features", []):
-            geom = feature.get("geometry")
-            if not geom:
-                continue
-
-            polygon = shape(geom)  # Converte MultiPolygon/Polygon in geometria shapely
-            if polygon.contains(point):
-                return feature["properties"]["name"]
-
-        return None
-
-    if request.method == "GET":
-        return render_template(
-            "click_image_resize2.html", course=course, translation=translation
-        )
-
-    if request.method == "POST":
-        if not (Path("images") / Path(course) / Path("sez_trasversale.json")).is_file():
-            return "geojson not found"
-        else:
-            with open(
-                Path("images") / Path(course) / Path("sez_trasversale.json"), "r"
-            ) as f:
-                data = geojson.load(f)
-
-            x, y = [float(x) for x in request.form.get("normalized_coord").split(",")]
-            area = find_feature_name(data, x, y)
-
-            print(area)
-
-        return request.form.get("normalized_coord") + " " + str(area)
-
-
 @app.route(f"{app.config['APPLICATION_ROOT']}/test_popup", methods=["GET", "POST"])
 def test_popup():
     """ """
