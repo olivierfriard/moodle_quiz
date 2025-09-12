@@ -2999,8 +2999,6 @@ def new_course():
         return render_template("new_course.html", course="", config={})
 
     if request.method == "POST":
-        print(request.form)
-
         if not request.form["course_name"]:
             return render_template("new_course.html")
 
