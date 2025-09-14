@@ -66,6 +66,9 @@ def moodle_xml_to_dict_with_images(
     logging.debug(f"{elements=}")
     logging.debug(f"{max_element_len=}")
 
+    print(elements)
+    print(max_element_len)
+
     start: int | None = None
     for idx in range(max_element_len):
         if len(elements[idx]) > 1:

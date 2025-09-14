@@ -143,6 +143,7 @@ def load_questions_xml(xml_file: Path, course: str, config: dict) -> int:
             conn.commit()
 
     except Exception as e:
+        raise
         return 1, f"{e}"
     return 0, ""
 
