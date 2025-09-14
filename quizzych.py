@@ -203,6 +203,7 @@ engine = create_engine(DATABASE_URL)
 def create_database(course) -> None:
     """
     create a new course in database
+    all fields blank except name
     """
 
     with engine.connect() as conn:
@@ -2982,7 +2983,7 @@ def admin_logout():
 @check_login
 def new_course():
     """
-    new_course
+    create a new course or edit an existing one
     """
 
     if request.method == "GET":
@@ -3046,51 +3047,47 @@ def new_course():
                 )
                 return redirect(url_for("main_home"))
 
-            with engine.connect() as conn:
-                conn.execute(
-                    text(
-                        "UPDATE courses SET "
-                        "managers = :managers,"
-                        "question_types = :question_types,"
-                        "initial_life_number = :initial_life_number,"
-                        "topics_to_hide = :topics_to_hide,"
-                        "topic_question_number = :topic_question_number,"
-                        "steps = :steps,"
-                        "step_quiz_number = :step_quiz_number,"
-                        "recover_question_number = :recover_question_number,"
-                        "recover_topics = :recover_topics,"
-                        "brush_up_question_number = :brush_up_question_number,"
-                        "brush_up_level_names = :brush_up_level_names,"
-                        "brush_up_levels = :brush_up_levels "
-                        "WHERE name = :course"
-                    ),
-                    {
-                        "course": request.form["course_name"],
-                        "managers": eval(request.form["managers"]),
-                        "question_types": eval(request.form["question_types"]),
-                        "initial_life_number": request.form["life_number"],
-                        "topics_to_hide": eval(request.form["hidden_topics"])
-                        if request.form["hidden_topics"]
-                        else [],
-                        "topic_question_number": request.form["topic_question_number"],
-                        "steps": eval(request.form["steps"]),
-                        "step_quiz_number": request.form["step_quiz_number"],
-                        "recover_question_number": request.form[
-                            "recover_question_number"
-                        ],
-                        "recover_topics": eval(request.form["recover_topics"])
-                        if request.form["recover_topics"]
-                        else [],
-                        "brush_up_question_number": request.form[
-                            "brush_up_question_number"
-                        ],
-                        "brush_up_level_names": eval(
-                            request.form["brush_up_level_names"]
-                        ),
-                        "brush_up_levels": eval(request.form["brush_up_levels"]),
-                    },
-                )
-                conn.commit()
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "UPDATE courses SET "
+                    "managers = :managers,"
+                    "question_types = :question_types,"
+                    "initial_life_number = :initial_life_number,"
+                    "topics_to_hide = :topics_to_hide,"
+                    "topic_question_number = :topic_question_number,"
+                    "steps = :steps,"
+                    "step_quiz_number = :step_quiz_number,"
+                    "recover_question_number = :recover_question_number,"
+                    "recover_topics = :recover_topics,"
+                    "brush_up_question_number = :brush_up_question_number,"
+                    "brush_up_level_names = :brush_up_level_names,"
+                    "brush_up_levels = :brush_up_levels "
+                    "WHERE name = :course"
+                ),
+                {
+                    "course": request.form["course_name"],
+                    "managers": eval(request.form["managers"]),
+                    "question_types": eval(request.form["question_types"]),
+                    "initial_life_number": request.form["life_number"],
+                    "topics_to_hide": eval(request.form["hidden_topics"])
+                    if request.form["hidden_topics"]
+                    else [],
+                    "topic_question_number": request.form["topic_question_number"],
+                    "steps": eval(request.form["steps"]),
+                    "step_quiz_number": request.form["step_quiz_number"],
+                    "recover_question_number": request.form["recover_question_number"],
+                    "recover_topics": eval(request.form["recover_topics"])
+                    if request.form["recover_topics"]
+                    else [],
+                    "brush_up_question_number": request.form[
+                        "brush_up_question_number"
+                    ],
+                    "brush_up_level_names": eval(request.form["brush_up_level_names"]),
+                    "brush_up_levels": eval(request.form["brush_up_levels"]),
+                },
+            )
+            conn.commit()
 
         return redirect(
             url_for("course_management", course=request.form["course_name"])
