@@ -29,6 +29,7 @@ from flask import (
     send_file,
 )
 import io
+import tempfile
 from functools import wraps
 import logging
 from sqlalchemy import create_engine, text, bindparam
@@ -1539,6 +1540,8 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     # print(f"{question_id=}")
 
     # get question content
+    print(question_id)
+    print(course)
     with engine.connect() as conn:
         question = json.loads(
             conn.execute(
@@ -2185,7 +2188,7 @@ def delete_image(course: str, image_name: str, question_id: int):
 @is_manager_or_admin
 def load_questions(course: str):
     """
-    load questions
+    load questions from file (XML or GIFT)
     """
 
     if request.method == "GET":
@@ -2208,7 +2211,7 @@ def load_questions(course: str):
             return redirect(request.url)
 
         if file:
-            file_path = Path(COURSES_DIR) / Path(file.filename)
+            file_path = Path(tempfile.gettempdir()) / Path(file.filename)
             file.save(file_path)
 
             # load questions in database
@@ -2230,7 +2233,7 @@ def load_questions(course: str):
 
 @app.route(
     f"{app.config['APPLICATION_ROOT']}/edit_parameters/<course>",
-    methods=["GET", "POST"],
+    methods=["GET"],
 )
 @course_exists
 @check_login
@@ -2241,47 +2244,7 @@ def edit_parameters(course: str):
     """
     if request.method == "GET":
         config = get_course_config(course)
-
         return render_template("new_course.html", course=course, config=config)
-
-    if request.method == "POST":
-        # test if file is valid toml
-        try:
-            _ = tomllib.loads(request.form["parameters"])
-        except Exception as e:
-            logging.warning(f"Error loading the parameters {e}")
-            flash(
-                Markup(
-                    f'<div class="notification is-danger">The parameters contain the following error:<br>{e}</div>'
-                ),
-                "error",
-            )
-            return render_template(
-                "parameters.html", course=course, parameters=request.form["parameters"]
-            )
-
-        try:
-            with open(
-                Path(COURSES_DIR) / Path(course).with_suffix(".txt"), "w"
-            ) as f_out:
-                f_out.write(request.form["parameters"])
-
-        except Exception as e:
-            logging.warning(f"Error saving the parameters file {e}")
-
-            flash(
-                Markup(
-                    '<div class="notification is-danger">Error saving parameters</div>'
-                ),
-                "error",
-            )
-
-        flash(
-            Markup('<div class="notification is-success">Parameters saved</div>'),
-            "error",
-        )
-
-        return redirect(url_for("course_management", course=course))
 
 
 @app.route(f"{app.config['APPLICATION_ROOT']}/add_lives/<course>", methods=["GET"])

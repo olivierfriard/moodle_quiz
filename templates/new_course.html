@@ -14,13 +14,7 @@
 
 <p class="title">Quizzych</p>
 
-<h1 class="title is-4">
-{% if config %}
-Update parameters
-{%else%}
-Create a new course
-{%endif%}
-</h1>
+<h1 class="title is-4">{% if config %}Update parameters{%else%}Create a new course{%endif%}</h1>
 
 {% if session['nickname'] == 'admin' or session['manager'] %}
 
@@ -28,12 +22,7 @@ Create a new course
 
 <div class="field">
 <label class="label">
-    {% if config %}
-    Course name
-    {%else%}
-    New course name
-    {%endif%}
-    </label>
+{% if config %}Course name{%else%}New course name{%endif%}</label>
 <div class="control">
 <input name="course_name" class="input" type="text" required value="{{ config.QUIZ_NAME }}" {%if config%}readonly{%endif%}>
 </div>
@@ -135,11 +124,11 @@ Create a new course
 <div class="control">
     <a href="{{ url_for('course_management', course=course) }}" class="button is-primary">Cancel</a>
 <button type="submit" class="button is-danger">
-    {% if config %}
-    Update parameters
-    {%else%}
-    Create course
-    {%endif%}
+{% if config %}
+Update parameters
+{%else%}
+Create course
+{%endif%}
     
 </button>
 

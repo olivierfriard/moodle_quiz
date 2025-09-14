@@ -179,11 +179,12 @@ const coordInput = document.getElementById('normalized_coord');
 
     {%  else %}
 
-{# multichoice #}
+        {# multichoice #}
         {% for answer in answers %}
 <div class="columns">
 <div class="column is-full">
-<a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx, user_answer=answer.text) }}" class="button is-info is-medium is-fullwidth wrap-text-button"><strong>{{ answer.text }}</strong></a><br>
+<a href="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx if step else question_id, user_answer=answer.text) }}" 
+class="button is-info is-medium is-fullwidth wrap-text-button"><strong>{{ answer.text }}</strong></a><br>
 </div>
 </div>
         {%endfor%}
