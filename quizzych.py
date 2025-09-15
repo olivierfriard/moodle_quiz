@@ -16,18 +16,7 @@ import unicodedata
 import numpy as np
 from rapidfuzz import fuzz
 from markupsafe import Markup
-from flask import (
-    Flask,
-    render_template,
-    session,
-    redirect,
-    request,
-    flash,
-    url_for,
-    send_from_directory,
-    jsonify,
-    send_file,
-)
+from flask import Flask, render_template, session, redirect, request, flash, url_for, send_from_directory, jsonify, send_file
 import io
 import tempfile
 from functools import wraps
@@ -56,13 +45,7 @@ logging.basicConfig(
 def get_course_config(course: str):
     # check config file
     with engine.connect() as conn:
-        row = (
-            conn.execute(
-                text("SELECT * FROM courses WHERE name = :course"), {"course": course}
-            )
-            .mappings()
-            .fetchone()
-        )
+        row = conn.execute(text("SELECT * FROM courses WHERE name = :course"), {"course": course}).mappings().fetchone()
         if row:
             config = {}
             config["QUIZ_NAME"] = row["name"]
@@ -115,9 +98,7 @@ def get_translation(language: str):
 def load_questions_xml(xml_file: Path, course: str, config: dict) -> int:
     try:
         # load questions from xml moodle file
-        question_data = moodle_xml.moodle_xml_to_dict_with_images(
-            xml_file, config["QUESTION_TYPES"], f"images/{course}"
-        )
+        question_data = moodle_xml.moodle_xml_to_dict_with_images(xml_file, config["QUESTION_TYPES"], f"images/{course}")
 
         with engine.connect() as conn:
             conn.execute(
@@ -179,9 +160,7 @@ def load_questions_gift(gift_file_path: Path, course: str, config: dict) -> int:
                                 "topic": topic,
                                 "type": type_,
                                 "name": question_name,
-                                "content": json.dumps(
-                                    question_data[topic][type_][question_name]
-                                ),
+                                "content": json.dumps(question_data[topic][type_][question_name]),
                             },
                         )
             conn.commit()
@@ -230,17 +209,13 @@ def check_login(f):
                 # check if nickname exists
                 with engine.connect() as conn:
                     if not conn.execute(
-                        text(
-                            "SELECT count(*) FROM users WHERE nickname = :nickname OR email = :email"
-                        ),
+                        text("SELECT count(*) FROM users WHERE nickname = :nickname OR email = :email"),
                         {
                             "nickname": session["nickname"],
                             "email": session.get("email", "x"),
                         },
                     ).scalar():
-                        return redirect(
-                            url_for("google_auth.logout", course=kwargs["course"])
-                        )
+                        return redirect(url_for("google_auth.logout", course=kwargs["course"]))
 
         return f(*args, **kwargs)
 
@@ -294,9 +269,7 @@ def is_manager_or_admin(f):
 
         if not flag_admin and not flag_manager:
             flash(
-                Markup(
-                    '<div class="notification is-danger">You are not allowed to access this page</div>'
-                ),
+                Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
                 "",
             )
             return redirect(url_for("home", course=kwargs["course"]))
@@ -323,9 +296,7 @@ def get_lives_number(course: str, nickname: str) -> int | None:
     with engine.connect() as conn:
         lives = (
             conn.execute(
-                text(
-                    "SELECT number FROM lives WHERE nickname = :nickname AND course = :course"
-                ),
+                text("SELECT number FROM lives WHERE nickname = :nickname AND course = :course"),
                 {"course": course, "nickname": nickname},
             )
             .mappings()
@@ -357,11 +328,7 @@ def main_home():
     # get list of courses
     if session.get("nickname", "") == "admin":
         with engine.connect() as conn:
-            courses = (
-                conn.execute(text("SELECT name FROM courses ORDER BY name"))
-                .mappings()
-                .all()
-            )
+            courses = conn.execute(text("SELECT name FROM courses ORDER BY name")).mappings().all()
         courses_list = [row["name"] for row in courses]
     elif "nickname" in session:
         return redirect(url_for("my_quizz"))
@@ -382,18 +349,12 @@ def my_quizz():
 
     # get list of courses
     with engine.connect() as conn:
-        courses = (
-            conn.execute(text("SELECT name FROM courses ORDER BY name"))
-            .mappings()
-            .all()
-        )
+        courses = conn.execute(text("SELECT name FROM courses ORDER BY name")).mappings().all()
 
     if session.get("nickname", "") == "admin":
         courses_list = [row["name"] for row in courses]
     else:
-        courses_list = [
-            row["name"] for row in courses if row["name"] in session["authorized_quizz"]
-        ]
+        courses_list = [row["name"] for row in courses if row["name"] in session["authorized_quizz"]]
     return render_template(
         "my_quizz.html",
         courses_list=courses_list,
@@ -430,13 +391,9 @@ def home(course: str = ""):
     translation = get_translation("it")
 
     if config["login_mode"] == "google_auth":
-        session["manager"] = session.get("email", "") and (
-            session["email"] in config["managers"]
-        )
+        session["manager"] = session.get("email", "") and (session["email"] in config["managers"])
     elif "nickname" in session:
-        session["manager"] = session.get("nickname", "") and (
-            session["nickname"] in config["managers"]
-        )
+        session["manager"] = session.get("nickname", "") and (session["nickname"] in config["managers"])
     else:
         session["manager"] = False
 
@@ -537,9 +494,7 @@ def get_visible_topics(course):
         topics: list = [
             row["topic"]
             for row in conn.execute(
-                text(
-                    "SELECT DISTINCT topic FROM questions WHERE course = :course AND deleted IS NULL ORDER BY topic"
-                ),
+                text("SELECT DISTINCT topic FROM questions WHERE course = :course AND deleted IS NULL ORDER BY topic"),
                 {"course": course},
             )
             .mappings()
@@ -565,9 +520,7 @@ def position(course: str):
     with engine.connect() as conn:
         users = (
             conn.execute(
-                text(
-                    "SELECT nickname FROM users WHERE nickname NOT IN ('admin', 'manager') AND nickname != :nickname"
-                ),
+                text("SELECT nickname FROM users WHERE nickname NOT IN ('admin', 'manager') AND nickname != :nickname"),
                 {"nickname": session["nickname"]},
             )
             .mappings()
@@ -608,55 +561,35 @@ def recover_quiz(course: str):
     with engine.connect() as conn:
         # get number of questions in recover topic
         if config["RECOVER_TOPICS"]:
-            stmt = text(
-                "SELECT COUNT(*) AS n_questions FROM questions WHERE deleted IS NULL AND topic IN :topics"
-            ).bindparams(bindparam("topics", expanding=True))
-
-            n_recover_questions = conn.execute(
-                stmt, {"topics": config["RECOVER_TOPICS"]}
-            ).scalar()
-
-            session["quiz"] = quiz.get_quiz_recover(
-                questions_df, config["RECOVER_TOPICS"], n_recover_questions
+            stmt = text("SELECT COUNT(*) AS n_questions FROM questions WHERE deleted IS NULL AND topic IN :topics").bindparams(
+                bindparam("topics", expanding=True)
             )
+
+            n_recover_questions = conn.execute(stmt, {"topics": config["RECOVER_TOPICS"]}).scalar()
+
+            session["quiz"] = quiz.get_quiz_recover(questions_df, config["RECOVER_TOPICS"], n_recover_questions)
 
         else:  # no recover topic
             # count all questions
             n_recover_questions = (
-                conn.execute(
-                    text(
-                        "SELECT COUNT(*) AS n_questions FROM questions WHERE deleted IS NULL"
-                    )
-                )
+                conn.execute(text("SELECT COUNT(*) AS n_questions FROM questions WHERE deleted IS NULL"))
                 .mappings()
                 .fetchone()["n_questions"]
             )
             topics: list = [
                 row["topic"]
-                for row in conn.execute(
-                    text("SELECT DISTINCT topic FROM questions WHERE deleted IS NULL")
-                )
-                .mappings()
-                .fetchall()
+                for row in conn.execute(text("SELECT DISTINCT topic FROM questions WHERE deleted IS NULL")).mappings().fetchall()
                 if row["topic"] not in config["TOPICS_TO_HIDE"]
             ]
-            session["quiz"] = quiz.get_quiz_recover(
-                questions_df, topics, n_recover_questions
-            )
+            session["quiz"] = quiz.get_quiz_recover(questions_df, topics, n_recover_questions)
 
     session["quiz_position"] = 0
     session["recover"] = 0  # count number of good answer
 
-    return redirect(
-        url_for(
-            "question", course=course, topic=translation["Recover lives"], step=1, idx=0
-        )
-    )
+    return redirect(url_for("question", course=course, topic=translation["Recover lives"], step=1, idx=0))
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/all_topic_quiz/<course>/<topic>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/all_topic_quiz/<course>/<topic>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager_or_admin
@@ -665,14 +598,8 @@ def all_topic_quiz(course: str, topic: str):
     create a quiz with all questions of a topic
     """
     with engine.connect() as conn:
-        query = text(
-            "SELECT id FROM questions WHERE deleted IS NULL AND course = :course AND topic = :topic"
-        )
-        rows = (
-            conn.execute(query, {"course": course, "topic": topic})
-            .mappings()
-            .fetchall()
-        )
+        query = text("SELECT id FROM questions WHERE deleted IS NULL AND course = :course AND topic = :topic")
+        rows = conn.execute(query, {"course": course, "topic": topic}).mappings().fetchall()
 
     session["quiz"] = [row["id"] for row in rows]
     session["quiz_position"] = 0
@@ -752,9 +679,7 @@ def brush_up_home(course: str):
     )
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/brush_up/<course>/<int:level>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/brush_up/<course>/<int:level>", methods=["GET"])
 @course_exists
 @check_login
 def brush_up(course: str, level: int):
@@ -767,9 +692,7 @@ def brush_up(course: str, level: int):
 
     questions_df = get_questions_dataframe(course, session["nickname"])
 
-    session["quiz"] = quiz.get_quiz_brushup(
-        questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level
-    )
+    session["quiz"] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level)
 
     if session["quiz"] == []:
         del session["quiz"]
@@ -785,9 +708,7 @@ def brush_up(course: str, level: int):
     session["quiz_position"] = 0
     session["brush-up"] = True
 
-    return redirect(
-        url_for("question", course=course, topic=translation["Brush-up"], step=1, idx=0)
-    )
+    return redirect(url_for("question", course=course, topic=translation["Brush-up"], step=1, idx=0))
 
 
 def get_seed(nickname, topic):
@@ -812,9 +733,7 @@ def steps(course: str, topic: str):
     with engine.connect() as conn:
         rows = (
             conn.execute(
-                text(
-                    "SELECT step_index, number FROM steps WHERE course = :course AND nickname = :nickname AND topic = :topic "
-                ),
+                text("SELECT step_index, number FROM steps WHERE course = :course AND nickname = :nickname AND topic = :topic "),
                 {"course": course, "nickname": session["nickname"], "topic": topic},
             )
             .mappings()
@@ -877,9 +796,7 @@ def step(course: str, topic: str, step: int):
                     q.name
                 """)
 
-        result = conn.execute(
-            query, {"course": course, "nickname": session["nickname"]}
-        )
+        result = conn.execute(query, {"course": course, "nickname": session["nickname"]})
         columns = result.keys()
         rows = result.mappings().fetchall()
 
@@ -991,9 +908,7 @@ def bookmark_checkbox(question_id: int):
         with engine.connect() as conn:
             if is_checked:
                 conn.execute(
-                    text(
-                        "INSERT INTO bookmarks (nickname, question_id) VALUES (:nickname, :question_id)"
-                    ),
+                    text("INSERT INTO bookmarks (nickname, question_id) VALUES (:nickname, :question_id)"),
                     {"nickname": session["nickname"], "question_id": question_id},
                 )
             else:
@@ -1062,9 +977,7 @@ def question(course: str, topic: str, step: int, idx: int):
                 for row in rows:
                     if row["number"] < config["N_QUIZ_BY_STEP"]:
                         flash(
-                            Markup(
-                                '<div class="notification is-danger">You are not allowed to access this page</div>'
-                            ),
+                            Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
                             "",
                         )
                         return redirect(url_for("home", course=course))
@@ -1072,9 +985,7 @@ def question(course: str, topic: str, step: int, idx: int):
         # check quiz_position
         if session["nickname"] not in ("admin") and idx != session["quiz_position"]:
             flash(
-                Markup(
-                    '<div class="notification is-danger">You are not allowed to access this page</div>'
-                ),
+                Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
                 "",
             )
             return redirect(url_for("home", course=course))
@@ -1086,9 +997,7 @@ def question(course: str, topic: str, step: int, idx: int):
         with engine.connect() as conn:
             question = json.loads(
                 conn.execute(
-                    text(
-                        "SELECT content FROM questions WHERE course= :course AND deleted IS NULL AND id = :question_id"
-                    ),
+                    text("SELECT content FROM questions WHERE course= :course AND deleted IS NULL AND id = :question_id"),
                     {"course": course, "question_id": question_id},
                 )
                 .mappings()
@@ -1171,16 +1080,10 @@ def question(course: str, topic: str, step: int, idx: int):
         if image.startswith("http"):
             image_list.append(image)
         else:
-            image_list.append(
-                f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}"
-            )
+            image_list.append(f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}")
     # check if geojson file is present (areas definition) if one image
     image_area = (len(image_list) == 1) and (
-        Path("images")
-        / Path(course)
-        / Path(Path(image_list[0]).name).with_suffix(
-            Path(image_list[0]).suffix + ".json"
-        )
+        Path("images") / Path(course) / Path(Path(image_list[0]).name).with_suffix(Path(image_list[0]).suffix + ".json")
     ).is_file()
 
     if question["type"] in ("multichoice", "truefalse"):
@@ -1190,11 +1093,7 @@ def question(course: str, topic: str, step: int, idx: int):
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
         type_ = "number" if question["type"] == "numerical" else "text"
-        placeholder = (
-            translation["Input a number"]
-            if question["type"] == "numerical"
-            else translation["Input a text"]
-        )
+        placeholder = translation["Input a number"] if question["type"] == "numerical" else translation["Input a text"]
 
     if question["questiontext"].count("*") == 2:
         question["questiontext"] = question["questiontext"].replace("*", "<i>", 1)
@@ -1216,12 +1115,8 @@ def question(course: str, topic: str, step: int, idx: int):
         topic=topic,
         step=step,
         idx=idx,
-        total=len(session["quiz"])
-        if "recover" not in session
-        else config["N_QUESTIONS_FOR_RECOVER"],
-        lives=get_lives_number(
-            course, session["nickname"] if "nickname" in session else ""
-        ),
+        total=len(session["quiz"]) if "recover" not in session else config["N_QUESTIONS_FOR_RECOVER"],
+        lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
         recover="recover" in session,
         translation=translation,
     )
@@ -1316,9 +1211,7 @@ def view_question_id(course: str = "", question_id: int = 0):
     with engine.connect() as conn:
         question = json.loads(
             conn.execute(
-                text(
-                    "SELECT content FROM questions WHERE course= :course AND id = :question_id"
-                ),
+                text("SELECT content FROM questions WHERE course= :course AND id = :question_id"),
                 {"course": course, "question_id": question_id},
             )
             .mappings()
@@ -1331,16 +1224,10 @@ def view_question_id(course: str = "", question_id: int = 0):
         if image.startswith("http"):
             image_list.append(image)
         else:
-            image_list.append(
-                f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}"
-            )
+            image_list.append(f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}")
     # check if json file is present (areas definition) if one image
     image_area = (len(image_list) == 1) and (
-        Path("images")
-        / Path(course)
-        / Path(Path(image_list[0]).name).with_suffix(
-            Path(image_list[0]).suffix + ".json"
-        )
+        Path("images") / Path(course) / Path(Path(image_list[0]).name).with_suffix(Path(image_list[0]).suffix + ".json")
     ).is_file()
 
     if question["type"] in ("multichoice", "truefalse"):
@@ -1350,11 +1237,7 @@ def view_question_id(course: str = "", question_id: int = 0):
     elif question["type"] in ("shortanswer", "numerical"):
         answers = ""
         type_ = "number" if question["type"] == "numerical" else "text"
-        placeholder = (
-            translation["Input a number"]
-            if question["type"] == "numerical"
-            else translation["Input a text"]
-        )
+        placeholder = translation["Input a number"] if question["type"] == "numerical" else translation["Input a text"]
 
     if question["questiontext"].count("*") == 2:
         question["questiontext"] = question["questiontext"].replace("*", "<i>", 1)
@@ -1403,9 +1286,7 @@ def checked_text(text):
     return text_revised
 
 
-def calculate_similarity_score(
-    student_answer, correct_answer, response_thresholds, response_phrases
-):
+def calculate_similarity_score(student_answer, correct_answer, response_thresholds, response_phrases):
     """
     Calculates a similarity score between the student's answer and the correct answer,
     considering both word order and the presence of words.
@@ -1546,9 +1427,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     with engine.connect() as conn:
         question = json.loads(
             conn.execute(
-                text(
-                    "SELECT content FROM questions WHERE course = :course AND id = :id"
-                ),
+                text("SELECT content FROM questions WHERE course = :course AND id = :id"),
                 {"course": course, "id": question_id},
             )
             .mappings()
@@ -1568,25 +1447,19 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             if not (
                 Path("images")
                 / Path(course)
-                / Path(Path(request.form.get("image_path")).name).with_suffix(
-                    Path(request.form.get("image_path")).suffix + ".json"
-                )
+                / Path(Path(request.form.get("image_path")).name).with_suffix(Path(request.form.get("image_path")).suffix + ".json")
             ).is_file():
                 return "geojson not found"
             else:
                 with open(
                     Path("images")
                     / Path(course)
-                    / Path(Path(request.form.get("image_path")).name).with_suffix(
-                        Path(request.form.get("image_path")).suffix + ".json"
-                    ),
+                    / Path(Path(request.form.get("image_path")).name).with_suffix(Path(request.form.get("image_path")).suffix + ".json"),
                     "r",
                 ) as f:
                     data = geojson.load(f)
 
-                x, y = [
-                    float(x) for x in request.form.get("normalized_coord").split(",")
-                ]
+                x, y = [float(x) for x in request.form.get("normalized_coord").split(",")]
                 area = find_feature_name(data, x, y)
 
                 user_answer_list = area if area is not None else []
@@ -1615,20 +1488,17 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             for user_answer in user_answer_list:
                 if user_answer == answer["text"]:
                     response["correct_answer"] = answer["fraction"] == "100"
-                    response["feedback"] = (
-                        answer["feedback"] if answer["feedback"] is not None else ""
-                    )
+                    response["feedback"] = answer["feedback"] if answer["feedback"] is not None else ""
 
         if "correct_answer" not in response:
             response["correct"] = False
         else:
             response["correct"] = response["correct_answer"]
         if response["correct"]:
-            response["result"] = Markup(format_correct_answer(response["feedback"]))
+            response["result"] = Markup(format_correct_answer(response.get("feedback", "")))
         else:
-            response["result"] = Markup(
-                format_wrong_answer(response["feedback"], correct_answers)
-            )
+            print(response)
+            response["result"] = Markup(format_wrong_answer(response.get("feedback", ""), correct_answers))
 
         # print(f"{response=}")
 
@@ -1642,21 +1512,15 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             if answer["fraction"] == "100":
                 correct_answers.append(answer["text"])
 
-                match, score, reply = calculate_similarity_score(
-                    user_answer, answer["text"], [], []
-                )
+                match, score, reply = calculate_similarity_score(user_answer, answer["text"], [], [])
                 answers[score] = {
                     "correct_answer": answer["fraction"] == "100",
                     "match": match,
-                    "feedback": answer["feedback"]
-                    if answer["feedback"] is not None
-                    else "",
+                    "feedback": answer["feedback"] if answer["feedback"] is not None else "",
                     "reply": reply,
                 }
             else:
-                negative_feedback = (
-                    answer["feedback"] if answer["feedback"] is not None else ""
-                )
+                negative_feedback = answer["feedback"] if answer["feedback"] is not None else ""
 
         logging.debug(f"good {answers=}")
 
@@ -1675,26 +1539,16 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                 negative_feedback = negative_feedback.replace("Sbagliato,", "")
                 negative_feedback = negative_feedback.replace("Sbagliato", "")
                 if not negative_feedback:
-                    negative_feedback = (
-                        f'<br>La risposta giustà è "{correct_answers[0]}"'
-                    )
+                    negative_feedback = f'<br>La risposta giustà è "{correct_answers[0]}"'
 
-                response["result"] = Markup(
-                    format_correct_answer(response["reply"] + " " + negative_feedback)
-                )
+                response["result"] = Markup(format_correct_answer(response["reply"] + " " + negative_feedback))
             elif sorted(answers)[-1] < 100:
-                response["result"] = Markup(
-                    format_correct_answer(
-                        response["reply"] + " " + response["feedback"]
-                    )
-                )
+                response["result"] = Markup(format_correct_answer(response["reply"] + " " + response["feedback"]))
             else:
                 positive_feedback = response["feedback"].replace("Esatto!", "")
                 positive_feedback = positive_feedback.replace("Esatto", "")
                 positive_feedback = positive_feedback.replace("Corretto!", "")
-                response["result"] = Markup(
-                    format_correct_answer(response["reply"] + " " + positive_feedback)
-                )
+                response["result"] = Markup(format_correct_answer(response["reply"] + " " + positive_feedback))
 
             response["correct"] = True
             if "recover" in session:
@@ -1705,15 +1559,11 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             answers = {}
             for answer in question["answers"]:
                 if answer["fraction"] != "100":
-                    match, score, reply = calculate_similarity_score(
-                        user_answer, answer["text"], [], []
-                    )
+                    match, score, reply = calculate_similarity_score(user_answer, answer["text"], [], [])
                     answers[score] = {
                         "correct_answer": False,
                         "match": match,
-                        "feedback": answer["feedback"]
-                        if answer["feedback"] is not None
-                        else "",
+                        "feedback": answer["feedback"] if answer["feedback"] is not None else "",
                     }
 
             logging.debug(f"wrong {answers=}")
@@ -1726,9 +1576,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                 if "recover" not in session:
                     with engine.connect() as conn:
                         conn.execute(
-                            text(
-                                "UPDATE lives SET number = number - 1 WHERE course = :course AND number > 0 AND nickname = :nickname "
-                            ),
+                            text("UPDATE lives SET number = number - 1 WHERE course = :course AND number > 0 AND nickname = :nickname "),
                             {"course": course, "nickname": session["nickname"]},
                         )
                         conn.commit()
@@ -1739,9 +1587,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
 
                     logging.debug(f"{correct_answers=}")
 
-                    response["result"] = Markup(
-                        format_wrong_answer(response["feedback"], correct_answers)
-                    )
+                    response["result"] = Markup(format_wrong_answer(response["feedback"], correct_answers))
                     response["correct"] = False
 
                     # remove a life if not recover
@@ -1755,9 +1601,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                             )
                             conn.commit()
                 else:
-                    response["result"] = Markup(
-                        format_wrong_answer("", correct_answers)
-                    )
+                    response["result"] = Markup(format_wrong_answer("", correct_answers))
                     response["correct"] = False
 
         logging.debug(f"{response=}")
@@ -1774,10 +1618,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     if "quiz" in session:
         # check if recover is ended
         flag_recovered = False
-        if (
-            "recover" in session
-            and session["recover"] >= config["N_QUESTIONS_FOR_RECOVER"]
-        ):
+        if "recover" in session and session["recover"] >= config["N_QUESTIONS_FOR_RECOVER"]:
             flag_recovered = True
 
             # add a new life
@@ -1814,9 +1655,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         if flag_recovered:
             popup_text = translation["Congratulations! You've recovered one life!"]
 
-        nlives = get_lives_number(
-            course, session["nickname"] if "nickname" in session else ""
-        )
+        nlives = get_lives_number(course, session["nickname"] if "nickname" in session else "")
 
         if nlives == 0 and "recover" not in session:
             popup_text = Markup(f"{translation["You've lost all your lives..."]}")
@@ -1903,13 +1742,7 @@ def results(course: str, mode: str = "mean"):
         topics = get_visible_topics(course)
 
         users = (
-            conn.execute(
-                text(
-                    "SELECT * FROM users WHERE nickname NOT IN ('admin', 'manager') ORDER BY LOWER(nickname)"
-                )
-            )
-            .mappings()
-            .all()
+            conn.execute(text("SELECT * FROM users WHERE nickname NOT IN ('admin', 'manager') ORDER BY LOWER(nickname)")).mappings().all()
         )
         scores: dict = {}
         scores_by_topic: dict = {}
@@ -1943,16 +1776,12 @@ def results(course: str, mode: str = "mean"):
                 )
                 n_questions_by_topic = {}
                 for row in n_questions_topic:
-                    n_questions_by_topic[(row["nickname"], row["topic"])] = row[
-                        "n_questions"
-                    ]
+                    n_questions_by_topic[(row["nickname"], row["topic"])] = row["n_questions"]
 
             for row in user_topics:
                 score = get_score(course, row["topic"], nickname=user["nickname"])
 
-                logging.debug(
-                    f"user name: {user['nickname']} topic: {row['topic']}  score: {score}"
-                )
+                logging.debug(f"user name: {user['nickname']} topic: {row['topic']}  score: {score}")
 
                 if user["nickname"] not in scores_by_topic:
                     scores_by_topic[user["nickname"]] = {}
@@ -1969,9 +1798,7 @@ def results(course: str, mode: str = "mean"):
 
             n_questions[user["nickname"]] = (
                 conn.execute(
-                    text(
-                        "SELECT count(*) AS n_questions FROM results WHERE course = :course AND nickname = :nickname"
-                    ),
+                    text("SELECT count(*) AS n_questions FROM results WHERE course = :course AND nickname = :nickname"),
                     {"course": course, "nickname": user["nickname"]},
                 )
                 .mappings()
@@ -1990,9 +1817,7 @@ def results(course: str, mode: str = "mean"):
     )
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/course_management/<course>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/course_management/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager_or_admin
@@ -2006,9 +1831,7 @@ def course_management(course: str):
     with engine.connect() as conn:
         questions_number = (
             conn.execute(
-                text(
-                    "SELECT COUNT(*) AS questions_number FROM questions WHERE deleted IS NULL AND course = :course"
-                ),
+                text("SELECT COUNT(*) AS questions_number FROM questions WHERE deleted IS NULL AND course = :course"),
                 {"course": course},
             )
             .mappings()
@@ -2017,11 +1840,7 @@ def course_management(course: str):
 
         # TODO: add number of users for current course
         users_number = (
-            conn.execute(
-                text(
-                    "SELECT COUNT(*) AS users_number FROM users WHERE nickname NOT IN ('admin', 'manager') "
-                )
-            )
+            conn.execute(text("SELECT COUNT(*) AS users_number FROM users WHERE nickname NOT IN ('admin', 'manager') "))
             .mappings()
             .fetchone()["users_number"]
         )
@@ -2040,9 +1859,7 @@ def course_management(course: str):
 
         topics_list = (
             conn.execute(
-                text(
-                    "SELECT DISTINCT topic FROM questions WHERE deleted IS NULL AND course = :course"
-                ),
+                text("SELECT DISTINCT topic FROM questions WHERE deleted IS NULL AND course = :course"),
                 {"course": course},
             )
             .mappings()
@@ -2142,25 +1959,13 @@ def delete_image(course: str, image_name: str, question_id: int):
         (Path("images") / Path(course) / Path(image_name).name).unlink()
 
         # check for json file (image areas) to delete
-        if (
-            Path("images")
-            / Path(course)
-            / Path(Path(image_name).name).with_suffix(Path(image_name).suffix + ".json")
-        ).is_file():
-            (
-                Path("images")
-                / Path(course)
-                / Path(Path(image_name).name).with_suffix(
-                    Path(image_name).suffix + ".json"
-                )
-            ).unlink()
+        if (Path("images") / Path(course) / Path(Path(image_name).name).with_suffix(Path(image_name).suffix + ".json")).is_file():
+            (Path("images") / Path(course) / Path(Path(image_name).name).with_suffix(Path(image_name).suffix + ".json")).unlink()
 
         with engine.connect() as conn:
             question = (
                 conn.execute(
-                    text(
-                        "SELECT * FROM questions WHERE course = :course AND id = :question_id"
-                    ),
+                    text("SELECT * FROM questions WHERE course = :course AND id = :question_id"),
                     {"course": course, "question_id": question_id},
                 )
                 .mappings()
@@ -2181,9 +1986,7 @@ def delete_image(course: str, image_name: str, question_id: int):
     return redirect(url_for("edit_question", course=course, question_id=question_id))
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/load_questions/<course>", methods=["GET", "POST"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/load_questions/<course>", methods=["GET", "POST"])
 @course_exists
 @check_login
 @is_manager_or_admin
@@ -2217,13 +2020,9 @@ def load_questions(course: str):
 
             # load questions in database
             if Path(file_path).suffix == ".gift":
-                r, msg = load_questions_gift(
-                    file_path, course, get_course_config(course)
-                )
+                r, msg = load_questions_gift(file_path, course, get_course_config(course))
             else:
-                r, msg = load_questions_xml(
-                    file_path, course, get_course_config(course)
-                )
+                r, msg = load_questions_xml(file_path, course, get_course_config(course))
             if r:
                 flash(f"Error loading questions from {file.filename}: {msg}")
             else:
@@ -2255,9 +2054,7 @@ def edit_parameters(course: str):
 def add_lives(course: str):
     with engine.connect() as conn:
         conn.execute(
-            text(
-                "UPDATE lives SET number = number + 10 WHERE course = :course AND nickname = :nickname "
-            ),
+            text("UPDATE lives SET number = number + 10 WHERE course = :course AND nickname = :nickname "),
             {"course": course, "nickname": session["nickname"]},
         )
         conn.commit()
@@ -2282,9 +2079,7 @@ def all_questions(course: str):
     with engine.connect() as conn:
         questions = (
             conn.execute(
-                text(
-                    "SELECT * FROM questions WHERE course = :course AND deleted IS NULL ORDER BY id"
-                ),
+                text("SELECT * FROM questions WHERE course = :course AND deleted IS NULL ORDER BY id"),
                 {"course": course},
             )
             .mappings()
@@ -2304,9 +2099,7 @@ def all_questions(course: str):
     )
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/deleted_questions/<course>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/deleted_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager_or_admin
@@ -2318,9 +2111,7 @@ def deleted_questions(course: str):
     with engine.connect() as conn:
         questions = (
             conn.execute(
-                text(
-                    "SELECT * FROM questions WHERE course = :course AND deleted IS NOT NULL ORDER BY id"
-                ),
+                text("SELECT * FROM questions WHERE course = :course AND deleted IS NOT NULL ORDER BY id"),
                 {"course": course},
             )
             .mappings()
@@ -2340,9 +2131,7 @@ def deleted_questions(course: str):
     )
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/new_topic/<course>", methods=["GET", "POST"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/new_topic/<course>", methods=["GET", "POST"])
 @course_exists
 @check_login
 @is_manager_or_admin
@@ -2364,9 +2153,7 @@ def all_images(course: str):
     with engine.connect() as conn:
         questions = (
             conn.execute(
-                text(
-                    "SELECT * FROM questions WHERE deleted IS NULL AND course = :course ORDER BY id"
-                ),
+                text("SELECT * FROM questions WHERE deleted IS NULL AND course = :course ORDER BY id"),
                 {"course": course},
             )
             .mappings()
@@ -2381,27 +2168,17 @@ def all_images(course: str):
                 if image.startswith("http"):
                     image_list.append(image)
                 else:
-                    image_list.append(
-                        f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}"
-                    )
+                    image_list.append(f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}")
             content[row["id"]]["image_list"] = image_list
             # check if json file is present (areas definition) if one image
             image_area = (len(image_list) == 1) and (
-                Path("images")
-                / Path(course)
-                / Path(Path(image_list[0]).name).with_suffix(
-                    Path(image_list[0]).suffix + ".json"
-                )
+                Path("images") / Path(course) / Path(Path(image_list[0]).name).with_suffix(Path(image_list[0]).suffix + ".json")
             ).is_file()
 
-    return render_template(
-        "all_images.html", course=course, questions=questions, content=content
-    )
+    return render_template("all_images.html", course=course, questions=questions, content=content)
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/all_questions_gift/<course>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/all_questions_gift/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager_or_admin
@@ -2414,9 +2191,7 @@ def all_questions_gift(course: str):
     with engine.connect() as conn:
         for row in (
             conn.execute(
-                text(
-                    "SELECT * FROM questions WHERE deleted IS NULL AND course = :course ORDER BY id"
-                ),
+                text("SELECT * FROM questions WHERE deleted IS NULL AND course = :course ORDER BY id"),
                 {"course": course},
             )
             .mappings()
@@ -2468,9 +2243,7 @@ def all_questions_gift(course: str):
                     if answer["fraction"] == "100":
                         out.append(f"=%100%{answer['text']}#{answer['feedback']}")
                     else:
-                        out.append(
-                            f"=%{answer['fraction']}%{answer['text']}#{answer['feedback']}"
-                        )
+                        out.append(f"=%{answer['fraction']}%{answer['text']}#{answer['feedback']}")
                 if content["generalfeedback"]:
                     out.append(f"####{content['generalfeedback']}")
 
@@ -2493,6 +2266,8 @@ def edit_question(course: str, question_id: int):
     edit question
     """
 
+    print(question_id)
+
     translation = get_translation("it")
 
     if request.method == "GET":
@@ -2501,9 +2276,7 @@ def edit_question(course: str, question_id: int):
             topics = [
                 row["topic"]
                 for row in conn.execute(
-                    text(
-                        "SELECT topic FROM questions WHERE course = :course GROUP BY topic ORDER BY topic"
-                    ),
+                    text("SELECT topic FROM questions WHERE course = :course GROUP BY topic ORDER BY topic"),
                     {"course": course},
                 )
                 .mappings()
@@ -2514,9 +2287,7 @@ def edit_question(course: str, question_id: int):
             with engine.connect() as conn:
                 question = (
                     conn.execute(
-                        text(
-                            "SELECT * FROM questions WHERE course = :course AND id = :question_id"
-                        ),
+                        text("SELECT * FROM questions WHERE course = :course AND id = :question_id"),
                         {"course": course, "question_id": question_id},
                     )
                     .mappings()
@@ -2524,10 +2295,7 @@ def edit_question(course: str, question_id: int):
                 )
             content = json.loads(question["content"])
 
-            content["answers"] = [
-                x | {"id": f"answer{idx + 1}"}
-                for idx, x in enumerate(content["answers"])
-            ]
+            content["answers"] = [x | {"id": f"answer{idx + 1}"} for idx, x in enumerate(content["answers"])]
 
             # check presence of images
             image_list: list = []
@@ -2535,22 +2303,22 @@ def edit_question(course: str, question_id: int):
                 if image.startswith("http"):
                     image_list.append(image)
                 else:
-                    image_list.append(
-                        f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}"
-                    )
+                    image_list.append(f"{app.config['APPLICATION_ROOT']}/images/{course}/{image}")
             # check if json file is present (areas definition) if one image
             image_area = (len(image_list) == 1) and (
-                Path("images")
-                / Path(course)
-                / Path(Path(image_list[0]).name).with_suffix(
-                    Path(image_list[0]).suffix + ".json"
-                )
+                Path("images") / Path(course) / Path(Path(image_list[0]).name).with_suffix(Path(image_list[0]).suffix + ".json")
             ).is_file()
+
+            # referrer
+            referrer = request.referrer
         else:  # new question
             question = {}
             content = {}
             image_area = False
             image_list = []
+            referrer = url_for("course_management", course=course)
+
+        print(referrer)
 
         return render_template(
             "edit_question.html",
@@ -2562,17 +2330,17 @@ def edit_question(course: str, question_id: int):
             translation=translation,
             image_area=image_area,
             image_list=image_list,
-            referrer=request.referrer,
+            referrer=referrer,
         )
 
     if request.method == "POST":
+        print("post")
+        print("referrer", request.form["referrer"])
         if int(question_id) > 0:  # edit question
             with engine.connect() as conn:
                 question = (
                     conn.execute(
-                        text(
-                            "SELECT * FROM questions WHERE course = :course AND id = :question_id"
-                        ),
+                        text("SELECT * FROM questions WHERE course = :course AND id = :question_id"),
                         {"course": course, "question_id": question_id},
                     )
                     .mappings()
@@ -2580,10 +2348,7 @@ def edit_question(course: str, question_id: int):
                 )
             content = json.loads(question["content"])
 
-            content["answers"] = [
-                x | {"id": f"answer{idx + 1}"}
-                for idx, x in enumerate(content["answers"])
-            ]
+            content["answers"] = [x | {"id": f"answer{idx + 1}"} for idx, x in enumerate(content["answers"])]
 
             content["questiontext"] = request.form["questiontext"]
             answers: list = []
@@ -2643,7 +2408,7 @@ def edit_question(course: str, question_id: int):
             content["type"] = "shortanswer" if int(question_id) == -3 else "multichoice"
             content["name"] = request.form["name"]
 
-            answers = []
+            answers: list = []
             flag_good_answer = False
             for id in range(1, 6):
                 if not request.form[f"answer_{id}"]:
@@ -2651,23 +2416,41 @@ def edit_question(course: str, question_id: int):
                 if request.form[f"score_{id}"] == "100":
                     flag_good_answer = True
 
+                # check if text already present
+                for answer in answers:
+                    if answer["text"] == request.form[f"answer_{id}"].strip():
+                        flash(
+                            Markup(
+                                f'<div class="notification is-danger">An answer was found twice (<b>{request.form[f"answer_{id}"].strip()}</b>)</div>'
+                            ),
+                            "error",
+                        )
+                        return redirect(url_for("edit_question", course=course, question_id=question_id))
+
                 answers.append(
                     {
-                        "text": request.form[f"answer_{id}"],
+                        "text": request.form[f"answer_{id}"].strip(),
                         "fraction": request.form[f"score_{id}"],
-                        "feedback": request.form[f"feedback_{id}"],
+                        "feedback": request.form[f"feedback_{id}"].strip(),
                         "id": f"answer{id}",
                     }
                 )
+
             if not answers:
-                return redirect(
-                    url_for("edit_question", course=course, question_id=question_id)
+                flash(
+                    Markup('<div class="notification is-danger">No answers were given</div>'),
+                    "error",
                 )
 
+                return redirect(url_for("edit_question", course=course, question_id=question_id))
+
             if not flag_good_answer:
-                return redirect(
-                    url_for("edit_question", course=course, question_id=question_id)
+                flash(
+                    Markup('<div class="notification is-danger">No correct answer (100) was given</div>'),
+                    "error",
                 )
+
+                return redirect(url_for("edit_question", course=course, question_id=question_id))
 
             content["answers"] = answers
 
@@ -2685,23 +2468,45 @@ def edit_question(course: str, question_id: int):
             # json
             json_file = request.files["json_file"]
             if json_file:
-                # save json file with image file name with .json
-                file_path = (
-                    Path("images")
-                    / Path(course)
-                    / Path(img_file.filename).with_suffix(
-                        Path(img_file.filename).suffix + ".json"
+                file_content = json_file.read()  # Reads the file content
+
+                try:
+                    json_content = json.loads(file_content)
+                    # area_names
+                    area_names = [feature["properties"]["name"] for feature in json_content["features"]]
+                    print(area_names)
+
+                except json.decoder.JSONDecodeError:
+                    flash(
+                        Markup('<div class="notification is-danger">The JSON file is not correct</div>'),
+                        "error",
                     )
-                )
+                    return redirect(url_for("edit_question", course=course, question_id=question_id))
+
+                # check if correct answer if present in areas
+                for answer in answers:
+                    if answer["fraction"] != "100":
+                        continue
+                    if answer["text"] in area_names:
+                        break
+                else:
+                    flash(
+                        Markup(
+                            f'<div class="notification is-danger">The correct answer is not in the image areas ({",".join(area_names)})</div>'
+                        ),
+                        "error",
+                    )
+                    return redirect(url_for("edit_question", course=course, question_id=question_id))
+
+                # save json file with image file name with .json
+                file_path = Path("images") / Path(course) / Path(img_file.filename).with_suffix(Path(img_file.filename).suffix + ".json")
                 json_file.save(file_path)
 
         # save to db
         with engine.connect() as conn:
             if int(question_id) > 0:
                 conn.execute(
-                    text(
-                        "UPDATE questions SET content = :content WHERE course = :course AND id = :id"
-                    ),
+                    text("UPDATE questions SET content = :content WHERE course = :course AND id = :id"),
                     {
                         "course": course,
                         "content": json.dumps(content),
@@ -2710,9 +2515,7 @@ def edit_question(course: str, question_id: int):
                 )
             else:
                 conn.execute(
-                    text(
-                        "INSERT INTO questions (course, topic, type, name, content) VALUES (:course, :topic, :type, :name, :content)"
-                    ),
+                    text("INSERT INTO questions (course, topic, type, name, content) VALUES (:course, :topic, :type, :name, :content)"),
                     {
                         "course": course,
                         "content": json.dumps(content),
@@ -2723,19 +2526,10 @@ def edit_question(course: str, question_id: int):
                 )
             conn.commit()
 
-        print(request.form["referrer"])
-
-        if (
-            "check_answer" in request.form["referrer"]
-            and "TEST_QUESTION" in request.form["referrer"]
-        ):
-            return redirect(
-                url_for("view_question_id", course=course, question_id=question_id)
-            )
+        if "check_answer" in request.form["referrer"] and "TEST_QUESTION" in request.form["referrer"]:
+            return redirect(url_for("view_question_id", course=course, question_id=question_id))
 
         return redirect(request.form["referrer"])
-
-        # return redirect(url_for("all_questions", course=course))
 
 
 @app.route(
@@ -2778,9 +2572,7 @@ def undelete_question(course: str, question_id: int):
     return redirect(request.referrer)
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/bookmarked_questions/<course>", methods=["GET"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/bookmarked_questions/<course>", methods=["GET"])
 @course_exists
 @check_login
 @is_manager_or_admin
@@ -2841,9 +2633,7 @@ def reset_bookmarked_questions(course: str):
     return redirect(url_for("admin", course=course))
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/local_login/<course>", methods=["GET", "POST"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/local_login/<course>", methods=["GET", "POST"])
 @course_exists
 def local_login(course: str):
     """
@@ -2866,10 +2656,7 @@ def local_login(course: str):
         form_data = request.form
         # check if admin login (quizzych administrator)
         if form_data.get("nickname").strip() == "admin":
-            if (
-                hashlib.sha256(form_data.get("password").encode()).hexdigest()
-                != app.config["ADMIN_PASSWORD_SHA256"]
-            ):
+            if hashlib.sha256(form_data.get("password").encode()).hexdigest() != app.config["ADMIN_PASSWORD_SHA256"]:
                 flash(translation["Incorrect login. Retry"], "error")
                 return redirect(url_for("local_login", course=course))
             session["nickname"] = "admin"
@@ -2878,9 +2665,7 @@ def local_login(course: str):
         password_hash = hashlib.sha256(form_data.get("password").encode()).hexdigest()
         with engine.connect() as conn:
             cursor = conn.execute(
-                text(
-                    "SELECT count(*) AS n_users FROM users WHERE nickname = :nickname AND password_hash = :password_hash"
-                ),
+                text("SELECT count(*) AS n_users FROM users WHERE nickname = :nickname AND password_hash = :password_hash"),
                 {
                     "nickname": form_data.get("nickname"),
                     "password_hash": password_hash,
@@ -2892,9 +2677,7 @@ def local_login(course: str):
                 # check if manager
                 with engine.connect() as conn:
                     flag_manager = conn.execute(
-                        text(
-                            "SELECT COUNT(*) FROM courses WHERE name = :course AND :nickname = ANY(managers)"
-                        ),
+                        text("SELECT COUNT(*) FROM courses WHERE name = :course AND :nickname = ANY(managers)"),
                         {"course": course, "nickname": session["nickname"]},
                     ).scalar()
                     session["manager"] = flag_manager != 0
@@ -2923,10 +2706,7 @@ def admin_login():
         form_data = request.form
         # check if admin login (quizzych administrator)
         if form_data.get("nickname").strip() == "admin":
-            if (
-                hashlib.sha256(form_data.get("password").encode()).hexdigest()
-                != app.config["ADMIN_PASSWORD_SHA256"]
-            ):
+            if hashlib.sha256(form_data.get("password").encode()).hexdigest() != app.config["ADMIN_PASSWORD_SHA256"]:
                 flash(translation["Incorrect login. Retry"], "error")
                 return redirect(url_for("admin_login"))
             session["nickname"] = "admin"
@@ -2954,9 +2734,7 @@ def new_course():
         # check if admin
         if session.get("nickname", "") != "admin":
             flash(
-                Markup(
-                    '<div class="notification is-danger">You must be administrator to create a new quizz</div>'
-                ),
+                Markup('<div class="notification is-danger">You must be administrator to create a new quizz</div>'),
                 "",
             )
             return redirect(url_for("main_home"))
@@ -2980,9 +2758,7 @@ def new_course():
             # check if admin
             if session.get("nickname", "") != "admin":
                 flash(
-                    Markup(
-                        '<div class="notification is-danger">You must be administrator to create a new quizz</div>'
-                    ),
+                    Markup('<div class="notification is-danger">You must be administrator to create a new quizz</div>'),
                     "",
                 )
                 return redirect(url_for("main_home"))
@@ -3004,9 +2780,7 @@ def new_course():
 
             if not flag_admin and not flag_manager:
                 flash(
-                    Markup(
-                        '<div class="notification is-danger">You must be administrator or manager to modify quizz</div>'
-                    ),
+                    Markup('<div class="notification is-danger">You must be administrator or manager to modify quizz</div>'),
                     "",
                 )
                 return redirect(url_for("main_home"))
@@ -3034,33 +2808,23 @@ def new_course():
                     "managers": eval(request.form["managers"]),
                     "question_types": eval(request.form["question_types"]),
                     "initial_life_number": request.form["life_number"],
-                    "topics_to_hide": eval(request.form["hidden_topics"])
-                    if request.form["hidden_topics"]
-                    else [],
+                    "topics_to_hide": eval(request.form["hidden_topics"]) if request.form["hidden_topics"] else [],
                     "topic_question_number": request.form["topic_question_number"],
                     "steps": eval(request.form["steps"]),
                     "step_quiz_number": request.form["step_quiz_number"],
                     "recover_question_number": request.form["recover_question_number"],
-                    "recover_topics": eval(request.form["recover_topics"])
-                    if request.form["recover_topics"]
-                    else [],
-                    "brush_up_question_number": request.form[
-                        "brush_up_question_number"
-                    ],
+                    "recover_topics": eval(request.form["recover_topics"]) if request.form["recover_topics"] else [],
+                    "brush_up_question_number": request.form["brush_up_question_number"],
                     "brush_up_level_names": eval(request.form["brush_up_level_names"]),
                     "brush_up_levels": eval(request.form["brush_up_levels"]),
                 },
             )
             conn.commit()
 
-        return redirect(
-            url_for("course_management", course=request.form["course_name"])
-        )
+        return redirect(url_for("course_management", course=request.form["course_name"]))
 
 
-@app.route(
-    f"{app.config['APPLICATION_ROOT']}/new_nickname/<course>", methods=["GET", "POST"]
-)
+@app.route(f"{app.config['APPLICATION_ROOT']}/new_nickname/<course>", methods=["GET", "POST"])
 @course_exists
 def new_nickname(course: str):
     """
@@ -3070,9 +2834,7 @@ def new_nickname(course: str):
     translation = get_translation("it")
 
     if request.method == "GET":
-        return render_template(
-            "new_nickname.html", course=course, translation=translation
-        )
+        return render_template("new_nickname.html", course=course, translation=translation)
 
     if request.method == "POST":
         form_data = request.form
@@ -3082,49 +2844,35 @@ def new_nickname(course: str):
 
         if nickname == "admin":
             flash("This nickname is not allowed", "error")
-            return render_template(
-                "new_nickname.html", course=course, translation=translation
-            )
+            return render_template("new_nickname.html", course=course, translation=translation)
 
         if not password1 or not password2:
             flash("A password is missing", "error")
-            return render_template(
-                "new_nickname.html", course=course, translation=translation
-            )
+            return render_template("new_nickname.html", course=course, translation=translation)
 
         if password1 != password2:
             flash("Passwords are not the same", "error")
-            return render_template(
-                "new_nickname.html", course=course, translation=translation
-            )
+            return render_template("new_nickname.html", course=course, translation=translation)
 
         password_hash = hashlib.sha256(password1.encode()).hexdigest()
 
         with engine.connect() as conn:
             n_users = conn.execute(
-                text(
-                    "SELECT COUNT(*) AS n_users FROM users WHERE nickname = :nickname"
-                ),
+                text("SELECT COUNT(*) AS n_users FROM users WHERE nickname = :nickname"),
                 {"nickname": nickname},
             ).scalar()
 
             if n_users:
                 flash("Nickname already taken", "error")
-                return render_template(
-                    "new_nickname.html", course=course, translation=translation
-                )
+                return render_template("new_nickname.html", course=course, translation=translation)
 
             try:
                 conn.execute(
-                    text(
-                        "INSERT INTO users (nickname, password_hash) VALUES (:nickname, :password_hash)"
-                    ),
+                    text("INSERT INTO users (nickname, password_hash) VALUES (:nickname, :password_hash)"),
                     {"nickname": nickname, "password_hash": password_hash},
                 )
                 conn.execute(
-                    text(
-                        "INSERT INTO lives (course, nickname, number) VALUES (:course, :nickname, :number)"
-                    ),
+                    text("INSERT INTO lives (course, nickname, number) VALUES (:course, :nickname, :number)"),
                     {
                         "course": course,
                         "nickname": nickname,
@@ -3134,18 +2882,14 @@ def new_nickname(course: str):
                 conn.commit()
 
                 flash(
-                    Markup(
-                        f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'
-                    ),
+                    Markup(f'<div class="notification is-success">New nickname created with {config["INITIAL_LIFE_NUMBER"]} lives</div>'),
                     "",
                 )
                 return redirect(url_for("home", course=course))
 
             except Exception:
                 flash(
-                    Markup(
-                        '<div class="notification is-danger">Error creating the new nickname</div>'
-                    ),
+                    Markup('<div class="notification is-danger">Error creating the new nickname</div>'),
                     "error",
                 )
 

@@ -10,6 +10,16 @@
 <a class="button is-warning" href="{{ url_for('course_management', course=course) }}">
 Manage quizz
 </a>
+<br><br><br>
+
+{% with messages = get_flashed_messages(with_categories=True) %}
+{% if messages %}
+{% for category, message in messages %}
+    {{ message }}
+{% endfor %}
+<br>
+{% endif %}
+{% endwith %}
 
 {% if question_id > 0 %}
 <br>
@@ -231,6 +241,8 @@ Manage quizz
     </label>
   </div>
 
+{% if question_id == -3 %} {# shortanswer #}
+
 <div class="file has-name is-primary">
     <label class="file-label">
       <input class="file-input" type="file" name="json_file" id="fileInput_json" accept=".json">
@@ -244,13 +256,15 @@ Manage quizz
     </label>
    </div>
 
-<!-- Commento visibile -->
 <p class="help is-info">The JSON file will be loaded only if an image file is selected</p>
+  {% endif %}
+
+
 
 <br>
 <button class="button is-link" href="url_for('bookmarked_questions', course=course)">Cancel</button>
 
-<button class="button is-danger" type="submit">Save</button>
+<button class="button is-danger" type="submit">Save question</button>
 
 
 <input type="hidden" name="referrer" value="{{ referrer }}">

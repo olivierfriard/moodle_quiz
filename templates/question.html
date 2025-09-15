@@ -91,7 +91,7 @@
 
 <form id="image_area_form" action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=question_id) }}" method="POST">
   
-<input type="text" id="normalized_coord" name="normalized_coord" value="">
+<input type="hidden" id="normalized_coord" name="normalized_coord" value="">
   
 <input type="hidden" name="image_area" value="image_area">
 <input type="hidden" name="image_path" value="{{ image_list[0] }}">
