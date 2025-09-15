@@ -177,7 +177,7 @@ const coordInput = document.getElementById('normalized_coord');
 
 </div>
 
-    {%  else %}
+    {% else %}
 
         {# multichoice #}
         {% for answer in answers %}
@@ -205,7 +205,6 @@ class="button is-info is-medium is-fullwidth wrap-text-button"><strong>{{ answer
 </div>
 </div>
 
-
 <div class="field">
 <div class="control">
 <button class="button is-link">{{ translation['Submit the answer'] }}</button>
@@ -213,13 +212,13 @@ class="button is-info is-medium is-fullwidth wrap-text-button"><strong>{{ answer
 </div>
 </form>
 {% endif %}
-{%endif%}
+{% endif %}
 
 {% endif %}{# lives == 0 #}
 
 
 
-{% if not step or session['nickname'] == 'admin' %}
+{% if not step or session['nickname'] == 'admin' or session['nickname'] in config['managers'] or session['email'] in config['managers'] %}
 <br><br>
 <a class="button is-warning" href="{{ url_for('edit_question', course=course, question_id=question_id) }}">{{ translation['Edit question'] }}</a>
 {% endif %}
