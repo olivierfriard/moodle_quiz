@@ -2520,15 +2520,11 @@ def edit_question(course: str, question_id: int):
                 )
             conn.commit()
 
-        if "check_answer" in request.form["referrer"] and "TEST_QUESTION" in request.form["referrer"]:
-            return redirect(url_for("view_question_id", course=course, question_id=question_id))
-
-        if "check_answer" in request.form["referrer"] and "TEST_QUESTION" not in request.form["referrer"]:
-            print(request.form["referrer"].split("/")[-3:])
-
-            # /<topic>/<int:step>/<int:idx>
-
-            return redirect(f"{app.config['APPLICATION_ROOT']}/question/{course}/" + "/".join(request.form["referrer"].split("/")[-3:]))
+        if "check_answer" in request.form["referrer"]:
+            if "TEST_QUESTION" in request.form["referrer"]:
+                return redirect(url_for("view_question_id", course=course, question_id=question_id))
+            else:
+                return redirect(f"{app.config['APPLICATION_ROOT']}/question/{course}/" + "/".join(request.form["referrer"].split("/")[-3:]))
 
         return redirect(request.form["referrer"])
 
