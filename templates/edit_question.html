@@ -241,7 +241,7 @@ Manage quizz
     </label>
   </div>
 
-{% if question_id == -3 %} {# shortanswer #}
+{% if question_id == -3 or (question_id > 0 and question.type == 'shortanswer' ) %} {# shortanswer #}
 
 <div class="file has-name is-primary">
     <label class="file-label">

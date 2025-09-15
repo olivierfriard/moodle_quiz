@@ -2266,8 +2266,6 @@ def edit_question(course: str, question_id: int):
     edit question
     """
 
-    print(question_id)
-
     translation = get_translation("it")
 
     if request.method == "GET":
@@ -2318,8 +2316,6 @@ def edit_question(course: str, question_id: int):
             image_list = []
             referrer = url_for("course_management", course=course)
 
-        print(referrer)
-
         return render_template(
             "edit_question.html",
             course=course,
@@ -2334,8 +2330,6 @@ def edit_question(course: str, question_id: int):
         )
 
     if request.method == "POST":
-        print("post")
-        print("referrer", request.form["referrer"])
         if int(question_id) > 0:  # edit question
             with engine.connect() as conn:
                 question = (
@@ -2473,8 +2467,7 @@ def edit_question(course: str, question_id: int):
                 try:
                     json_content = json.loads(file_content)
                     # area_names
-                    area_names = [feature["properties"]["name"] for feature in json_content["features"]]
-                    print(area_names)
+                    area_names = [feature["properties"]["name"].lower() for feature in json_content["features"]]
 
                 except json.decoder.JSONDecodeError:
                     flash(
@@ -2487,7 +2480,7 @@ def edit_question(course: str, question_id: int):
                 for answer in answers:
                     if answer["fraction"] != "100":
                         continue
-                    if answer["text"] in area_names:
+                    if answer["text"].lower() in area_names:
                         break
                 else:
                     flash(
@@ -2500,6 +2493,7 @@ def edit_question(course: str, question_id: int):
 
                 # save json file with image file name with .json
                 file_path = Path("images") / Path(course) / Path(img_file.filename).with_suffix(Path(img_file.filename).suffix + ".json")
+                json_file.seek(0)
                 json_file.save(file_path)
 
         # save to db
@@ -2528,6 +2522,13 @@ def edit_question(course: str, question_id: int):
 
         if "check_answer" in request.form["referrer"] and "TEST_QUESTION" in request.form["referrer"]:
             return redirect(url_for("view_question_id", course=course, question_id=question_id))
+
+        if "check_answer" in request.form["referrer"] and "TEST_QUESTION" not in request.form["referrer"]:
+            print(request.form["referrer"].split("/")[-3:])
+
+            # /<topic>/<int:step>/<int:idx>
+
+            return redirect(f"{app.config['APPLICATION_ROOT']}/question/{course}/" + "/".join(request.form["referrer"].split("/")[-3:]))
 
         return redirect(request.form["referrer"])
 
