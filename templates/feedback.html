@@ -5,11 +5,11 @@
 {% include "popup.css" %}
 
 <style>
-  .wrap-text-button {
-      white-space: normal;
-      word-break: break-word; /* Break long words if necessary */
-  }  
-  </style>
+.wrap-text-button {
+white-space: normal;
+word-break: break-word;
+}  
+</style>
   
 </head>
 <body>
@@ -145,9 +145,6 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
   }
 </script>
 {% endif %}
-
-
-
 
 </body>
 </html>
