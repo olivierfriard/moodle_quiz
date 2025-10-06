@@ -951,11 +951,12 @@ def delete_bookmark(course: str, question_id: int):
     return redirect(url_for("bookmarked_questions", course=course))
 
 
-def md2html(s: str) -> str:
+def md2html(s: str, markup: bool = True) -> str:
     """
     convert markdown in HTML
     """
-    return Markup(markdown.markdown(s).replace("<p>", "").replace("</p>", ""))
+    out = markdown.markdown(s).replace("<p>", "").replace("</p>", "")
+    return Markup(out) if markup else out
 
 
 @app.route(
@@ -1114,10 +1115,7 @@ def question(course: str, topic: str, step: int, idx: int):
         type_ = "number" if question["type"] == "numerical" else "text"
         placeholder = translation["Input a number"] if question["type"] == "numerical" else translation["Input a text"]
 
-    if question["questiontext"].count("*") == 2:
-        question["questiontext"] = question["questiontext"].replace("*", "<i>", 1)
-        question["questiontext"] = question["questiontext"].replace("*", "</i>", 1)
-        question["questiontext"] = Markup(question["questiontext"])
+    question["questiontext"] = md2html(question["questiontext"])
 
     return render_template(
         "question.html",
@@ -1259,10 +1257,7 @@ def view_question_id(course: str = "", question_id: int = 0):
         type_ = "number" if question["type"] == "numerical" else "text"
         placeholder = translation["Input a number"] if question["type"] == "numerical" else translation["Input a text"]
 
-    if question["questiontext"].count("*") == 2:
-        question["questiontext"] = question["questiontext"].replace("*", "<i>", 1)
-        question["questiontext"] = question["questiontext"].replace("*", "</i>", 1)
-        question["questiontext"] = Markup(question["questiontext"])
+    question["questiontext"] = md2html(question["questiontext"])
 
     return render_template(
         "question.html",
@@ -1378,9 +1373,12 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         """
         out: list = []
         if answer_feedback:
-            if answer_feedback.count("*") == 2:
+            answer_feedback = md2html(answer_feedback, markup=False)
+
+            """if answer_feedback.count("*") == 2:
                 answer_feedback = answer_feedback.replace("*", "<i>", 1)
                 answer_feedback = answer_feedback.replace("*", "</i>", 1)
+            """
 
             out.append(answer_feedback)
         if not out:
@@ -1393,9 +1391,12 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         """
         out: list = []
         if answer_feedback:
+            answer_feedback = md2html(answer_feedback, markup=False)
+            """
             if answer_feedback.count("*") == 2:
                 answer_feedback = answer_feedback.replace("*", "<i>", 1)
                 answer_feedback = answer_feedback.replace("*", "</i>", 1)
+            """
             out.append(answer_feedback)
 
             out.append(translation["The correct answer is:"])
@@ -1500,10 +1501,13 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     response = {"questiontext": question["questiontext"]}
 
     # convert *word* to italic
+    response["questiontext"] = md2html(response["questiontext"])
+    """
     if response["questiontext"].count("*") == 2:
         response["questiontext"] = response["questiontext"].replace("*", "<i>", 1)
         response["questiontext"] = response["questiontext"].replace("*", "</i>", 1)
         response["questiontext"] = Markup(response["questiontext"])
+    """
 
     if request.form.get("image_area"):
         for answer in question["answers"]:
