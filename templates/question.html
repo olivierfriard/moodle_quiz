@@ -89,7 +89,7 @@
 </div>
 <div id="coords" class="is-size-4">{{ translation['Click on the image to give your answer'] }}</div>
 
-<form id="image_area_form" action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=question_id) }}" method="POST">
+<form id="image_area_form" action="{{ url_for('check_answer', course=course, topic=topic, step=step, idx=idx if step else question_id) }}" method="POST">
   
 <input type="hidden" id="normalized_coord" name="normalized_coord" value="">
   
@@ -220,7 +220,7 @@ class="button is-info is-medium is-fullwidth wrap-text-button"><strong>{{ answer
 
 {% if not step or session['nickname'] == 'admin' or session['nickname'] in config['managers'] or session['email'] in config['managers'] %}
 <br><br>
-<a class="button is-warning" href="{{ url_for('edit_question', course=course, question_id=question_id) }}">{{ translation['Edit question'] }}</a>
+<a class="button is-warning" href="{{ url_for('edit_question', course=course, question_id=question_id, return_url=return_url) }}">{{ translation['Edit question'] }}</a>
 {% endif %}
 
 </div>

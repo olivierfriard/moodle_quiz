@@ -47,7 +47,8 @@ Manage quizz
 
 {% for img in image_list %}
 <img src="{{ img }}">
-<a class="button is-danger is-small confirm-link" href="{{ url_for('delete_image', course=course, question_id=question_id, image_name=img.split('/')[-1]) }}">delete image</a>
+<a class="button is-danger is-small confirm-link"
+href="{{ url_for('delete_image', course=course, question_id=question_id, image_name=img.split('/')[-1], return_url=return_url) }}">delete image</a>
 <br>
 {% endfor %}
 
@@ -58,7 +59,7 @@ Manage quizz
 
 <br>
 
-<form action="{{ url_for('edit_question', course=course, question_id=question_id) }}" method="post" enctype="multipart/form-data">
+<form action="{{ url_for('edit_question', course=course, question_id=question_id, return_url=return_url) }}" method="post" enctype="multipart/form-data">
 
 
 <div class="field">
@@ -77,7 +78,7 @@ Manage quizz
   </div>
 </div>
 
-  {% if question_id < 0 %} {# new question #}
+{% if question_id < 0 %} {# new question #}
 
 <div class="field">
 <label class="label">Question name</label>
@@ -267,7 +268,7 @@ Manage quizz
 <button class="button is-danger" type="submit">Save question</button>
 
 
-<input type="hidden" name="referrer" value="{{ referrer }}">
+<!-- <input type="hidden" name="return_url" value="{{ return_url }}"> -->
 
 
 </form>

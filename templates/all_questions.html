@@ -44,7 +44,7 @@ Images: {{ content[q.id]['files'] }}<br>
 {% endif %}
 <br>
 <a class="button is-link is-small" href="{{ url_for('view_question_id', course=course, question_id=q.id) }}">view</a>
-<a class="button is-warning is-small"  href="{{ url_for('edit_question', course=course, question_id=q.id) }}">edit</a>
+<a class="button is-warning is-small"  href="{{ url_for('edit_question', course=course, question_id=q.id, return_url=return_url) }}">edit</a>
 {% if q.deleted %}
 <a class="button is-danger is-small" href="{{ url_for('undelete_question', course=course, question_id=q.id) }}">undelete</a>
 {% else %}

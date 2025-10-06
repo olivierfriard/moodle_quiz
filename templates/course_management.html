@@ -97,9 +97,9 @@
         </div>
         <div class="dropdown-menu" id="dropdown-menu" role="menu">
           <div class="dropdown-content">
-            <a href="{{ url_for('edit_question', course=course, question_id=-1) }}" class="dropdown-item">True / False</a>
-            <a href="{{ url_for('edit_question', course=course, question_id=-2) }}" class="dropdown-item">Multichoice</a>
-            <a href="{{ url_for('edit_question', course=course, question_id=-3) }}" class="dropdown-item">Short Answer</a>
+            <a href="{{ url_for('edit_question', course=course, question_id=-1, return_url=return_url) }}" class="dropdown-item">True / False</a>
+            <a href="{{ url_for('edit_question', course=course, question_id=-2, return_url=return_url) }}" class="dropdown-item">Multichoice</a>
+            <a href="{{ url_for('edit_question', course=course, question_id=-3, return_url=return_url) }}" class="dropdown-item">Short Answer</a>
           </div>
         </div>
       </div>

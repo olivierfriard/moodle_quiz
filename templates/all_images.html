@@ -35,7 +35,7 @@ id: {{ q.id }}<br>
 
 {% endfor %}
 <a class="button is-link is-small" href="{{ url_for('view_question_id', course=course, question_id=q.id) }}">view</a>
-<a class="button is-warning is-small"  href="{{ url_for('edit_question', course=course, question_id=q.id) }}">edit</a>
+<a class="button is-warning is-small"  href="{{ url_for('edit_question', course=course, question_id=q.id, return_url=return_url) }}">edit</a>
 {# <a  class="button is-danger is-small" href="{{ url_for('delete_question', course=course, question_id=q.id) }}">delete</a> #}
 
 
