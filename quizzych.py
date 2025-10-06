@@ -1871,7 +1871,9 @@ def course_management(course: str):
             conn.execute(
                 text(
                     "SELECT topic, type, count(*) AS n_questions FROM questions "
-                    "WHERE deleted IS NULL AND course = :course GROUP BY topic, type"
+                    "WHERE deleted IS NULL AND course = :course "
+                    "GROUP BY topic, type "
+                    "ORDER BY topic, type"
                 ),
                 {"course": course},
             )
@@ -2120,6 +2122,40 @@ def all_questions(course: str):
         content=content,
         title="All questions",
         return_url=url_for("all_questions", course=course),
+    )
+
+
+@app.route(f"{app.config['APPLICATION_ROOT']}/all_topic_questions/<course>/<path:topic>", methods=["GET"])
+@course_exists
+@check_login
+@is_manager_or_admin
+def all_topic_questions(course: str, topic: str):
+    """
+    display all questions from topic
+    """
+
+    with engine.connect() as conn:
+        questions = (
+            conn.execute(
+                text("SELECT * FROM questions WHERE course = :course AND topic = :topic AND deleted IS NULL ORDER BY id"),
+                {"course": course, "topic": topic},
+            )
+            .mappings()
+            .fetchall()
+        )
+
+        content: dict = {}
+        for row in questions:
+            content[row["id"]] = json.loads(row["content"])
+
+    return render_template(
+        "all_questions.html",
+        course=course,
+        questions=questions,
+        content=content,
+        title=Markup(f"Questions for topic <b>{topic}</b>"),
+        return_url=url_for("all_topic_questions", course=course, topic=topic),
+        topic=topic,
     )
 
 

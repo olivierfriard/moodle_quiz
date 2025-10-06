@@ -64,7 +64,7 @@
     <br>
     {% for topic in topics %}
     
-    {{ topic.topic}} - {{ topic.type}}: <strong>{{ topic.n_questions }}</strong> questions. 
+    {{ topic.topic}} - {{ topic.type}}: <a href="{{ url_for('all_topic_questions', course=course, topic=topic.topic)}}"><strong>{{ topic.n_questions }}</strong> questions</a>. 
     
     <br>
     {% endfor %}
