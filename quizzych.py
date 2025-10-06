@@ -1726,7 +1726,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
     if step:
         return_url = url_for("question", course=course, topic=topic, step=step, idx=idx)
     else:
-        return_url = url_for("view_question_id", course=course, idx=idx)
+        return_url = url_for("view_question_id", course=course, question_id=idx)
 
     return render_template(
         "feedback.html",

@@ -26,19 +26,26 @@ id: {{ q.id }}<br>
 {{ q.name }}<br>
 <p class="title is-size-6">{{ content[q.id]['questiontext'] }}</p>
 
-<ul>
+
+<table class="table">
 {% for ans in content[q.id]['answers'] %}
-<li>
+<tr>
+<td>
+{% if ans.fraction == "100" %} <strong>{% endif %}
+{{ ans.fraction }}
+{% if ans.fraction == "100" %} </strong>{% endif %}
+</td>
+<td>{% if ans.fraction == "100" %} <strong>{% endif %}{{ ans.text }}{% if ans.fraction == "100" %} </strong>{% endif %}</td>
 
-{% if ans.fraction == "100" %} <span style="color: white">{% endif %}
+<td><span style="color: gray;">{{ ans["feedback"] }}</span></td>
 
-{{ ans.fraction }} {{ ans.text }} <span style="color: gray;">feedback: {{ ans["feedback"] }}</span>
 
-{% if ans.fraction == "100" %} </span>{% endif %}
+</tr>
 
-</li>
 {% endfor %}
-</ul>
+</table>
+
+
 {% if content[q.id]['files'] %}
 Images: {{ content[q.id]['files'] }}<br>
 {% endif %}

@@ -48,7 +48,13 @@ word-break: break-word;
 {% if flag_recovered %}
 href="{{ url_for('home', course=course) }}"
 {%else%}
-href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}"
+
+    {% if step %}
+href="{{ url_for('question', course=course, topic=topic, step=step, idx=idx+1) }}"
+    {% else %}
+href="{{ url_for('view_question_id', course=course, question_id=question_id + 1) }}"
+    {% endif %}
+
 {% endif %}
 >
 <strong>{{ feedback.result }}</strong>
@@ -61,7 +67,13 @@ href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}
 {% if lives == 0 and not recover %}
 href="{{ url_for('home', course=course) }}"
 {% else %}
-href="{{ url_for('question', course=course, topic=topic, step=step,idx=idx+1) }}"
+
+    {% if step %}
+href="{{ url_for('question', course=course, topic=topic, step=step, idx=idx+1) }}"
+    {% else %}
+href="{{ url_for('view_question_id', course=course, question_id=question_id + 1) }}"
+    {% endif %}
+
 {% endif %}
 >
 <strong>{{ feedback.result }}</strong>
