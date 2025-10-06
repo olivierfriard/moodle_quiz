@@ -13,6 +13,7 @@ import random
 import re
 import json
 import unicodedata
+import markdown
 import numpy as np
 from rapidfuzz import fuzz
 from markupsafe import Markup
@@ -948,6 +949,13 @@ def delete_bookmark(course: str, question_id: int):
         conn.commit()
 
     return redirect(url_for("bookmarked_questions", course=course))
+
+
+def md2html(s: str) -> str:
+    """
+    convert markdown in HTML
+    """
+    return Markup(markdown.markdown(s).replace("<p>", "").replace("</p>", ""))
 
 
 @app.route(
