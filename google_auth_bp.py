@@ -52,12 +52,8 @@ def callback():
     """
     Callback dopo il login Google
     """
-    google = OAuth2Session(
-        client_id, state=session["oauth_state"], redirect_uri=redirect_uri
-    )
-    token = google.fetch_token(
-        token_url, client_secret=client_secret, authorization_response=request.url
-    )
+    google = OAuth2Session(client_id, state=session["oauth_state"], redirect_uri=redirect_uri)
+    token = google.fetch_token(token_url, client_secret=client_secret, authorization_response=request.url)
 
     session["oauth_token"] = token
 
@@ -68,7 +64,7 @@ def callback():
     with engine.connect() as conn:
         user = (
             conn.execute(
-                text("SELECT quizz FROM users WHERE email = :email"),
+                text("SELECT id, quizz FROM users WHERE email = :email"),
                 {"email": userinfo["email"]},
             )
             .mappings()
@@ -93,18 +89,7 @@ def callback():
     session["nickname"] = userinfo["name"]
     session["name"] = userinfo["name"]
     session["email"] = userinfo["email"]
-
-    # check if admin
-    """
-    with engine.connect() as conn:
-        if "email" in session:
-            result = conn.execute(
-                text("SELECT COUNT(*) AS n FROM users WHERE admin = TRUE and email = :email"),
-                {"email": session["email"]},
-            )
-            if result.fetchone()[0]:
-                session["admin"] = True
-    """
+    session["user_id"] = user["id"]
 
     if len(session["authorized_quizz"]) > 1:
         return redirect(url_for("my_quizz"))

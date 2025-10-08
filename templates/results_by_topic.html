@@ -27,8 +27,14 @@
 
 {% for topic in topics %}
 
+{% if user in scores_by_topic %}
+
+
+
 <td>{{  scores_by_topic[user][topic] }}</td>
 <td>{{ n_questions_by_topic[(user, topic)] }}</td>
+
+{% endif %}
 
 {% endfor %}
 

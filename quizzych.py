@@ -301,15 +301,15 @@ def images(course: str, filename):
     return send_from_directory(f"images/{course}", filename)
 
 
-def get_lives_number(course: str, nickname: str) -> int | None:
+def get_lives_number(course: str, user_id: int) -> int | None:
     """
     get number of lives for nickname
     """
     with engine.connect() as conn:
         lives = (
             conn.execute(
-                text("SELECT number FROM lives WHERE nickname = :nickname AND course = :course"),
-                {"course": course, "nickname": nickname},
+                text("SELECT number FROM lives WHERE user_id = :user_id AND course = :course"),
+                {"course": course, "user_id": user_id},
             )
             .mappings()
             .fetchone()
@@ -410,14 +410,14 @@ def home(course: str = ""):
         session["manager"] = False
 
     lives = None
-    if "nickname" in session and session["nickname"] != "admin":
-        lives = get_lives_number(course, session["nickname"])
+    if "user_id" in session and session["user_id"] != 0:
+        lives = get_lives_number(course, session["user_id"])
 
     # check if brush-up available
     brushup_availability: bool = False
 
-    if session.get("nickname", "") not in ("", "admin"):
-        questions_df = get_questions_dataframe(course, session["nickname"])
+    if session.get("user_id", None) not in (None, 0):
+        questions_df = get_questions_dataframe(course, session["user_id"])
         for idx, level in enumerate(config["BRUSH_UP_LEVELS"]):
             if (
                 quiz.get_quiz_brushup(
@@ -459,8 +459,8 @@ def topic_list(course: str):
     config = get_course_config(course)
 
     lives = None
-    if "nickname" in session:
-        lives = get_lives_number(course, session["nickname"])
+    if "user_id" in session:
+        lives = get_lives_number(course, session["user_id"])
 
     topics = get_visible_topics(course)
 
@@ -492,7 +492,7 @@ def recover_lives(course: str):
         course_name=config["QUIZ_NAME"],
         n_questions_ok=config["N_QUESTIONS_FOR_RECOVER"],
         translation=translation,
-        lives=get_lives_number(course, session["nickname"]),
+        lives=get_lives_number(course, session["user_id"]),
     )
 
 
@@ -568,7 +568,7 @@ def recover_quiz(course: str):
     translation = get_translation("it")
 
     # create questions dataframe
-    questions_df = get_questions_dataframe(course, session["nickname"])
+    questions_df = get_questions_dataframe(course, session["user_id"])
 
     with engine.connect() as conn:
         # get number of questions in recover topic
@@ -620,7 +620,7 @@ def all_topic_quiz(course: str, topic: str):
     return redirect(url_for("question", course=course, topic=topic, step=1, idx=0))
 
 
-def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
+def get_questions_dataframe(course: str, user_id: int) -> pd.DataFrame:
     """
     returns pandas dataframe with questions and results for nickname
     """
@@ -638,7 +638,7 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
                         AND q.topic=r.topic
                         AND q.type=r.question_type
                         AND q.name=r.question_name
-                        AND nickname = :nickname
+                        AND r.user_id = :user_id
                 WHERE q.course = :course AND q.deleted IS NULL
                 GROUP BY
                     q.id,
@@ -647,7 +647,7 @@ def get_questions_dataframe(course: str, nickname: str) -> pd.DataFrame:
                     q.name
                 """)
 
-        result = conn.execute(query, {"course": course, "nickname": nickname})
+        result = conn.execute(query, {"course": course, "user_id": user_id})
         columns = result.keys()
         rows = result.mappings().fetchall()
 
@@ -667,8 +667,8 @@ def brush_up_home(course: str):
 
     # check if brush-up available
     brushup_availability = {}
-    if "nickname" in session:
-        questions_df = get_questions_dataframe(course, session["nickname"])
+    if "user_id" in session:
+        questions_df = get_questions_dataframe(course, session["user_id"])
         for idx, level in enumerate(config["BRUSH_UP_LEVELS"]):
             brushup_availability[idx] = (
                 quiz.get_quiz_brushup(
@@ -702,7 +702,7 @@ def brush_up(course: str, level: int):
     config = get_course_config(course)
     translation = get_translation("it")
 
-    questions_df = get_questions_dataframe(course, session["nickname"])
+    questions_df = get_questions_dataframe(course, session["user_id"])
 
     session["quiz"] = quiz.get_quiz_brushup(questions_df, config["RECOVER_TOPICS"], config["N_QUESTIONS_BY_BRUSH_UP"], level)
 
@@ -738,8 +738,8 @@ def steps(course: str, topic: str):
     config = get_course_config(course)
 
     lives = None
-    if "nickname" in session:
-        lives = get_lives_number(course, session["nickname"])
+    if "user_id" in session:
+        lives = get_lives_number(course, session["user_id"])
 
     steps_active = {x: 0 for x in range(1, config["N_STEPS"] + 1)}
     with engine.connect() as conn:
@@ -798,7 +798,7 @@ def step(course: str, topic: str, step: int):
                         AND q.topic=r.topic
                         AND q.type=r.question_type
                         AND q.name=r.question_name
-                        AND nickname = :nickname
+                        AND r.user_id = :user_id
                         AND q.deleted IS NULL
                 WHERE q.course = :course
                 GROUP BY
@@ -808,7 +808,7 @@ def step(course: str, topic: str, step: int):
                     q.name
                 """)
 
-        result = conn.execute(query, {"course": course, "nickname": session["nickname"]})
+        result = conn.execute(query, {"course": course, "user_id": session["user_id"]})
         columns = result.keys()
         rows = result.mappings().fetchall()
 
@@ -827,7 +827,7 @@ def step(course: str, topic: str, step: int):
         topic,
         config["N_QUESTIONS"],
         steps_df[step - 1],
-        get_lives_number(course, session["nickname"]),
+        get_lives_number(course, session["user_id"]),
     )
     session["quiz_position"] = 0
     return redirect(url_for("question", course=course, topic=topic, step=step, idx=0))
@@ -846,10 +846,11 @@ def step_testing(course: str, topic: str, step: int):
 
     if "nickname" not in session:
         session["nickname"] = "admin"
+        session["user_id"] = 0
 
     config = get_course_config(course)
 
-    questions_df = get_questions_dataframe(course, session["nickname"])
+    questions_df = get_questions_dataframe(course, session["user_id"])
 
     steps_df = quiz.crea_tappe(
         questions_df,
@@ -863,43 +864,69 @@ def step_testing(course: str, topic: str, step: int):
         topic,
         config["N_QUESTIONS"],
         steps_df[step - 1],
-        get_lives_number(course, session["nickname"]),
+        get_lives_number(course, session["user_id"]),
     )
     session["quiz_position"] = 0
 
     return "OK"
 
 
-def get_score(course: str, topic: str, nickname: str = "") -> float:
+def get_score(course: str, topic: str, user_id: int = 0) -> float:
     """
     get score of nickname user for topic
     if nickname is empty get score of current user
     """
 
     with engine.connect() as conn:
-        query = text("""
-SELECT
-    SUM(percentage_ok) / COUNT(DISTINCT q.name) AS score
-FROM (
-    SELECT
-        q.name AS question_name,
-        CAST(SUM(CASE WHEN r.good_answer = 1 THEN 1 ELSE 0 END) AS FLOAT) /
-        NULLIF(COUNT(r.good_answer), 0) AS percentage_ok
-    FROM questions q
-    LEFT JOIN results r
-        ON q.course = r.course
-        AND q.name = r.question_name
-        AND r.nickname = :nickname
-    WHERE q.course = r.course AND q.topic = :topic AND q.deleted IS NULL
-    GROUP BY q.name
-) AS subquery
-""")
+        query = text(
+            """
+             SELECT
+                SUM(percentage_ok) / COUNT(DISTINCT question_name) AS score
+             FROM (
+                SELECT
+                    q.name AS question_name,
+                    CAST(SUM(CASE WHEN r.good_answer = true THEN 1 ELSE 0 END) AS FLOAT) /
+                    NULLIF(COUNT(r.good_answer), 0) AS percentage_ok
+                FROM questions q
+                LEFT JOIN results r
+                    ON q.course = r.course
+                    AND q.name = r.question_name
+                    AND r.user_id = :user_id
+                WHERE q.topic = :topic AND q.deleted IS NULL
+                GROUP BY q.name
+             ) AS subquery
+             """
+            #            """
+            # WITH filtered_results AS (
+            #    SELECT *
+            #    FROM results
+            #    WHERE user_id = :user_id
+            # )
+            # SELECT
+            #    AVG(percentage_ok) AS score
+            # FROM (
+            #    SELECT
+            #        q.name AS question_name,
+            #        AVG(CASE WHEN r.good_answer THEN 1.0 ELSE 0.0 END) AS percentage_ok
+            #    FROM questions q
+            #    LEFT JOIN filtered_results r
+            #        ON q.course = r.course
+            #       AND q.name = r.question_name
+            #    WHERE q.topic = :topic
+            #      AND q.deleted IS NULL
+            #    GROUP BY q.name
+            # ) AS per_question;
+            #
+            #
+            #
+            # """
+        )
         cursor = conn.execute(
             query,
             {
                 "course": course,
                 "topic": topic,
-                "nickname": session["nickname"] if nickname == "" else nickname,
+                "user_id": session["user_id"] if user_id == 0 else user_id,
             },
         )
 
@@ -1003,7 +1030,7 @@ def question(course: str, topic: str, step: int, idx: int):
                         return redirect(url_for("home", course=course))
 
         # check quiz_position
-        if session["nickname"] not in ("admin") and idx != session["quiz_position"]:
+        if session["nickname"] != "admin" and idx != session["quiz_position"]:
             flash(
                 Markup('<div class="notification is-danger">You are not allowed to access this page</div>'),
                 "",
@@ -1133,7 +1160,7 @@ def question(course: str, topic: str, step: int, idx: int):
         step=step,
         idx=idx,
         total=len(session["quiz"]) if "recover" not in session else config["N_QUESTIONS_FOR_RECOVER"],
-        lives=get_lives_number(course, session["nickname"] if "nickname" in session else ""),
+        lives=get_lives_number(course, session["user_id"] if "user_id" in session else 0),
         recover="recover" in session,
         translation=translation,
         return_url=url_for("question", course=course, topic=topic, step=step, idx=idx),
@@ -1604,8 +1631,8 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                 if "recover" not in session:
                     with engine.connect() as conn:
                         conn.execute(
-                            text("UPDATE lives SET number = number - 1 WHERE course = :course AND number > 0 AND nickname = :nickname "),
-                            {"course": course, "nickname": session["nickname"]},
+                            text("UPDATE lives SET number = number - 1 WHERE course = :course AND number > 0 AND user_id = :user_id "),
+                            {"course": course, "user_id": session["user_id"]},
                         )
                         conn.commit()
 
@@ -1619,13 +1646,12 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                     response["correct"] = False
 
                     # remove a life if not recover
+                    print(f"{session=}")
                     if "recover" not in session:
                         with engine.connect() as conn:
                             conn.execute(
-                                text(
-                                    "UPDATE lives SET number = number - 1 WHERE course = :course AND number > 0 AND nickname = :nickname "
-                                ),
-                                {"course": course, "nickname": session["nickname"]},
+                                text("UPDATE lives SET number = number - 1 WHERE course = :course AND number > 0 AND user_id = :user_id "),
+                                {"course": course, "user_id": session["user_id"]},
                             )
                             conn.commit()
                 else:
@@ -1653,9 +1679,9 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             with engine.connect() as conn:
                 conn.execute(
                     text(
-                        f"UPDATE lives SET number = number + 1 WHERE course = :course AND nickname = :nickname and number < {config['INITIAL_LIFE_NUMBER']}"
+                        f"UPDATE lives SET number = number + 1 WHERE course = :course AND user_id = :user_id and number < {config['INITIAL_LIFE_NUMBER']}"
                     ),
-                    {"course": course, "nickname": session["nickname"]},
+                    {"course": course, "user_id": session["user_id"]},
                 )
                 conn.commit()
 
@@ -1664,12 +1690,12 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
             with engine.connect() as conn:
                 conn.execute(
                     text(
-                        "INSERT INTO results (course, nickname, topic, question_type, question_name, good_answer) "
-                        "VALUES (:course, :nickname, :topic, :question_type, :question_name, :good_answer)"
+                        "INSERT INTO results (course, user_id, topic, question_type, question_name, good_answer) "
+                        "VALUES (:course, :user_id, :topic, :question_type, :question_name, :good_answer)"
                     ),
                     {
                         "course": course,
-                        "nickname": session["nickname"],
+                        "user_id": session["user_id"],
                         "topic": topic,
                         "question_type": question["type"],
                         "question_name": question["name"],
@@ -1683,7 +1709,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
         if flag_recovered:
             popup_text = translation["Congratulations! You've recovered one life!"]
 
-        nlives = get_lives_number(course, session["nickname"] if "nickname" in session else "")
+        nlives = get_lives_number(course, session["user_id"] if "user_id" in session else 0)
 
         if nlives == 0 and "recover" not in session:
             popup_text = Markup(f"{translation["You've lost all your lives..."]}")
@@ -1703,7 +1729,7 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                         "WHERE course = :course "
                         "AND topic = :topic "
                         "AND question_name = :question_name "
-                        "AND nickname != 'admin' "
+                        "AND user_id != 0 "  # admin
                         "GROUP BY good_answer "
                     ),
                     {
@@ -1775,69 +1801,70 @@ def results(course: str, mode: str = "mean"):
     with engine.connect() as conn:
         topics = get_visible_topics(course)
 
-        users = (
-            conn.execute(text("SELECT * FROM users WHERE nickname NOT IN ('admin', 'manager') ORDER BY LOWER(nickname)")).mappings().all()
-        )
+        users = conn.execute(text("SELECT * FROM users WHERE id != 0 ORDER BY email")).mappings().all()
         scores: dict = {}
         scores_by_topic: dict = {}
         n_questions: dict = {}
         n_topics: dict = {}
+        n_questions_by_topic = None
 
         for user in users:
             tot_score = 0
 
             user_topics = (
                 conn.execute(
-                    "SELECT DISTINCT topic FROM results WHERE course = :course AND nickname = :nickname",
-                    {"course": course, "nickname": user["nickname"]},
+                    text("SELECT DISTINCT topic FROM results WHERE course = :course AND user_id = :user_id"),
+                    {"course": course, "user_id": user["id"]},
                 )
                 .mappings()
                 .all()
             )
 
-            n_topics[user["nickname"]] = len(user_topics)
+            n_topics[user["id"]] = len(user_topics)
 
             if mode == "by_topic":
+                n_questions_by_topic: dict = {}
                 n_questions_topic = (
                     conn.execute(
-                        text(
-                            "SELECT nickname, topic, count(*) AS n_questions FROM results WHERE course = :course GROUP BY nickname, topic"
-                        ),
+                        text("SELECT user_id, topic, count(*) AS n_questions FROM results WHERE course = :course GROUP BY user_id, topic"),
                         {"course": course},
                     )
                     .mappings()
                     .all()
                 )
-                n_questions_by_topic = {}
+
                 for row in n_questions_topic:
-                    n_questions_by_topic[(row["nickname"], row["topic"])] = row["n_questions"]
+                    n_questions_by_topic[(row["user_id"], row["topic"])] = row["n_questions"]
 
             for row in user_topics:
-                score = get_score(course, row["topic"], nickname=user["nickname"])
+                score = get_score(course, row["topic"], user_id=user["id"])
 
-                logging.debug(f"user name: {user['nickname']} topic: {row['topic']}  score: {score}")
+                logging.debug(f"user name: {user['id']} topic: {row['topic']}  score: {score}")
 
-                if user["nickname"] not in scores_by_topic:
-                    scores_by_topic[user["nickname"]] = {}
+                if user["id"] not in scores_by_topic:
+                    scores_by_topic[user["id"]] = {}
 
-                if row["topic"] not in scores_by_topic[user["nickname"]]:
-                    scores_by_topic[user["nickname"]][row["topic"]] = score
+                if row["topic"] not in scores_by_topic[user["id"]]:
+                    scores_by_topic[user["id"]][row["topic"]] = score
 
                 tot_score += score
 
             if len(user_topics):
-                scores[user["nickname"]] = round(tot_score / len(user_topics), 3)
+                scores[user["id"]] = round(tot_score / len(user_topics), 3)
             else:
-                scores[user["nickname"]] = "-"
+                scores[user["id"]] = "-"
 
-            n_questions[user["nickname"]] = (
+            n_questions[user["id"]] = (
                 conn.execute(
-                    text("SELECT count(*) AS n_questions FROM results WHERE course = :course AND nickname = :nickname"),
-                    {"course": course, "nickname": user["nickname"]},
+                    text("SELECT count(*) AS n_questions FROM results WHERE course = :course AND user_id = :user_id"),
+                    {"course": course, "user_id": user["id"]},
                 )
                 .mappings()
                 .fetchone()["n_questions"]
             )
+
+    print(f"{scores=}")
+    print(f"{scores_by_topic=}")
 
     return render_template(
         "results.html" if mode == "mean" else "results_by_topic.html",
@@ -1905,8 +1932,8 @@ def course_management(course: str):
         n_questions_by_day = (
             conn.execute(
                 text(
-                    "SELECT DATE(timestamp) AS day, count(*) AS n_questions, count(distinct nickname) AS n_users FROM results "
-                    "WHERE course = :course AND nickname NOT IN ('admin') GROUP BY day ORDER BY day"
+                    "SELECT DATE(timestamp) AS day, count(*) AS n_questions, count(distinct user_id) AS n_users FROM results "
+                    "WHERE course = :course AND user_id != 0 GROUP BY day ORDER BY day"
                 ),
                 {"course": course},
             )
@@ -1917,8 +1944,8 @@ def course_management(course: str):
         active_users_last_hour = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_hour FROM results "
-                    "WHERE course = :course AND  nickname NOT IN ('admin') AND timestamp >= NOW() - INTERVAL '1 hour'"
+                    "SELECT COUNT(distinct user_id) AS active_users_last_hour FROM results "
+                    "WHERE course = :course AND  user_id != 0 AND timestamp >= NOW() - INTERVAL '1 hour'"
                 ),
                 {"course": course},
             )
@@ -1929,8 +1956,8 @@ def course_management(course: str):
         active_users_last_day = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_day FROM results "
-                    "WHERE course = :course AND nickname NOT IN ('admin') AND timestamp >= NOW() - INTERVAL '1 day'"
+                    "SELECT count(distinct user_id) AS active_users_last_day FROM results "
+                    "WHERE course = :course AND user_id != 0 AND timestamp >= NOW() - INTERVAL '1 day'"
                 ),
                 {"course": course},
             )
@@ -1941,8 +1968,8 @@ def course_management(course: str):
         active_users_last_week = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_week FROM results "
-                    "WHERE course = :course AND nickname NOT IN ('admin') AND timestamp >= NOW() - INTERVAL '7 days'"
+                    "SELECT count(distinct user_id) AS active_users_last_week FROM results "
+                    "WHERE course = :course AND user_id != 0 AND timestamp >= NOW() - INTERVAL '7 days'"
                 ),
                 {"course": course},
             )
@@ -1953,8 +1980,8 @@ def course_management(course: str):
         active_users_last_month = (
             conn.execute(
                 text(
-                    "SELECT count(distinct nickname) AS active_users_last_month FROM results "
-                    "WHERE course = :course AND nickname NOT IN ('admin') AND timestamp >= NOW() - INTERVAL '30 days'"
+                    "SELECT count(distinct user_id) AS active_users_last_month FROM results "
+                    "WHERE course = :course AND user_id != 0 AND timestamp >= NOW() - INTERVAL '30 days'"
                 ),
                 {"course": course},
             )
@@ -2294,12 +2321,12 @@ def all_questions_gift(course: str):
                 if feed_good and feed_wrong:
                     out.append(f"::{content['questiontext']}" + "{")
                     out.append(f"{ans}#{feed_wrong}#{feed_good}")
-                    if content["generalfeedback"]:
+                    if content.get("generalfeedback", None):
                         out.append(f"####{content['generalfeedback']}")
                     out.append("}")
                 else:
                     out.append(f"::{content['questiontext']}")
-                    if content["generalfeedback"]:
+                    if content.get("generalfeedback", None):
                         out.append(f"{{{ans}}}####{content['generalfeedback']}")
                     else:
                         out.append(f"{{{ans}}}")
@@ -2312,7 +2339,7 @@ def all_questions_gift(course: str):
                     else:
                         out.append(f"~{answer['text']}#{answer['feedback']}")
 
-                if content["generalfeedback"]:
+                if content.get("generalfeedback", None):
                     out.append(f"####{content['generalfeedback']}")
                 out.append("}")
 
@@ -2323,7 +2350,7 @@ def all_questions_gift(course: str):
                         out.append(f"=%100%{answer['text']}#{answer['feedback']}")
                     else:
                         out.append(f"=%{answer['fraction']}%{answer['text']}#{answer['feedback']}")
-                if content["generalfeedback"]:
+                if content.get("generalfeedback", None):
                     out.append(f"####{content['generalfeedback']}")
 
                 out.append("}")
@@ -2740,6 +2767,7 @@ def local_login(course: str):
                 flash(translation["Incorrect login. Retry"], "error")
                 return redirect(url_for("local_login", course=course))
             session["nickname"] = "admin"
+            session["user_id"] = 0
             return redirect(url_for("home", course=course))
 
         password_hash = hashlib.sha256(form_data.get("password").encode()).hexdigest()
@@ -2790,6 +2818,8 @@ def admin_login():
                 flash(translation["Incorrect login. Retry"], "error")
                 return redirect(url_for("admin_login"))
             session["nickname"] = "admin"
+            session["user_id"] = 0
+
             return redirect(url_for("main_home"))
 
 
@@ -2800,6 +2830,7 @@ def admin_logout():
     """
 
     del session["nickname"]
+    del session["user_id"]
     return redirect(url_for("main_home"))
 
 
