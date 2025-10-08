@@ -745,8 +745,8 @@ def steps(course: str, topic: str):
     with engine.connect() as conn:
         rows = (
             conn.execute(
-                text("SELECT step_index, number FROM steps WHERE course = :course AND nickname = :nickname AND topic = :topic "),
-                {"course": course, "nickname": session["nickname"], "topic": topic},
+                text("SELECT step_index, number FROM steps WHERE course = :course AND user_id = :user_id AND topic = :topic "),
+                {"course": course, "user_id": session["user_id"], "topic": topic},
             )
             .mappings()
             .fetchall()
@@ -754,8 +754,6 @@ def steps(course: str, topic: str):
         if rows is not None:
             for row in rows:
                 steps_active[row["step_index"]] = row["number"]
-
-        print(steps_active)
 
     return render_template(
         "steps.html",
@@ -1007,12 +1005,12 @@ def question(course: str, topic: str, step: int, idx: int):
                 conn.execute(
                     (
                         text(
-                            "SELECT number FROM steps WHERE course = :course AND nickname = :nickname AND topic = :topic and step_index < :step"
+                            "SELECT number FROM steps WHERE course = :course AND user_id = :user_id AND topic = :topic and step_index < :step"
                         )
                     ),
                     {
                         "course": course,
-                        "nickname": session["nickname"],
+                        "user_id": session["user_id"],
                         "topic": topic,
                         "step": step,
                     },
@@ -1068,11 +1066,11 @@ def question(course: str, topic: str, step: int, idx: int):
                 result = conn.execute(
                     text(
                         "SELECT number FROM steps "
-                        "WHERE course= :course AND nickname = :nickname AND topic = :topic AND step_index = :step_index"
+                        "WHERE course= :course AND user_id = :user_id AND topic = :topic AND step_index = :step_index"
                     ),
                     {
                         "course": course,
-                        "nickname": session["nickname"],
+                        "user_id": session["user_id"],
                         "topic": topic,
                         "step_index": step,
                     },
@@ -1083,12 +1081,12 @@ def question(course: str, topic: str, step: int, idx: int):
                 if row is None:
                     conn.execute(
                         text(
-                            "INSERT INTO steps (course, nickname, topic, step_index, number) "
-                            "VALUES (:course, :nickname, :topic, :step_index, :number)"
+                            "INSERT INTO steps (course, user_id, topic, step_index, number) "
+                            "VALUES (:course, :user_id, :topic, :step_index, :number)"
                         ),
                         {
                             "course": course,
-                            "nickname": session["nickname"],
+                            "user_id": session["user_id"],
                             "topic": topic,
                             "step_index": step,
                             "number": 1,
@@ -1100,11 +1098,11 @@ def question(course: str, topic: str, step: int, idx: int):
                         text(
                             "UPDATE steps "
                             "SET number = number + 1 "
-                            "WHERE course = :course AND nickname = :nickname AND topic = :topic AND step_index = :step_index"
+                            "WHERE course = :course AND user_id = :user_id AND topic = :topic AND step_index = :step_index"
                         ),
                         {
                             "course": course,
-                            "nickname": session["nickname"],
+                            "user_id": session["user_id"],
                             "topic": topic,
                             "step_index": step,
                         },
@@ -1646,7 +1644,6 @@ def check_answer(course: str, topic: str, step: int, idx: int, user_answer: str 
                     response["correct"] = False
 
                     # remove a life if not recover
-                    print(f"{session=}")
                     if "recover" not in session:
                         with engine.connect() as conn:
                             conn.execute(
@@ -2118,8 +2115,8 @@ def edit_parameters(course: str):
 def add_lives(course: str):
     with engine.connect() as conn:
         conn.execute(
-            text("UPDATE lives SET number = number + 10 WHERE course = :course AND nickname = :nickname "),
-            {"course": course, "nickname": session["nickname"]},
+            text("UPDATE lives SET number = number + 10 WHERE course = :course AND user_id = :user_id "),
+            {"course": course, "user_id": session["user_id"]},
         )
         conn.commit()
 
@@ -3016,20 +3013,16 @@ def delete(course: str):
     """
     with engine.connect() as conn:
         conn.execute(
-            text("DELETE FROM users WHERE nickname = :nickname"),
-            {"nickname": session["nickname"]},
+            text("DELETE FROM users WHERE user_id = :user_id"),
+            {"user_id": session["user_id"]},
         )
         conn.execute(
-            text("DELETE FROM lives WHERE nickname = :nickname"),
-            {"nickname": session["nickname"]},
+            text("DELETE FROM lives WHERE user_id = :user_id"),
+            {"user_id": session["user_id"]},
         )
         conn.execute(
-            text("DELETE FROM questions WHERE nickname = :nickname"),
-            {"nickname": session["nickname"]},
-        )
-        conn.execute(
-            text("DELETE FROM steps WHERE nickname = :nickname"),
-            {"nickname": session["nickname"]},
+            text("DELETE FROM steps WHERE user_id = :user_id"),
+            {"user_id": session["user_id"]},
         )
         conn.execute(
             text("DELETE FROM bookmarks WHERE nickname = :nickname"),
@@ -3038,6 +3031,7 @@ def delete(course: str):
         conn.commit()
 
     del session["nickname"]
+    del session["user_id"]
     return redirect(url_for("home", course=course))
 
 

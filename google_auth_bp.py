@@ -47,13 +47,17 @@ def login():
     return redirect(authorization_url)
 
 
+
 @bp.route(cfg.APPLICATION_ROOT + "/callback")
 def callback():
     """
     Callback dopo il login Google
     """
     google = OAuth2Session(client_id, state=session["oauth_state"], redirect_uri=redirect_uri)
-    token = google.fetch_token(token_url, client_secret=client_secret, authorization_response=request.url)
+    try:
+        token = google.fetch_token(token_url, client_secret=client_secret, authorization_response=request.url)
+    except Exception:
+        return redirect(url_for("main_home"))
 
     session["oauth_token"] = token
 
@@ -85,6 +89,25 @@ def callback():
             "danger",
         )
         return redirect(url_for("main_home"))
+
+    # check if first login
+    with engine.connect() as conn:
+        for quiz in session["authorized_quizz"]:
+            if not conn.execute(text("SELECT id FROM lives WHERE user_id = :user_id AND course = :course"),
+                {"user_id": user["id"], "course": quiz},
+            ).scalar():
+                # add lives
+                row = conn.execute(text("SELECT initial_life_number FROM courses WHERE name = :course"), {"course": quiz}).mappings().fetchone()
+                conn.execute(
+                    text("INSERT INTO lives (course, user_id, number) VALUES (:course, :user_id, :number)"),
+                    {
+                        "course": quiz,
+                        "user_id": user["id"],
+                        "number": row["initial_life_number"],
+                    },
+                )
+                conn.commit()
+
 
     session["nickname"] = userinfo["name"]
     session["name"] = userinfo["name"]
