@@ -45,6 +45,9 @@ import quiz
 
 import google_auth_bp
 
+__git_version__ = ""
+__git_date__ = ""
+
 COURSES_DIR = "courses"
 
 logging.basicConfig(
