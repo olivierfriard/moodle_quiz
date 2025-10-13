@@ -15,7 +15,7 @@
 
           <div class="block">
             <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
-          
+
           </div>
 
 
@@ -24,12 +24,14 @@
 
 <table class="table">
 <thead>
-    
+
 <tr>
 <td>User</td><td>Mean score</td><td>Number of topics</td><td>Number of questions</td>
 </tr>
 </thead>
 {% for user in scores %}
+
+{% if n_questions[user] %}
 
 <tr class="has-text-white">
 
@@ -41,10 +43,9 @@
 
 <td>{{  n_questions[user] }}</td>
 
-
-
 </tr>
 
+{% endif %}
 
 </a>
 
