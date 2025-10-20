@@ -45,8 +45,8 @@ import quiz
 
 import google_auth_bp
 
-__git_version__ = "7b94a5e"
-__git_date__ = "2025-10-09 10:30:33"
+__git_version__ = "1dd808e"
+__git_date__ = "2025-10-13 15:22:28"
 
 COURSES_DIR = "courses"
 
@@ -2116,7 +2116,7 @@ def course_management(course: str):
             conn.execute(
                 text(
                     (
-                        "SELECT DATE(timestamp) AS day, count(*) AS n_questions, count(distinct user_id) AS n_users FROM results "
+                        "SELECT to_char(timestamp, 'YYYY-MM-DD') AS day, count(*) AS n_questions, count(distinct user_id) AS n_users FROM results "
                         "WHERE course = :course AND user_id != 0 GROUP BY day ORDER BY day"
                     )
                 ),
