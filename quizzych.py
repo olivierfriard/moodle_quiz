@@ -45,8 +45,8 @@ import quiz
 
 import google_auth_bp
 
-__git_version__ = "1dd808e"
-__git_date__ = "2025-10-13 15:22:28"
+__git_version__ = "69eeca9"
+__git_date__ = "2025-10-20 17:32:35"
 
 COURSES_DIR = "courses"
 
@@ -2146,29 +2146,35 @@ def course_management(course: str):
             {"course": course},
         ).scalar()
 
-        active_users_last_week = (
-            conn.execute(
-                text(
-                    "SELECT count(distinct user_id) AS active_users_last_week FROM results "
-                    "WHERE course = :course AND user_id != 0 AND timestamp >= NOW() - INTERVAL '7 days'"
-                ),
-                {"course": course},
-            )
-            .mappings()
-            .fetchone()["active_users_last_week"]
-        )
+        active_users_last_week = conn.execute(
+            text(
+                "SELECT count(distinct user_id) FROM results "
+                "WHERE course = :course AND user_id != 0 AND timestamp >= NOW() - INTERVAL '7 days'"
+            ),
+            {"course": course},
+        ).scalar()
 
-        active_users_last_month = (
-            conn.execute(
-                text(
-                    "SELECT count(distinct user_id) AS active_users_last_month FROM results "
-                    "WHERE course = :course AND user_id != 0 AND timestamp >= NOW() - INTERVAL '30 days'"
-                ),
-                {"course": course},
-            )
-            .mappings()
-            .fetchone()["active_users_last_month"]
-        )
+        active_users_last_month = conn.execute(
+            text(
+                "SELECT count(distinct user_id) FROM results "
+                "WHERE course = :course AND user_id != 0 AND timestamp >= NOW() - INTERVAL '30 days'"
+            ),
+            {"course": course},
+        ).scalar()
+
+        by_hour = conn.execute(
+            text(
+                "SELECT "
+                '    EXTRACT(HOUR FROM "timestamp")::integer AS hour, '
+                "    COUNT(*) AS count_by_hour "
+                "FROM results WHERE course = :course "
+                "GROUP BY hour "
+                "ORDER BY hour "
+            ),
+            {"course": course},
+        ).mappings().all()
+
+        print(by_hour)
 
     return render_template(
         "course_management.html",
@@ -2186,6 +2192,8 @@ def course_management(course: str):
         n_questions_by_day=Markup(str([x["n_questions"] for x in n_questions_by_day])),
         n_users_by_day=Markup(str([x["n_users"] for x in n_questions_by_day])),
         return_url=url_for("course_management", course=course),
+        hours = Markup(str([x["hour"] for x in by_hour])),
+        count_by_hour = Markup(str([x["count_by_hour"] for x in by_hour])),
     )
 
 

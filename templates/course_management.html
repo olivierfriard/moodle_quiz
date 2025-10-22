@@ -171,8 +171,12 @@ Number of active users in last month: {{ active_users_last_month }}<br>
 
 
 <b>Number of answers by day</b><br>
-
 <canvas id="answers_by_day"></canvas>
+<br>
+
+
+<b>Number of answers by hour of the day</b><br>
+<canvas id="by_hour"></canvas>
 <br>
 
 
@@ -262,6 +266,36 @@ Number of active users in last month: {{ active_users_last_month }}<br>
         }
     });
 </script>
+
+
+<script>
+    // Get the canvas element by its ID
+    var ctx = document.getElementById('by_hour').getContext('2d');
+
+    // Create a new bar chart
+    var myChart = new Chart(ctx, {
+        type: 'bar',  // Type of chart: bar chart
+        data: {
+            labels: {{ hours }},  // X-axis labels
+            datasets: [{
+                label: 'Number of answers by hour',  // Dataset label
+                data: {{ count_by_hour }},  // Data for each bar
+                /*backgroundColor: 'rgba(54, 162, 235, 0.2)',  // Bar color*/
+                /*borderColor: 'rgba(54, 162, 235, 1)',  // Border color*/
+                /* borderWidth: 1  // Border width */
+            }]
+        },
+        options: {
+            
+            scales: {
+                y: {
+                    beginAtZero: true  // Start Y-axis from zero
+                }
+            }
+        }
+    });
+</script>
+
 
 </body>
 </html>
