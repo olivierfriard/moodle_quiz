@@ -194,15 +194,26 @@ Number of active users in last month: {{ active_users_last_month }}<br>
 
 <div class="box">
 
-<p class="title is-4">Quiz with all questions</p>
+<p class="title is-4">Topics</p>
 
 <br>
+<table class="table">
+<tr>
+<th>Topic</th>
+<th></th>
+<th>Accuracy percentage</th>
+</tr>
 {% for topic in topics_list %}
 
-<a href="{{ url_for('all_topic_quiz', course=course, topic=topic.topic) }}">{{ topic.topic }}</a>
-<br>
+<tr>
+<td>{{ topic.topic }}</td>
+
+<td><a href="{{ url_for('all_topic_quiz', course=course, topic=topic.topic) }}">quiz</a> </td>
+<td>{{ accuracy_percentage_by_topic[topic.topic] }}</td>
+</tr>
 
 {% endfor %}
+</table>
 </div>
 
 
@@ -296,6 +307,10 @@ Number of active users in last month: {{ active_users_last_month }}<br>
     });
 </script>
 
+
+<pre>
+    {{ most_wrong_questions }}
+</pre>
 
 </body>
 </html>

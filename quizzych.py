@@ -29,6 +29,7 @@ from flask import (
     jsonify,
     send_file,
 )
+from tabulate import tabulate
 import io
 import tempfile
 from functools import wraps
@@ -45,8 +46,8 @@ import quiz
 
 import google_auth_bp
 
-__git_version__ = "69eeca9"
-__git_date__ = "2025-10-20 17:32:35"
+__git_version__ = "9008c8b"
+__git_date__ = "2025-10-22 17:16:10"
 
 COURSES_DIR = "courses"
 
@@ -2174,7 +2175,68 @@ def course_management(course: str):
             {"course": course},
         ).mappings().all()
 
-        print(by_hour)
+
+        # accuracy percentage by question type
+        accuracy_percentage_by_question_type = conn.execute(
+            text(
+               
+"SELECT  "
+"    question_type, "
+"    ROUND(100.0 * SUM(CASE WHEN good_answer THEN 1 ELSE 0 END) / COUNT(*), 2) AS accuracy_percentage  "
+"FROM results WHERE course = :course  "
+"GROUP BY question_type "
+"ORDER BY accuracy_percentage ASC; "
+
+            ),
+            {"course": course},
+        ).mappings().all()
+
+
+        # accuracy percentage by topic
+        accuracy_percentage_by_topic = conn.execute(
+            text(
+               
+"SELECT  "
+"    topic, "
+"    ROUND(100.0 * SUM(CASE WHEN good_answer THEN 1 ELSE 0 END) / COUNT(*), 2) AS success_rate "
+"FROM results WHERE course = :course  "
+"GROUP BY topic "
+"ORDER BY success_rate ASC; "
+
+            ),
+            {"course": course},
+        ).mappings().all()
+
+        accuracy_percentage_by_topic = {item['topic']: round(float(item['success_rate']),2) for item in accuracy_percentage_by_topic}
+
+
+        # domande più sbagliate
+        query = text("""
+        SELECT 
+            q.topic,
+            CASE
+            WHEN q.type = 'shortanswer' THEN 'short'
+            WHEN q.type = 'truefalse' THEN 'TF'
+            WHEN q.type = 'multichoice' THEN 'multi'
+            ELSE q.type
+            END AS type,
+            SUBSTRING(q.content::json ->> 'questiontext',1,100) AS question_text,
+            COUNT(*) AS num_answers,
+            ROUND(100.0 * SUM(CASE WHEN r.good_answer THEN 1 ELSE 0 END) / COUNT(*), 2) AS success_rate
+        FROM results r
+        JOIN questions q ON r.question_name = q.name
+        GROUP BY q.name, q.topic, q.type, q.content
+        ORDER BY success_rate ASC
+        LIMIT 100;
+        """)
+
+        # most wrong questions
+        result = conn.execute(query)
+        rows = result.fetchall()
+        columns = result.keys()
+        
+
+        most_wrong_questions = tabulate(rows, headers=columns, tablefmt="psql")
 
     return render_template(
         "course_management.html",
@@ -2194,6 +2256,8 @@ def course_management(course: str):
         return_url=url_for("course_management", course=course),
         hours = Markup(str([x["hour"] for x in by_hour])),
         count_by_hour = Markup(str([x["count_by_hour"] for x in by_hour])),
+        accuracy_percentage_by_topic=accuracy_percentage_by_topic,
+        most_wrong_questions=most_wrong_questions
     )
 
 
@@ -3423,3 +3487,4 @@ def test_popup():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
+
