@@ -2201,7 +2201,7 @@ def course_management(course: str):
 "    ROUND(100.0 * SUM(CASE WHEN good_answer THEN 1 ELSE 0 END) / COUNT(*), 2) AS success_rate "
 "FROM results WHERE course = :course  "
 "GROUP BY topic "
-"ORDER BY success_rate ASC; "
+"ORDER BY topic ASC; "
 
             ),
             {"course": course},
