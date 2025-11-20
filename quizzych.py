@@ -498,7 +498,11 @@ def topic_list(course: str):
     if "user_id" in session:
         lives = get_lives_number(course, session["user_id"])
 
+    print(f"{lives=}")
+
     topics = get_visible_topics(course)
+
+    print(f"{topics=}")
 
     return render_template(
         "topic_list.html",
@@ -538,6 +542,8 @@ def get_visible_topics(course: str) -> list[str]:
     """
     config = get_course_config(course)
 
+    print(f"{config["TOPICS_TO_HIDE"]=}")
+
     with engine.connect() as conn:
         rows = (
             conn.execute(
@@ -549,6 +555,7 @@ def get_visible_topics(course: str) -> list[str]:
             .mappings()
             .fetchall()
         )
+        print(f"{rows=}")
         if rows:
             topics = [
                 row["topic"]
@@ -3158,7 +3165,7 @@ def local_login(course: str):
         with engine.connect() as conn:
             cursor = conn.execute(
                 text(
-                    "SELECT count(*) AS n_users FROM users WHERE nickname = :nickname AND password_hash = :password_hash"
+                    "SELECT id FROM users WHERE nickname = :nickname AND password_hash = :password_hash"
                 ),
                 {
                     "nickname": form_data.get("nickname"),
@@ -3166,8 +3173,9 @@ def local_login(course: str):
                 },
             )
             row = cursor.mappings().fetchone()
-            if row["n_users"]:
+            if row is not None:
                 session["nickname"] = form_data.get("nickname")
+                session['user_id'] = row['id']
                 # check if manager
                 with engine.connect() as conn:
                     flag_manager = conn.execute(
