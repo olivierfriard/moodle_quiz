@@ -1,6 +1,7 @@
 courses
 __pycache__
-uv.lock
 images
+client_secret.json
+config.py
 
 
