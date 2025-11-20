@@ -46,8 +46,8 @@ import quiz
 
 import google_auth_bp
 
-__git_version__ = "a51203d"
-__git_date__ = "2025-10-23 18:02:26"
+__git_version__ = "4ab23fb"
+__git_date__ = "2025-10-24 09:01:54"
 
 COURSES_DIR = "courses"
 
@@ -1967,7 +1967,7 @@ def results(course: str, mode: str = "mean"):
                     (
                         "SELECT * FROM users WHERE "
                         ":course = ANY(quizz) "
-                        "AND email <> ALL(SELECT unnest(managers) FROM courses WHERE name = 'quizzoo')"
+                        "AND email <> ALL(SELECT unnest(managers) FROM courses WHERE name = :course)"
                     )
                 ),
                 {"course": course},
