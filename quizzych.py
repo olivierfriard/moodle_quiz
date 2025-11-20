@@ -46,8 +46,8 @@ import quiz
 
 import google_auth_bp
 
-__git_version__ = "df24ffe"
-__git_date__ = "2025-11-20 12:18:34"
+__git_version__ = "a61766c"
+__git_date__ = "2025-11-20 12:19:25"
 
 COURSES_DIR = "courses"
 
