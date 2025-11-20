@@ -3397,19 +3397,19 @@ def new_nickname(course: str):
                 )
 
             try:
-                conn.execute(
+                new_id = conn.execute(
                     text(
-                        "INSERT INTO users (nickname, password_hash) VALUES (:nickname, :password_hash)"
+                        "INSERT INTO users (nickname, password_hash) VALUES (:nickname, :password_hash) RETURNING id"
                     ),
                     {"nickname": nickname, "password_hash": password_hash},
-                )
+                ).scalar_one()
                 conn.execute(
                     text(
-                        "INSERT INTO lives (course, nickname, number) VALUES (:course, :nickname, :number)"
+                        "INSERT INTO lives (course, user_id, number) VALUES (:course, :user_id, :number)"
                     ),
                     {
                         "course": course,
-                        "nickname": nickname,
+                        "user_id": new_id,
                         "number": config["INITIAL_LIFE_NUMBER"],
                     },
                 )
@@ -3424,6 +3424,7 @@ def new_nickname(course: str):
                 return redirect(url_for("home", course=course))
 
             except Exception:
+                raise
                 flash(
                     Markup(
                         '<div class="notification is-danger">Error creating the new nickname</div>'
