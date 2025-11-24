@@ -3452,7 +3452,7 @@ def delete(course: str):
     """
     with engine.connect() as conn:
         conn.execute(
-            text("DELETE FROM users WHERE user_id = :user_id"),
+            text("DELETE FROM users WHERE id = :user_id"),
             {"user_id": session["user_id"]},
         )
         conn.execute(
