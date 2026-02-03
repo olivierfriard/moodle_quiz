@@ -49,8 +49,6 @@ import quiz
 __git_version__ = "071b978"
 __git_date__ = "2025-11-20 12:20:17"
 
-COURSES_DIR = "courses"
-
 logging.basicConfig(
     format="%(message)s",
     datefmt="%H:%M:%S",
