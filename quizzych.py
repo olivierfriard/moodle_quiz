@@ -3,48 +3,48 @@ Quizzych
 
 """
 
-from pathlib import Path
 import hashlib
+import io
+import json
+import logging
+import random
+import re
+import tempfile
+import tomllib
+import unicodedata
+from functools import wraps
+from pathlib import Path
+
+import geojson
+import markdown
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import numpy as np
 
 # import sqlite3
 import pandas as pd
-import tomllib
-import random
-import re
-import json
-import unicodedata
-import markdown
-import numpy as np
-from rapidfuzz import fuzz
-from markupsafe import Markup
 from flask import (
     Flask,
-    render_template,
-    session,
-    redirect,
-    request,
     flash,
-    url_for,
-    send_from_directory,
     jsonify,
+    redirect,
+    render_template,
+    request,
     send_file,
+    send_from_directory,
+    session,
+    url_for,
 )
-from tabulate import tabulate
-import io
-import tempfile
-from functools import wraps
-import logging
-from sqlalchemy import create_engine, text, bindparam
-from shapely.geometry import Point, shape
-import geojson
+from markupsafe import Markup
 from PIL import Image
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-
-import moodle_xml
-import quiz
+from rapidfuzz import fuzz
+from shapely.geometry import Point, shape
+from sqlalchemy import bindparam, create_engine, text
+from tabulate import tabulate
 
 import google_auth_bp
+import moodle_xml
+import quiz
 
 __git_version__ = "071b978"
 __git_date__ = "2025-11-20 12:20:17"
@@ -445,7 +445,7 @@ def home(course: str = ""):
     else:
         session["manager"] = False
 
-    lives = None
+    lives: int | None = None
     if "user_id" in session and session["user_id"] != 0:
         lives = get_lives_number(course, session["user_id"])
 
@@ -476,6 +476,18 @@ def home(course: str = ""):
         translation=translation,
         brushup_availability=brushup_availability,
         login_mode=config["login_mode"],
+    )
+
+
+@app.route(f"{app.config['APPLICATION_ROOT']}/settings/<course>", methods=["GET"])
+@course_exists
+@check_login
+def settings(course: str):
+    """ """
+    return render_template(
+        "settings.html",
+        course=course,
+        translation=get_translation("it"),
     )
 
 
@@ -2170,56 +2182,64 @@ def course_management(course: str):
             {"course": course},
         ).scalar()
 
-        by_hour = conn.execute(
-            text(
-                "SELECT "
-                '    EXTRACT(HOUR FROM "timestamp")::integer AS hour, '
-                "    COUNT(*) AS count_by_hour "
-                "FROM results WHERE course = :course "
-                "GROUP BY hour "
-                "ORDER BY hour "
-            ),
-            {"course": course},
-        ).mappings().all()
-
+        by_hour = (
+            conn.execute(
+                text(
+                    "SELECT "
+                    '    EXTRACT(HOUR FROM "timestamp")::integer AS hour, '
+                    "    COUNT(*) AS count_by_hour "
+                    "FROM results WHERE course = :course "
+                    "GROUP BY hour "
+                    "ORDER BY hour "
+                ),
+                {"course": course},
+            )
+            .mappings()
+            .all()
+        )
 
         # accuracy percentage by question type
-        accuracy_percentage_by_question_type = conn.execute(
-            text(
-               
-"SELECT  "
-"    question_type, "
-"    ROUND(100.0 * SUM(CASE WHEN good_answer THEN 1 ELSE 0 END) / COUNT(*), 2) AS accuracy_percentage  "
-"FROM results WHERE course = :course  "
-"GROUP BY question_type "
-"ORDER BY accuracy_percentage ASC; "
-
-            ),
-            {"course": course},
-        ).mappings().all()
-
+        accuracy_percentage_by_question_type = (
+            conn.execute(
+                text(
+                    "SELECT  "
+                    "    question_type, "
+                    "    ROUND(100.0 * SUM(CASE WHEN good_answer THEN 1 ELSE 0 END) / COUNT(*), 2) AS accuracy_percentage  "
+                    "FROM results WHERE course = :course  "
+                    "GROUP BY question_type "
+                    "ORDER BY accuracy_percentage ASC; "
+                ),
+                {"course": course},
+            )
+            .mappings()
+            .all()
+        )
 
         # accuracy percentage by topic
-        accuracy_percentage_by_topic = conn.execute(
-            text(
-               
-"SELECT  "
-"    topic, "
-"    ROUND(100.0 * SUM(CASE WHEN good_answer THEN 1 ELSE 0 END) / COUNT(*), 2) AS success_rate "
-"FROM results WHERE course = :course  "
-"GROUP BY topic "
-"ORDER BY topic ASC; "
+        accuracy_percentage_by_topic = (
+            conn.execute(
+                text(
+                    "SELECT  "
+                    "    topic, "
+                    "    ROUND(100.0 * SUM(CASE WHEN good_answer THEN 1 ELSE 0 END) / COUNT(*), 2) AS success_rate "
+                    "FROM results WHERE course = :course  "
+                    "GROUP BY topic "
+                    "ORDER BY topic ASC; "
+                ),
+                {"course": course},
+            )
+            .mappings()
+            .all()
+        )
 
-            ),
-            {"course": course},
-        ).mappings().all()
-
-        accuracy_percentage_by_topic = {item['topic']: round(float(item['success_rate']),2) for item in accuracy_percentage_by_topic}
-
+        accuracy_percentage_by_topic = {
+            item["topic"]: round(float(item["success_rate"]), 2)
+            for item in accuracy_percentage_by_topic
+        }
 
         # domande più sbagliate
         query = text("""
-        SELECT 
+        SELECT
             q.topic,
             CASE
             WHEN q.type = 'shortanswer' THEN 'short'
@@ -2241,7 +2261,6 @@ def course_management(course: str):
         result = conn.execute(query)
         rows = result.fetchall()
         columns = result.keys()
-        
 
         most_wrong_questions = tabulate(rows, headers=columns, tablefmt="psql")
 
@@ -2261,10 +2280,10 @@ def course_management(course: str):
         n_questions_by_day=Markup(str([x["n_questions"] for x in n_questions_by_day])),
         n_users_by_day=Markup(str([x["n_users"] for x in n_questions_by_day])),
         return_url=url_for("course_management", course=course),
-        hours = Markup(str([x["hour"] for x in by_hour])),
-        count_by_hour = Markup(str([x["count_by_hour"] for x in by_hour])),
+        hours=Markup(str([x["hour"] for x in by_hour])),
+        count_by_hour=Markup(str([x["count_by_hour"] for x in by_hour])),
         accuracy_percentage_by_topic=accuracy_percentage_by_topic,
-        most_wrong_questions=most_wrong_questions
+        most_wrong_questions=most_wrong_questions,
     )
 
 
@@ -3175,7 +3194,7 @@ def local_login(course: str):
             row = cursor.mappings().fetchone()
             if row is not None:
                 session["nickname"] = form_data.get("nickname")
-                session['user_id'] = row['id']
+                session["user_id"] = row["id"]
                 # check if manager
                 with engine.connect() as conn:
                     flag_manager = conn.execute(
@@ -3443,16 +3462,19 @@ def new_nickname(course: str):
                 return redirect(url_for("home", course=course))
 
 
-@app.route(f"{app.config['APPLICATION_ROOT']}/<course>/delete", methods=["GET", "POST"])
+@app.route(
+    f"{app.config['APPLICATION_ROOT']}/<course>/delete_nickname",
+    methods=["GET", "POST"],
+)
 @course_exists
 @check_login
-def delete(course: str):
+def delete_nickname(course: str):
     """
     delete nickname and all correlated data
     """
     with engine.connect() as conn:
         conn.execute(
-            text("DELETE FROM users WHERE id = :user_id"),
+            text("DELETE FROM results WHERE user_id = :user_id"),
             {"user_id": session["user_id"]},
         )
         conn.execute(
@@ -3467,10 +3489,62 @@ def delete(course: str):
             text("DELETE FROM bookmarks WHERE nickname = :nickname"),
             {"nickname": session["nickname"]},
         )
+        conn.execute(
+            text("DELETE FROM users WHERE id = :user_id"),
+            {"user_id": session["user_id"]},
+        )
         conn.commit()
 
     del session["nickname"]
     del session["user_id"]
+    return redirect(url_for("home", course=course))
+
+
+@app.route(
+    f"{app.config['APPLICATION_ROOT']}/<course>/delete_data",
+    methods=["GET"],
+)
+@course_exists
+@check_login
+def delete_data(course: str):
+    """
+    delete data for user_id
+    """
+    config = get_course_config(course)
+
+    with engine.connect() as conn:
+        conn.execute(
+            text("DELETE FROM results WHERE course = :course AND user_id = :user_id"),
+            {"user_id": session["user_id"], "course": course},
+        )
+        conn.execute(
+            text("DELETE FROM lives WHERE course = :course AND  user_id = :user_id"),
+            {"user_id": session["user_id"], "course": course},
+        )
+        conn.execute(
+            text("DELETE FROM steps WHERE course = :course AND  user_id = :user_id"),
+            {"user_id": session["user_id"], "course": course},
+        )
+        conn.execute(
+            text(
+                "DELETE FROM bookmarks WHERE course = :course AND  nickname = :nickname"
+            ),
+            {"nickname": session["nickname"], "course": course},
+        )
+        # insert lives
+        conn.execute(
+            text(
+                "INSERT INTO lives (course, user_id, number) VALUES (:course, :user_id, :number)"
+            ),
+            {
+                "course": course,
+                "user_id": session["user_id"],
+                "number": config["INITIAL_LIFE_NUMBER"],
+            },
+        )
+
+        conn.commit()
+
     return redirect(url_for("home", course=course))
 
 
@@ -3496,4 +3570,3 @@ def test_popup():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
-

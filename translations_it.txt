@@ -6,6 +6,7 @@
 "Recover lives" = "Recupera vita"
 "Brush-up" = "Ripasso"
 "Delete nickname" = "Cancella il nickname"
+"Delete data" = "Cancella tutti i dati dell'utente"
 "Logout" = "Esci"
 "New nickname" = "Nuovo nickname"
 "New nickname created with 5 lives" = "Nuovo nickname creato"
@@ -26,9 +27,14 @@
 "Input a number" = 'Immetti un numero'
 "Add the question to bookmarks" = "Aggiungi la domanda ai bookmarks"
 
+"Go to quizz" = "Vai al quizz"
+"Settings" = "Impostazioni"
+
 "Easy" = "Regolare"
 "Hard" = "Impegnativo"
 "Very hard" = "Avanzato"
+
+"Are you sure? This operation can not be undone" = "Sei sicuro? Questa operazione è irreversibile"
 
 "Number of lives" = "Numero di vite"
 

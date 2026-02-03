@@ -22,7 +22,7 @@
 Manage quizz
 </a>
 </div>
-{% endif %} 
+{% endif %}
 
 
 <div class="block">
@@ -30,11 +30,8 @@ Manage quizz
 
 {{ translation['Welcome'] }} <strong>{{ session['nickname'] }}</strong>!
 
-
-
 </p>
 </div>
-
 
 {% with messages = get_flashed_messages(with_categories=True) %}
 {% if messages %}
@@ -50,7 +47,7 @@ Manage quizz
 {% if lives == 0 %}
 disabled
 {% else %}
-href="{{ url_for('topic_list', course=course) }}" 
+href="{{ url_for('topic_list', course=course) }}"
 {% endif %}
 
 style=" margin-bottom: 1.2em;"
@@ -60,7 +57,6 @@ style=" margin-bottom: 1.2em;"
 <a class="button is-large is-fullwidth " href="{{ url_for('recover_lives',course=course) }}" style="margin-bottom: 1.2em;">
 {{ translation['Recover lives'] }}
 </a>
-
 
 <a class="button is-large is-fullwidth "  style="margin-bottom: 1.2em;"
 {% if brushup_availability %}
@@ -72,59 +68,13 @@ disabled
 {{ translation['Brush-up'] }}
 </a>
 
-
-
-
-{#
-
-<div class="columns is-flex is-justify-content-space-between">
-  <!-- Left-aligned content -->
-  <div class="column is-narrow">
-  <p>
-    <a class="button is-large is-fullwidth " href="{{ url_for('brush_up',course=course, level=1) }}" style="margin-bottom: 1.2em;">
-      {{ translation['Brush-up'] }} 1
-      </a>
-  </p>
-  </div>
-  
-
-   <!-- Center-aligned content -->
-   <div class="level-item has-text-centered">
-      <p>
-        <a class="button is-large is-fullwidth " href="{{ url_for('brush_up',course=course, level=2) }}" style="margin-bottom: 1.2em;">
-          {{ translation['Brush-up'] }} 2
-          </a>
-            </p>
-    </div>
-
-  
-  <!-- Right-aligned content -->
-  <div class="column is-narrow has-text-right">
-  <p>
-    <a class="button is-large is-fullwidth " href="{{ url_for('brush_up',course=course, level=4) }}" style="margin-bottom: 1.2em;">
-      {{ translation['Brush-up'] }} 4
-      </a>
-        
-  </p>
-  </div>
-  </div>
-    
-#}
-
-
-
-
-
 {% else %}
 
-
     {% if login_mode == 'google_auth' %}
-<a class="button is-link" href="{{ url_for('google_auth.login') }}">Login con Google</a>
+        <a class="button is-link" href="{{ url_for('google_auth.login') }}">Login con Google</a>
     {% else %}
-<a class="button is-link" href="{{ url_for('local_login', course=course) }}">Login</a>
-
-<a class="button is-link" href="{{ url_for('new_nickname',course=course) }}">{{ translation['New nickname'] }}</a>
-
+        <a class="button is-link" href="{{ url_for('local_login', course=course) }}">Login</a>
+        <a class="button is-link" href="{{ url_for('new_nickname',course=course) }}">{{ translation['New nickname'] }}</a>
     {% endif %}
 
 {% endif %}
@@ -132,16 +82,21 @@ disabled
 </div>
 
 {% if session['nickname'] %}
-<a href="{{ url_for('google_auth.logout', course=course) }}" class="button is-danger is-pulled-right" onclick="return confirm_()">{{ translation['Logout'] }}</a><br><br>
 
-{% if session['nickname'] != 'admin' %}
-<a href="{{ url_for('delete', course=course) }}" class="button is-small is-danger is-pulled-right" onclick="return confirm_()">{{ translation['Delete nickname'] }}</a>
-{%endif%}
+<div class="is-pulled-right">
+<a href="{{ url_for('settings', course=course) }}">
+<span style="font-size: 1.6rem;">⚙️</span>
+</a>
+<br>
+<a href="{{ url_for('google_auth.logout', course=course) }}" class="button is-danger" onclick="return confirm_()">
+{{ translation['Logout'] }}</a>
+</div>
+
 
 {%endif%}
 
 </div>
-       
+
 </div>
 
 </div>
