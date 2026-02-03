@@ -46,8 +46,8 @@ import google_auth_bp
 import moodle_xml
 import quiz
 
-__git_version__ = "071b978"
-__git_date__ = "2025-11-20 12:20:17"
+__version__ = "071b978"
+__version_date__ = "2025-11-20 12:20:17"
 
 logging.basicConfig(
     format="%(message)s",
