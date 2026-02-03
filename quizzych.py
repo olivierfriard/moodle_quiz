@@ -47,7 +47,7 @@ import moodle_xml
 import quiz
 
 __version__ = "071b978"
-__version_date__ = "2025-11-20 12:20:17"
+__version_date__ = "2026-02-03T12:53:46Z"
 
 logging.basicConfig(
     format="%(message)s",
@@ -3544,26 +3544,6 @@ def delete_data(course: str):
         conn.commit()
 
     return redirect(url_for("home", course=course))
-
-
-'''
-@app.route(f"{app.config['APPLICATION_ROOT']}/logout/<course>", methods=["GET", "POST"])
-def logout(course):
-    """
-    logout
-    """
-    if "nickname" in session:
-        del session["nickname"]
-        clear_session()
-
-    return redirect(url_for("home", course=course))
-'''
-
-
-@app.route(f"{app.config['APPLICATION_ROOT']}/test_popup", methods=["GET", "POST"])
-def test_popup():
-    """ """
-    return render_template("test_popup.html")
 
 
 if __name__ == "__main__":
