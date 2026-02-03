@@ -47,7 +47,7 @@ import moodle_xml
 import quiz
 
 __version__ = "0.2.0"
-__version_date__ = "2026-02-03T12:55:17Z"
+__version_date__ = "2026-02-03_13:02:47Z"
 
 logging.basicConfig(
     format="%(message)s",
@@ -3462,7 +3462,7 @@ def new_nickname(course: str):
 
 @app.route(
     f"{app.config['APPLICATION_ROOT']}/<course>/delete_nickname",
-    methods=["GET", "POST"],
+    methods=["GET"],
 )
 @course_exists
 @check_login
@@ -3544,6 +3544,11 @@ def delete_data(course: str):
         conn.commit()
 
     return redirect(url_for("home", course=course))
+
+
+@app.route(f"{app.config['APPLICATION_ROOT']}/version")
+def version():
+    return f"v. {__version__}<br>date: {__version_date__}"
 
 
 if __name__ == "__main__":
