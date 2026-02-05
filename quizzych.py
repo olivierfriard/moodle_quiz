@@ -2086,6 +2086,7 @@ def course_management(course: str):
     """
 
     config = get_course_config(course)
+    translation = get_translation("it")
 
     with engine.connect() as conn:
         questions_number = conn.execute(
@@ -2282,6 +2283,7 @@ def course_management(course: str):
         count_by_hour=Markup(str([x["count_by_hour"] for x in by_hour])),
         accuracy_percentage_by_topic=accuracy_percentage_by_topic,
         most_wrong_questions=most_wrong_questions,
+        translation=translation
     )
 
 
