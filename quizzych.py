@@ -46,7 +46,7 @@ import moodle_xml
 import quiz
 
 __version__ = "0.2.0"
-__version_date__ = "2026-02-13_22:53:34Z"
+__version_date__ = "2026-02-13_22:54:57Z"
 
 logging.basicConfig(
     format="%(message)s",
