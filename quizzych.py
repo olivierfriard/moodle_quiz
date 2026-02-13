@@ -40,14 +40,13 @@ from PIL import Image
 from rapidfuzz import fuzz
 from shapely.geometry import Point, shape
 from sqlalchemy import bindparam, create_engine, text
-from tabulate import tabulate
 
 import google_auth_bp
 import moodle_xml
 import quiz
 
 __version__ = "0.2.0"
-__version_date__ = "2026-02-03_13:21:53Z"
+__version_date__ = "2026-02-03_14:25:53Z"
 
 logging.basicConfig(
     format="%(message)s",
@@ -2236,32 +2235,41 @@ def course_management(course: str):
             for item in accuracy_percentage_by_topic
         }
 
-        # domande più sbagliate
-        query = text("""
-        SELECT
-            q.topic,
-            CASE
-            WHEN q.type = 'shortanswer' THEN 'short'
-            WHEN q.type = 'truefalse' THEN 'TF'
-            WHEN q.type = 'multichoice' THEN 'multi'
-            ELSE q.type
-            END AS type,
-            SUBSTRING(q.content::json ->> 'questiontext',1,100) AS question_text,
-            COUNT(*) AS num_answers,
-            ROUND(100.0 * SUM(CASE WHEN r.good_answer THEN 1 ELSE 0 END) / COUNT(*), 2) AS success_rate
-        FROM results r
-        JOIN questions q ON r.question_name = q.name
-        GROUP BY q.name, q.topic, q.type, q.content
-        ORDER BY success_rate ASC
-        LIMIT 100;
-        """)
-
-        # most wrong questions
-        result = conn.execute(query)
-        rows = result.fetchall()
-        columns = result.keys()
-
-        most_wrong_questions = tabulate(rows, headers=columns, tablefmt="psql")
+        # most wrong questions for current course
+        most_wrong_questions = (
+            conn.execute(
+                text(
+                    """
+                    SELECT
+                        q.id AS question_id,
+                        q.topic AS topic,
+                        CASE
+                            WHEN q.type = 'shortanswer' THEN 'short'
+                            WHEN q.type = 'truefalse' THEN 'TF'
+                            WHEN q.type = 'multichoice' THEN 'multi'
+                            ELSE q.type
+                        END AS type,
+                        SUBSTRING(q.content::json ->> 'questiontext', 1, 140) AS question_text,
+                        COUNT(*) AS num_answers,
+                        ROUND(
+                            100.0 * SUM(CASE WHEN r.good_answer THEN 1 ELSE 0 END) / COUNT(*),
+                            2
+                        ) AS success_rate
+                    FROM results r
+                    JOIN questions q ON r.question_name = q.name
+                    WHERE r.course = :course
+                        AND q.course = :course
+                        AND q.deleted IS NULL
+                    GROUP BY q.id, q.name, q.topic, q.type, q.content
+                    ORDER BY success_rate ASC, num_answers DESC
+                    LIMIT 100
+                    """
+                ),
+                {"course": course},
+            )
+            .mappings()
+            .all()
+        )
 
     return render_template(
         "course_management.html",

@@ -216,6 +216,40 @@ Number of active users in last month: {{ active_users_last_month }}<br>
 </table>
 </div>
 
+<div class="box">
+<p class="title is-4">Questions with low success rate</p>
+{% if most_wrong_questions %}
+<table class="table is-fullwidth is-striped is-hoverable">
+<thead>
+<tr>
+<th>Topic</th>
+<th>Type</th>
+<th>Question</th>
+<th class="has-text-right">Answers</th>
+<th class="has-text-right">Success %</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+{% for item in most_wrong_questions %}
+<tr>
+<td>{{ item.topic }}</td>
+<td>{{ item.type }}</td>
+<td>{{ item.question_text }}</td>
+<td class="has-text-right">{{ item.num_answers }}</td>
+<td class="has-text-right">{{ item.success_rate }}</td>
+<td>
+    <a href="{{ url_for('edit_question', course=course, question_id=item.question_id, return_url=return_url) }}">edit</a>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p>No answer data available yet.</p>
+{% endif %}
+</div>
+
 
 </div></div></div>
 </section>
@@ -307,10 +341,6 @@ Number of active users in last month: {{ active_users_last_month }}<br>
     });
 </script>
 
-
-<pre>
-    {{ most_wrong_questions }}
-</pre>
 
 </body>
 </html>
