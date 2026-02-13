@@ -46,7 +46,7 @@ import moodle_xml
 import quiz
 
 __version__ = "0.2.0"
-__version_date__ = "2026-02-03_14:25:53Z"
+__version_date__ = "2026-02-13_17:34:29Z"
 
 logging.basicConfig(
     format="%(message)s",
@@ -2291,7 +2291,7 @@ def course_management(course: str):
         count_by_hour=Markup(str([x["count_by_hour"] for x in by_hour])),
         accuracy_percentage_by_topic=accuracy_percentage_by_topic,
         most_wrong_questions=most_wrong_questions,
-        translation=translation
+        translation=translation,
     )
 
 
