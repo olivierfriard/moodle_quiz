@@ -14,6 +14,7 @@ dependencies = [
     "matplotlib>=3.10.6",
     "pandas>=2.2.3",
     "psycopg2>=2.9.10",
+    "python-dotenv>=1.0.1",
     "pygiftparserrgmf>=0.0.5",
     "rapidfuzz>=3.11.0",
     "requests-oauthlib>=2.0.0",

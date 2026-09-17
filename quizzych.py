@@ -44,6 +44,7 @@ from sqlalchemy import bindparam, create_engine, text
 import google_auth_bp
 import moodle_xml
 import quiz
+import settings
 
 __version__ = "0.2.0"
 __version_date__ = "2026-02-13_22:54:57Z"
@@ -194,8 +195,12 @@ def load_questions_gift(gift_file_path: Path, course: str, config: dict) -> int:
 
 
 app = Flask(__name__)
-app.config.from_object("config")
-app.config["DEBUG"] = True
+app.config.from_mapping(
+    APPLICATION_ROOT=settings.APPLICATION_ROOT,
+    ADMIN_PASSWORD_SHA256=settings.ADMIN_PASSWORD_SHA256,
+    DATABASE_URL=settings.DATABASE_URL,
+    DEBUG=settings.DEBUG,
+)
 app.secret_key = "votre_clé_secrète_sécurisée_ici"
 
 app.register_blueprint(google_auth_bp.bp)

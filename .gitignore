@@ -2,7 +2,6 @@ courses
 __pycache__
 images
 client_secret.json
-config.py
+.env
 *.json
-
 

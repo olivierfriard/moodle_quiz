@@ -5,7 +5,7 @@ import os
 from sqlalchemy import create_engine, text
 from pathlib import Path
 
-import config as cfg
+import settings as cfg
 
 bp = Blueprint("google_auth", __name__)
 
