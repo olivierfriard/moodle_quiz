@@ -1985,11 +1985,9 @@ def results(course: str, mode: str = "mean"):
         users = (
             conn.execute(
                 text(
-                    (
-                        "SELECT * FROM users WHERE "
-                        ":course = ANY(quizz) "
-                        "AND email <> ALL(SELECT unnest(managers) FROM courses WHERE name = :course)"
-                    )
+                    "SELECT * FROM users WHERE "
+                    ":course = ANY(quizz) "
+                    "AND email <> ALL(SELECT unnest(managers) FROM courses WHERE name = :course)"
                 ),
                 {"course": course},
             )
@@ -2035,6 +2033,22 @@ def results(course: str, mode: str = "mean"):
                     n_questions_by_topic[(row["user_id"], row["topic"])] = row[
                         "n_questions"
                     ]
+
+                """
+                # extract steps for each topic
+                max_step_for_topic = (
+                                    conn.execute(
+                                        text(
+
+                                            "select user_id, topic, max(step_index) from steps where number >= 3 and course = :course group by user_id, topic order by user_id, topic"
+
+                                        ),
+                                        {"course": course},
+                                    )
+                                    .mappings()
+                                    .all()
+                                )
+                """
 
             for row in user_topics:
                 score = get_score(course, row["topic"], user_id=user["id"])
