@@ -1,53 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ course }} - Results by topic</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ course }} - Results by topic</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
+<style>
+    .table-container {
+        overflow-x: auto;
+        width: 100%;
+    }
+</style>
+
 <body>
 
-
-<table border="1">
-<thead>
-<tr>
-<td>User</td>
-{% for topic in topics %}
-<td>{{ topic }}</td>
-<td>n. questions</td>
-{% endfor %}
-</tr>
-</thead>
-
-{% for user in scores %}
-
-<tr class="has-text-white">
-
-<td>{{ user }}</td>
-
-{% for topic in topics %}
-
-{% if user in scores_by_topic %}
+    <section class="section">
+        <div class="container">
 
 
+            <div class="block">
+                <a href="{{ url_for('home', course=course) }}" class="button is-link is-small">Home</a>
 
-<td>{{  scores_by_topic[user][topic] }}</td>
-<td>{{ n_questions_by_topic[(user, topic)] }}</td>
+            </div>
 
-{% endif %}
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <td>User</td>
+                            {% for topic in topics %}
+                            <td>{{ topic }}</td>
+                            <td>n. questions</td>
+                            <td>Current step</td>
+                            {% endfor %}
+                        </tr>
+                    </thead>
 
-{% endfor %}
+                    {% for user in scores %}
+
+                    <tr class="has-text-white">
+
+                        <td>{{ user }}</td>
+
+                        {% for topic in topics %}
+
+                        {% if user in scores_by_topic %}
 
 
-</tr>
+
+                        <td>
+                            {{ scores_by_topic[user][topic] }}
+                        </td>
+                        <td>{{ n_questions_by_topic[(user, topic)] }}</td>
+                        <td>
+                            {% if user in max_step_by_topic %}
+                            {% if topic in max_step_by_topic[user] %}
+                            <br>
+                            {# {{ max_step_by_topic[user][topic] }}<br> #}
+                            {{ step_names[max_step_by_topic[user][topic] - 1] }}<br>
+                            {% endif %}
+                            {% endif %}
+
+                        </td>
 
 
-</a>
+                        {% endif %}
 
-{% endfor %}
-
-</table>
+                        {% endfor %}
 
 
+                    </tr>
+
+
+                    </a>
+
+                    {% endfor %}
+
+                </table>
+            </div>
+
+        </div>
+
+    </section>
 </body>
+
 </html>

@@ -1979,6 +1979,8 @@ def results(course: str, mode: str = "mean"):
     display results for all users
     """
 
+    config = get_course_config(course)
+
     with engine.connect() as conn:
         topics = get_visible_topics(course)
 
@@ -1987,7 +1989,8 @@ def results(course: str, mode: str = "mean"):
                 text(
                     "SELECT * FROM users WHERE "
                     ":course = ANY(quizz) "
-                    "AND email <> ALL(SELECT unnest(managers) FROM courses WHERE name = :course)"
+                    "AND email <> ALL(SELECT unnest(managers) FROM courses WHERE name = :course) "
+                    "ORDER by email "
                 ),
                 {"course": course},
             )
@@ -1996,9 +1999,10 @@ def results(course: str, mode: str = "mean"):
         )
         scores: dict = {}
         scores_by_topic: dict = {}
+        max_step_by_topic: dict = {}
         n_questions: dict = {}
         n_topics: dict = {}
-        n_questions_by_topic = None
+        n_questions_by_topic: dict = {}
 
         for user in users:
             tot_score = 0
@@ -2017,38 +2021,47 @@ def results(course: str, mode: str = "mean"):
             n_topics[user["email"]] = len(user_topics)
 
             if mode == "by_topic":
-                n_questions_by_topic: dict = {}
                 n_questions_topic = (
                     conn.execute(
                         text(
-                            "SELECT user_id, topic, count(*) AS n_questions FROM results WHERE course = :course GROUP BY user_id, topic"
+                            "SELECT user_id, topic, count(*) AS n_questions FROM results WHERE course = :course AND user_id = :user_id GROUP BY user_id, topic"
                         ),
-                        {"course": course},
+                        {"course": course, "user_id": user["id"]},
                     )
                     .mappings()
                     .all()
                 )
 
                 for row in n_questions_topic:
-                    n_questions_by_topic[(row["user_id"], row["topic"])] = row[
+                    n_questions_by_topic[(user["email"], row["topic"])] = row[
                         "n_questions"
                     ]
 
-                """
                 # extract steps for each topic
                 max_step_for_topic = (
-                                    conn.execute(
-                                        text(
-
-                                            "select user_id, topic, max(step_index) from steps where number >= 3 and course = :course group by user_id, topic order by user_id, topic"
-
-                                        ),
-                                        {"course": course},
-                                    )
-                                    .mappings()
-                                    .all()
-                                )
-                """
+                    conn.execute(
+                        text(
+                            "SELECT user_id, topic, max(step_index) AS max_step FROM steps WHERE number >= :n_quiz_by_step AND course = :course AND user_id = :user_id GROUP BY user_id, topic ORDER BY user_id, topic"
+                        ),
+                        {
+                            "course": course,
+                            "n_quiz_by_step": config["N_QUIZ_BY_STEP"],
+                            "user_id": user["id"],
+                        },
+                    )
+                    .mappings()
+                    .all()
+                )
+                if max_step_for_topic is None:
+                    max_step_by_topic[user["email"]] = {}
+                else:
+                    for row in max_step_for_topic:
+                        if user["email"] not in max_step_by_topic:
+                            max_step_by_topic[user["email"]] = {}
+                            if row["topic"] not in max_step_by_topic[user["email"]]:
+                                max_step_by_topic[user["email"]][row["topic"]] = row[
+                                    "max_step"
+                                ]
 
             for row in user_topics:
                 score = get_score(course, row["topic"], user_id=user["id"])
@@ -2077,8 +2090,13 @@ def results(course: str, mode: str = "mean"):
                 {"course": course, "user_id": user["id"]},
             ).scalar()
 
+    """
     print(f"{scores=}")
     print(f"{scores_by_topic=}")
+    print(f"{max_step_by_topic=}")
+    print(f"{config["STEP_NAMES"]=}")  # remove before release
+    print(f"{n_questions_by_topic=}")  # remove before release
+    """
 
     return render_template(
         "results.html" if mode == "mean" else "results_by_topic.html",
@@ -2086,8 +2104,10 @@ def results(course: str, mode: str = "mean"):
         topics=topics,
         scores=scores,
         scores_by_topic=scores_by_topic,
+        max_step_by_topic=max_step_by_topic,
+        step_names=config["STEP_NAMES"],
         n_questions=n_questions,
-        n_questions_by_topic=n_questions_by_topic if mode == "by_topic" else None,
+        n_questions_by_topic=n_questions_by_topic if mode == "by_topic" else {},
         n_topics=n_topics,
     )
 
