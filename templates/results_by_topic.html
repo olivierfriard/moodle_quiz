@@ -29,11 +29,11 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <td>User</td>
+                            <th>User</th>
                             {% for topic in topics %}
-                            <td>{{ topic }}</td>
-                            <td>n. questions</td>
-                            <td>Current step</td>
+                            <th>{{ topic }}</th>
+                            <th>Attempts</th>
+                            <th>Current step</th>
                             {% endfor %}
                         </tr>
                     </thead>
@@ -46,35 +46,21 @@
 
                         {% for topic in topics %}
 
-                        {% if user in scores_by_topic %}
-
-
-
                         <td>
-                            {{ scores_by_topic[user][topic] }}
+                            {{ scores_by_topic.get(user, {}).get(topic, "—") }}
                         </td>
-                        <td>{{ n_questions_by_topic[(user, topic)] }}</td>
+                        <td>{{ n_questions_by_topic.get((user, topic), 0) }}</td>
                         <td>
-                            {% if user in max_step_by_topic %}
-                            {% if topic in max_step_by_topic[user] %}
-                            <br>
-                            {# {{ max_step_by_topic[user][topic] }}<br> #}
-                            {{ step_names[max_step_by_topic[user][topic] - 1] }}<br>
+                            {% set step = max_step_by_topic.get(user, {}).get(topic) %}
+                            {% if step is not none and 0 < step <= step_names|length %}
+                            {{ step_names[step - 1] }}
                             {% endif %}
-                            {% endif %}
-
                         </td>
-
-
-                        {% endif %}
 
                         {% endfor %}
 
 
                     </tr>
-
-
-                    </a>
 
                     {% endfor %}
 
