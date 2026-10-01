@@ -2004,91 +2004,91 @@ def results(course: str, mode: str = "mean"):
         n_topics: dict = {}
         n_questions_by_topic: dict = {}
 
-        if mode == "by_topic":
-            users_by_id = {user["id"]: user["email"] for user in users}
-            scores = {user["email"]: "-" for user in users}
-            n_questions = {user["email"]: 0 for user in users}
-            n_topics = {user["email"]: 0 for user in users}
+        users_by_id = {user["id"]: user["email"] for user in users}
+        scores = {user["email"]: "-" for user in users}
+        n_questions = {user["email"]: 0 for user in users}
+        n_topics = {user["email"]: 0 for user in users}
 
-            attempts_by_topic = (
-                conn.execute(
-                    text(
-                        "SELECT user_id, topic, count(*) AS n_questions "
-                        "FROM results WHERE course = :course "
-                        "GROUP BY user_id, topic"
-                    ),
-                    {"course": course},
-                )
-                .mappings()
-                .all()
+        attempts_by_topic = (
+            conn.execute(
+                text(
+                    "SELECT user_id, topic, count(*) AS n_questions "
+                    "FROM results WHERE course = :course "
+                    "GROUP BY user_id, topic"
+                ),
+                {"course": course},
             )
-            for row in attempts_by_topic:
-                email = users_by_id.get(row["user_id"])
-                if email is None:
-                    continue
+            .mappings()
+            .all()
+        )
+        for row in attempts_by_topic:
+            email = users_by_id.get(row["user_id"])
+            if email is None:
+                continue
 
-                n_questions_by_topic[(email, row["topic"])] = row["n_questions"]
-                n_questions[email] += row["n_questions"]
-                n_topics[email] += 1
+            n_questions_by_topic[(email, row["topic"])] = row["n_questions"]
+            n_questions[email] += row["n_questions"]
+            n_topics[email] += 1
 
-            score_rows = (
-                conn.execute(
-                    text(
-                        """
-                        WITH attempted_topics AS (
-                            SELECT DISTINCT user_id, topic
-                            FROM results
-                            WHERE course = :course
-                        ),
-                        question_counts AS (
-                            SELECT topic, count(DISTINCT name) AS question_count
-                            FROM questions
-                            WHERE course = :course AND deleted IS NULL
-                            GROUP BY topic
-                        ),
-                        question_scores AS (
-                            SELECT
-                                r.user_id,
-                                q.topic,
-                                q.name,
-                                CAST(SUM(CASE WHEN r.good_answer THEN 1 ELSE 0 END) AS FLOAT)
-                                    / NULLIF(COUNT(r.good_answer), 0) AS percentage_ok
-                            FROM questions q
-                            JOIN results r
-                                ON q.course = r.course
-                                AND q.name = r.question_name
-                            WHERE q.course = :course AND q.deleted IS NULL
-                            GROUP BY r.user_id, q.topic, q.name
-                        )
+        score_rows = (
+            conn.execute(
+                text(
+                    """
+                    WITH attempted_topics AS (
+                        SELECT DISTINCT user_id, topic
+                        FROM results
+                        WHERE course = :course
+                    ),
+                    question_counts AS (
+                        SELECT topic, count(DISTINCT name) AS question_count
+                        FROM questions
+                        WHERE course = :course AND deleted IS NULL
+                        GROUP BY topic
+                    ),
+                    question_scores AS (
                         SELECT
-                            attempted_topics.user_id,
-                            attempted_topics.topic,
-                            COALESCE(
-                                SUM(question_scores.percentage_ok)
-                                    / NULLIF(MAX(question_counts.question_count), 0),
-                                0
-                            ) AS score
-                        FROM attempted_topics
-                        LEFT JOIN question_counts
-                            ON question_counts.topic = attempted_topics.topic
-                        LEFT JOIN question_scores
-                            ON question_scores.user_id = attempted_topics.user_id
-                            AND question_scores.topic = attempted_topics.topic
-                        GROUP BY attempted_topics.user_id, attempted_topics.topic
-                        """
-                    ),
-                    {"course": course},
-                )
-                .mappings()
-                .all()
-            )
-            for row in score_rows:
-                email = users_by_id.get(row["user_id"])
-                if email is not None:
-                    scores_by_topic.setdefault(email, {})[row["topic"]] = round(
-                        row["score"], 3
+                            r.user_id,
+                            q.topic,
+                            q.name,
+                            CAST(SUM(CASE WHEN r.good_answer THEN 1 ELSE 0 END) AS FLOAT)
+                                / NULLIF(COUNT(r.good_answer), 0) AS percentage_ok
+                        FROM questions q
+                        JOIN results r
+                            ON q.course = r.course
+                            AND q.name = r.question_name
+                        WHERE q.course = :course AND q.deleted IS NULL
+                        GROUP BY r.user_id, q.topic, q.name
                     )
+                    SELECT
+                        attempted_topics.user_id,
+                        attempted_topics.topic,
+                        COALESCE(
+                            SUM(question_scores.percentage_ok)
+                                / NULLIF(MAX(question_counts.question_count), 0),
+                            0
+                        ) AS score
+                    FROM attempted_topics
+                    LEFT JOIN question_counts
+                        ON question_counts.topic = attempted_topics.topic
+                    LEFT JOIN question_scores
+                        ON question_scores.user_id = attempted_topics.user_id
+                        AND question_scores.topic = attempted_topics.topic
+                    GROUP BY attempted_topics.user_id, attempted_topics.topic
+                    """
+                ),
+                {"course": course},
+            )
+            .mappings()
+            .all()
+        )
+        for row in score_rows:
+            email = users_by_id.get(row["user_id"])
+            if email is not None:
+                scores_by_topic.setdefault(email, {})[row["topic"]] = round(
+                    row["score"], 3
+                )
 
+        if mode == "by_topic":
             max_step_rows = (
                 conn.execute(
                     text(
@@ -2112,48 +2112,11 @@ def results(course: str, mode: str = "mean"):
                         "max_step"
                     ]
         else:
-            for user in users:
-                tot_score = 0
-
-                user_topics = (
-                    conn.execute(
-                        text(
-                            "SELECT DISTINCT topic FROM results WHERE course = :course AND user_id = :user_id"
-                        ),
-                        {"course": course, "user_id": user["id"]},
+            for email, number_of_topics in n_topics.items():
+                if number_of_topics:
+                    scores[email] = round(
+                        sum(scores_by_topic[email].values()) / number_of_topics, 3
                     )
-                    .mappings()
-                    .all()
-                )
-
-                n_topics[user["email"]] = len(user_topics)
-
-                for row in user_topics:
-                    score = get_score(course, row["topic"], user_id=user["id"])
-
-                    logging.debug(
-                        f"user name: {user['email']} topic: {row['topic']}  score: {score}"
-                    )
-
-                    if user["email"] not in scores_by_topic:
-                        scores_by_topic[user["email"]] = {}
-
-                    if row["topic"] not in scores_by_topic[user["email"]]:
-                        scores_by_topic[user["email"]][row["topic"]] = score
-
-                    tot_score += score
-
-                if len(user_topics):
-                    scores[user["email"]] = round(tot_score / len(user_topics), 3)
-                else:
-                    scores[user["email"]] = "-"
-
-                n_questions[user["email"]] = conn.execute(
-                    text(
-                        "SELECT count(*) FROM results WHERE course = :course AND user_id = :user_id"
-                    ),
-                    {"course": course, "user_id": user["id"]},
-                ).scalar()
 
     """
     print(f"{scores=}")

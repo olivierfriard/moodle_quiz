@@ -31,8 +31,6 @@
 </thead>
 {% for user in scores %}
 
-{% if n_questions[user] %}
-
 <tr class="has-text-white">
 
 <td>{{ user }}</td>
@@ -44,8 +42,6 @@
 <td>{{  n_questions[user] }}</td>
 
 </tr>
-
-{% endif %}
 
 </a>
 
